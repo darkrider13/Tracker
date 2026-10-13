@@ -3245,6 +3245,10 @@ const I18N = {
     alert_backup_restored: 'ব্যাকআপ সফলভাবে পুনরুদ্ধার হয়েছে!',
     alert_backup_saved_to_documents: 'ব্যাকআপ Documents/{filename}-এ সেভ হয়েছে',
     alert_backup_saved: 'ব্যাকআপ সফলভাবে সেভ হয়েছে!',
+    export_choose_title: 'ব্যাকআপ এক্সপোর্ট',
+    export_choose_message: 'ফাইলটি সরাসরি Documents ফোল্ডারে সেভ করুন, অথবা ফোনের শেয়ার মেনু দিয়ে পাঠান।',
+    export_save_file: 'ফাইল সেভ',
+    export_share: 'শেয়ার',
     alert_logs_imported: 'লগ সফলভাবে ইমপোর্ট হয়েছে!',
     alert_invalid_backup_format: 'ব্যাকআপ ফাইলের ফরম্যাট সঠিক নয়!',
     alert_backup_parse_failed: 'ব্যাকআপ ফাইল পড়া যায়নি।',
@@ -11738,26 +11742,55 @@ function renderLogsList() {
 // Downloads manager, so <a download> / blob: URLs silently do nothing (no
 // error, the click just has no effect). We try the native plugin path first
 // and fall back gracefully for the browser-preview case.
-async function downloadFile(filename, mimeType, content) {
-  // 1) Capacitor Filesystem, saved DIRECTLY to a fixed public folder
-  //    (Documents) - no Share sheet ("send to...") in between. Android
-  //    asks for storage permission the first time this runs, then every
-  //    export after that lands straight in the same folder with no extra
-  //    dialog. This trades away per-export folder choice for a much
-  //    faster, more predictable save - the person always knows exactly
-  //    where their backups are.
+// Native share sheet: writes the file to the app cache, then hands it to the
+// phone's share menu. Returns 'native-share', 'cancelled', or null on failure.
+async function shareFileNative(cap, filename, content) {
+  if (!cap.Share || !cap.Directory) return null;
+  try {
+    const safeName = /^[\x20-\x7E]+$/.test(filename) ? filename : ('Tracker_backup_' + Date.now() + '.json');
+    await cap.Filesystem.writeFile({
+      path: safeName,
+      data: content,
+      directory: cap.Directory.Cache,
+      encoding: 'utf8'
+    });
+    const r = await cap.Filesystem.getUri({ path: safeName, directory: cap.Directory.Cache });
+    await cap.Share.share({ title: safeName, url: r.uri });
+    return 'native-share';
+  } catch (shErr) {
+    if (/cancel/i.test((shErr && shErr.message) || '')) return 'cancelled';
+    console.warn("Native share failed:", shErr);
+    return null;
+  }
+}
+
+// mode: 'save' (straight into Documents) or 'share' (phone share menu).
+async function downloadFile(filename, mimeType, content, mode) {
   const cap = getCap();
   if (isNativeApp() && cap && cap.Filesystem) {
-    try {
-      const written = await cap.Filesystem.writeFile({
-        path: filename,
-        data: content,
-        directory: cap.Directory ? cap.Directory.Documents : undefined,
-        encoding: 'utf8'
-      });
-      return 'documents';
-    } catch (fsErr) {
-      console.warn("Filesystem export failed, falling back:", fsErr);
+    if (mode === 'share') {
+      const shared = await shareFileNative(cap, filename, content);
+      if (shared) return shared;
+    } else {
+      try {
+        // Android 9 and older ask for storage permission here; newer
+        // versions need nothing and this resolves straight away.
+        if (cap.Filesystem.requestPermissions) {
+          try { await cap.Filesystem.requestPermissions(); } catch (permErr) {}
+        }
+        await cap.Filesystem.writeFile({
+          path: filename,
+          data: content,
+          directory: cap.Directory ? cap.Directory.Documents : undefined,
+          encoding: 'utf8',
+          recursive: true
+        });
+        return 'documents';
+      } catch (fsErr) {
+        console.warn("Filesystem export failed, falling back:", fsErr);
+        const shared = await shareFileNative(cap, filename, content);
+        if (shared) return shared;
+      }
     }
   }
 
@@ -11865,7 +11898,25 @@ async function exportLogs() {
     filename = `Tracker_${day}_${month}_${year}_${hoursStr}.${minutesStr}_${ampm}.json`;
   }
 
-  const method = await downloadFile(filename, 'application/json', jsonStr);
+  // In the installed app, ask how to export: straight into Documents or via
+  // the phone's share menu. (Same popup as every other confirm; X aborts.)
+  let exportMode = 'save';
+  if (isNativeApp()) {
+    const choice = await customConfirm(
+      tr('export_choose_message', "Save the file straight into your Documents folder, or send it using your phone's share menu."),
+      {
+        title: tr('export_choose_title', 'Export backup'),
+        okLabel: tr('export_save_file', 'Save File'),
+        cancelLabel: tr('export_share', 'Share'),
+        icon: 'fa-file-export'
+      }
+    );
+    if (choice === null) return;
+    exportMode = choice ? 'save' : 'share';
+  }
+
+  const method = await downloadFile(filename, 'application/json', jsonStr, exportMode);
+  if (method === 'cancelled' || method === 'native-share') return;
   if (!method) {
     customAlert(tr('alert_backup_save_failed', "Couldn't save the backup file on this device. Please try again, or check that the app has storage/file permission."));
     return;
