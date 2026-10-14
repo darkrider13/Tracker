@@ -1759,7 +1759,7 @@ button:not(#screen-pin-pad *):focus-visible,
 <i class="fas fa-file-import"></i> <span data-i18n="profile_import" data-i18n-en="Import">Import</span>
 </button>
 </div>
-<input type="file" id="import-file-input" class="hidden" accept=".json,application/json" onchange="handleImport(event)">
+<input type="file" id="import-file-input" class="hidden" onchange="handleImport(event)">
 </div>
 
 <div class="bg-gray-200/60 p-5 rounded-[24px] text-center space-y-3 mt-4">
@@ -11943,7 +11943,15 @@ async function shareFileNative(cap, filename, content) {
       encoding: 'utf8'
     });
     const r = await cap.Filesystem.getUri({ path: safeName, directory: cap.Directory.Cache });
-    await cap.Share.share({ title: safeName, url: r.uri });
+    // files[] (not url) hands Drive/WhatsApp a real file attachment with its
+    // name and .json extension; url: makes Android send it as plain text,
+    // so Drive saved it without the extension.
+    try {
+      await cap.Share.share({ title: safeName, files: [r.uri] });
+    } catch (filesErr) {
+      if (/cancel/i.test((filesErr && filesErr.message) || '')) return 'cancelled';
+      await cap.Share.share({ title: safeName, url: r.uri });
+    }
     return 'native-share';
   } catch (shErr) {
     if (/cancel/i.test((shErr && shErr.message) || '')) return 'cancelled';
@@ -12128,9 +12136,11 @@ async function exportLogs() {
 function triggerImport() { document.getElementById('import-file-input').click(); }
 
 function handleImport(event) {
-  const file = event.target.files[0];
+  const input = event.target;
+  const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
+  reader.onloadend = function() { try { input.value = ''; } catch (e) {} };
   reader.onload = async function(e) {
     let parsed = null;
     let lastErr = null;
@@ -12141,15 +12151,23 @@ function handleImport(event) {
     // corrupt, misroute, or refuse to open by mistaking it for a
     // spreadsheet.
     try {
-      const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+      let text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+      text = text.replace(/^\uFEFF/, '').trim();
       parsed = JSON.parse(text);
+      // Some apps double-encode the JSON as a string - unwrap once.
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      // Accept a bare appState (no wrapper) too.
+      if (parsed && !Array.isArray(parsed) && !parsed.data && parsed.funds && parsed.transactions) {
+        parsed = { type: "smart_saver_elite_backup", version: 1, data: parsed };
+      }
     } catch (jsonErr) {
       lastErr = jsonErr;
       parsed = null;
     }
 
     try {
-      if (parsed && parsed.type === "smart_saver_elite_backup" && parsed.data) {
+      if (parsed && !Array.isArray(parsed) && parsed.data && typeof parsed.data === 'object' &&
+          (parsed.type === "smart_saver_elite_backup" || parsed.data.funds || parsed.data.transactions)) {
         const ok = await customConfirm(tr('confirm_restore_backup', "This will restore your name, funds, balances, target, reminders, theme, settings and full transaction history from this backup, replacing current data. Continue?"), { icon: 'fa-file-import' });
         if (!ok) return;
         appState = parsed.data;
@@ -12161,13 +12179,22 @@ function handleImport(event) {
         if (!appState.transactions) appState.transactions = [];
         if (!appState.debts) appState.debts = [];
         if (!appState.fundMeta) appState.fundMeta = {};
+        // Same upgrades the app applies to saved data at startup, so a
+        // backup from an older version restores cleanly in a newer one.
+        if (appState.onboardingComplete === undefined) appState.onboardingComplete = true;
+        appState.debts.forEach(d => { if (!d.payments) d.payments = []; });
+        if (appState.biometricLockEnabled === undefined) appState.biometricLockEnabled = false;
+        if (!appState.profileAvatar) appState.profileAvatar = 'simple';
+        if (appState.lockType === undefined) appState.lockType = appState.biometricLockEnabled ? 'biometric' : 'none';
+        if (appState.lockPinHash === undefined) appState.lockPinHash = null;
+        if (appState.lockPatternHash === undefined) appState.lockPatternHash = null;
         saveState();
 
         // v2 backups also carry reminder times and the theme choice -
         // older (v1) backups won't have these fields, so each is only
         // applied if actually present, leaving current settings alone
         // otherwise.
-        if (parsed.reminders) {
+        if (parsed.reminders && typeof parsed.reminders === 'object') {
           reminderSettings = parsed.reminders;
           persistReminderSettings();
           renderReminderList();
