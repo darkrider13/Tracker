@@ -96,6 +96,9 @@ jobs:
           pip install pillow --quiet
           python3 scripts/fix_icons.py android/app/src/main/res
 
+      - name: Match native splash to in-app splash (no big-to-small jump)
+        run: python3 scripts/native_splash.py android/app/src/main/res
+
       - name: Copy custom notification icon
         run: |
           mkdir -p android/app/src/main/res
