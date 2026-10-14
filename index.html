@@ -1247,8 +1247,10 @@ body::before {
      the real bottom of the screen regardless of keyboard state. */
   height: var(--app-full-height, 100vh);
   z-index: -2;
-  background-color: #0b0b0d;
-  background-image: radial-gradient(ellipse 130% 55% at 50% 100%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 45%, rgba(255, 255, 255, 0) 75%);
+  /* Dark: pure black at the top and bottom, with a soft, subtle glow
+     centred in the middle of the screen. */
+  background-color: #000000;
+  background-image: radial-gradient(ellipse 110% 42% at 50% 50%, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0) 100%);
   pointer-events: none;
 }
 html:not(.dark-theme) body::before {
@@ -1356,7 +1358,7 @@ button:not(#screen-pin-pad *):focus-visible,
 
 <div id="boot-splash">
   <img src="app-media/splash-icon.png" alt="loading">
-  <p class="boot-splash-tagline"><span class="tl-en">Spend Smart, Save More</span><span class="tl-bn">স্মার্ট খরচ, বেশি সঞ্চয়</span></p>
+  <p class="boot-splash-tagline"><span class="tl-en">Your Money, Your Choice</span><span class="tl-bn">আপনার টাকা, আপনার পছন্দ</span></p>
 </div>
 
 <div id="app-root" class="max-w-md mx-auto min-h-screen relative px-4 pt-6 flex flex-col justify-between">
