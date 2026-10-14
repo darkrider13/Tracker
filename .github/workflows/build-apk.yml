@@ -91,6 +91,31 @@ jobs:
       - name: Generate App Icons from resources
         run: npx @capacitor/assets generate --android
 
+      - name: Round the corners of the launcher icons
+        run: |
+          pip install pillow --quiet
+          python3 - << 'EOF'
+          import glob
+          from PIL import Image, ImageDraw
+
+          RADIUS = 0.22   # corner radius as a fraction of icon size (0.5 = full circle)
+          SS = 4          # supersampling for smooth anti-aliased corners
+
+          files = sorted(glob.glob('android/app/src/main/res/mipmap-*/ic_launcher.png'))
+          for path in files:
+              im = Image.open(path).convert('RGBA')
+              w, h = im.size
+              mask = Image.new('L', (w * SS, h * SS), 0)
+              ImageDraw.Draw(mask).rounded_rectangle(
+                  (0, 0, w * SS - 1, h * SS - 1), radius=int(min(w, h) * SS * RADIUS), fill=255)
+              mask = mask.resize((w, h), Image.LANCZOS)
+              alpha = Image.composite(im.getchannel('A'), Image.new('L', (w, h), 0), mask)
+              im.putalpha(alpha)
+              im.save(path)
+              print('rounded', path, im.size)
+          print('total icons rounded:', len(files))
+          EOF
+
       - name: Copy custom notification icon
         run: |
           mkdir -p android/app/src/main/res
