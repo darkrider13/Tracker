@@ -272,6 +272,22 @@ html:not(.dark-theme) .scroll-fade::after { background: linear-gradient(to botto
   #nav-add-btn { width: 48px; height: 48px; min-width: 48px; }
 }
 body { padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important; }
+/* Dark theme: black fade-up at the very bottom of the screen, so the app
+   background melts into the (black) system navigation bar with no visible
+   seam. Sits under the floating nav bar (z-40) and ignores touches. */
+#bottom-fade { display: none; }
+html.dark-theme #bottom-fade {
+  display: block;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, #000000 0%, #000000 22%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+  z-index: 30;
+  transition: opacity 0.25s ease;
+}
+html.app-boot-pending #bottom-fade { opacity: 0; visibility: hidden; }
+
 #app-root { padding-left: max(1rem, env(safe-area-inset-left, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px)); }
 
 /* Page-level scroll lock: when the active screen's content already fits
@@ -1775,6 +1791,7 @@ button:not(#screen-pin-pad *):focus-visible,
 </div>
 </div>
 
+<div id="bottom-fade"></div>
 <div id="bottom-nav-bar" class="fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-sm flex items-center justify-between z-40 px-1">
 <div class="custom-nav-bar flex items-center justify-between flex-grow h-14 shadow-2xl mr-3">
 
@@ -6998,6 +7015,8 @@ function updateBottomNavVisibility(instant) {
   const bottomNav = document.getElementById('bottom-nav-bar');
   if (!bottomNav) return;
   const shouldHide = bottomNavHideReasons.fundsPanel || bottomNavHideReasons.keyboard;
+  const fade = document.getElementById('bottom-fade');
+  if (fade) fade.style.opacity = shouldHide ? '0' : '';
   if (instant) bottomNav.style.transition = 'none';
   if (shouldHide) {
     bottomNav.style.opacity = '0';
