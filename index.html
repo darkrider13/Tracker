@@ -11958,30 +11958,38 @@ function renderLogsList() {
 // phone's share menu. Returns 'native-share', 'cancelled', or null on failure.
 async function shareFileNative(cap, filename, content) {
   if (!cap.Share || !cap.Directory) return null;
-  try {
-    const safeName = /^[\x20-\x7E]+$/.test(filename) ? filename : ('Tracker_backup_' + Date.now() + '.json');
-    await cap.Filesystem.writeFile({
-      path: safeName,
-      data: content,
-      directory: cap.Directory.Cache,
-      encoding: 'utf8'
-    });
-    const r = await cap.Filesystem.getUri({ path: safeName, directory: cap.Directory.Cache });
-    // files[] (not url) hands Drive/WhatsApp a real file attachment with its
-    // name and .json extension; url: makes Android send it as plain text,
-    // so Drive saved it without the extension.
+  // Try the real (localized) file name first, e.g. ট্র্যাকার_১৪_অক্টো._২০২৬_০৬.৫৭_পিএম.json.
+  // Only if the device refuses that name do we retry with a plain ASCII one,
+  // so sharing never fails just because of the file name.
+  const asciiName = /^[\x20-\x7E]+$/.test(filename) ? filename : ('Tracker_backup_' + Date.now() + '.json');
+  const names = asciiName === filename ? [filename] : [filename, asciiName];
+  let lastErr = null;
+  for (const safeName of names) {
     try {
-      await cap.Share.share({ title: safeName, files: [r.uri] });
-    } catch (filesErr) {
-      if (/cancel/i.test((filesErr && filesErr.message) || '')) return 'cancelled';
-      await cap.Share.share({ title: safeName, url: r.uri });
+      await cap.Filesystem.writeFile({
+        path: safeName,
+        data: content,
+        directory: cap.Directory.Cache,
+        encoding: 'utf8'
+      });
+      const r = await cap.Filesystem.getUri({ path: safeName, directory: cap.Directory.Cache });
+      // files[] (not url) hands Drive/WhatsApp a real file attachment with its
+      // name and .json extension; url: makes Android send it as plain text,
+      // so Drive saved it without the extension.
+      try {
+        await cap.Share.share({ title: safeName, files: [r.uri] });
+      } catch (filesErr) {
+        if (/cancel/i.test((filesErr && filesErr.message) || '')) return 'cancelled';
+        await cap.Share.share({ title: safeName, url: r.uri });
+      }
+      return 'native-share';
+    } catch (shErr) {
+      if (/cancel/i.test((shErr && shErr.message) || '')) return 'cancelled';
+      lastErr = shErr;
+      console.warn("Native share failed for", safeName, shErr);
     }
-    return 'native-share';
-  } catch (shErr) {
-    if (/cancel/i.test((shErr && shErr.message) || '')) return 'cancelled';
-    console.warn("Native share failed:", shErr);
-    return null;
   }
+  return null;
 }
 
 // mode: 'save' (straight into Documents) or 'share' (phone share menu).
