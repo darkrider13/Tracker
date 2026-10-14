@@ -116,6 +116,31 @@ jobs:
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>' $MANIFEST
           grep -n "EXTERNAL_STORAGE" $MANIFEST
 
+      - name: Black system navigation bar
+        run: |
+          python3 - << 'EOF'
+          import glob
+          paths = glob.glob('android/app/src/main/res/values/styles.xml')
+          if not paths:
+              print('styles.xml not found - skipped')
+          else:
+              p = paths[0]
+              c = open(p).read()
+              item = '<item name="android:navigationBarColor">#000000</item>'
+              if 'navigationBarColor' in c:
+                  print('navigationBarColor already set')
+              else:
+                  tag = '<style name="AppTheme.NoActionBar"'
+                  i = c.find(tag)
+                  j = c.find('>', i) if i != -1 else -1
+                  if j == -1:
+                      print('AppTheme.NoActionBar not found - skipped')
+                  else:
+                      c = c[:j+1] + '\n        ' + item + c[j+1:]
+                      open(p, 'w').write(c)
+                      print('navigation bar set to black')
+          EOF
+
       - name: Sync Capacitor Android
         run: npx cap sync android
       - name: Build Debug APK with Gradle
