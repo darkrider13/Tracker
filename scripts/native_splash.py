@@ -19,7 +19,7 @@ SRC = 'app-media/splash-icon.png'   # same file the web splash uses
 DARK, LIGHT = '#05070a', '#ffffff'   # same as #boot-splash backgrounds
 WEB_ICON_DP = 120                    # #boot-splash img width/height
 CANVAS_DP = 288                      # Android splash icon canvas
-LIFT_DP = 22                         # web splash centres icon+tagline as a group
+LIFT_DP = 21                         # web splash centres icon+tagline as a group
 
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 
