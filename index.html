@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tracker</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -30,6 +30,12 @@
    (Tailwind/Chart.js/FontAwesome all finishing) is exactly what was
    flashing the wrong screen first. */
 document.documentElement.classList.add('app-boot-pending');
+/* Same synchronous trick for the saved language: set html.lang-bn before
+   first paint so the boot splash tagline (and the Bangla font) are already
+   in the right language on the very first frame. */
+try {
+  if (localStorage.getItem('smart_saver_lang') === 'bn') document.documentElement.classList.add('lang-bn');
+} catch (e) {}
 /* Timestamp used below to guarantee the boot splash stays visible for a
    minimum amount of time, even on fast/local loads where window.onload
    fires almost instantly (which would otherwise make the icon flash by
@@ -219,6 +225,63 @@ html:not(.dark-theme) .note-textarea-frame::after { background: linear-gradient(
 
 
 
+/* Bottom edge fade for history/transaction lists: while more content is
+   hidden below, a sticky gradient pinned to the bottom of the scroll area
+   blends the last visible card into solid black (not transparent, so no
+   lighter background shows through as a glow). Shown/hidden by the
+   'sf-more' class set in setupListScrollFade(); it is a zero-net-height,
+   non-interactive overlay, so layout and snapping are unaffected. */
+/* Rounded bottom corners (same 0.75rem as the cards) so the faded bottom
+   edge matches the cards' shape instead of ending in square corners. */
+.scroll-fade { border-radius: 0 0 0.75rem 0.75rem; }
+.scroll-fade::after {
+  content: '';
+  display: block;
+  position: sticky;
+  bottom: 0;
+  height: 40px;
+  margin-top: -40px;
+  pointer-events: none;
+  border-radius: 0 0 0.75rem 0.75rem;
+  opacity: 0;
+  transition: opacity .25s ease;
+  background: linear-gradient(to bottom, rgba(0,0,0,0), #000 90%);
+}
+html:not(.dark-theme) .scroll-fade::after { background: linear-gradient(to bottom, rgba(244,244,244,0), #f4f4f4 90%); }
+.scroll-fade.sf-more::after { opacity: 1; }
+/* Nothing to scroll: park the overlay at the end of the list instead of
+   pinning it to the viewport edge. */
+.scroll-fade.sf-static::after { position: relative; }
+
+/* Responsive/safe-area guards: keep the fixed nav bar + floating "+" button
+   inside the viewport on very narrow phones (they used to overflow the
+   right edge at 320px), lift both above the gesture bar / home indicator,
+   and keep page content from ever hiding behind the nav. */
+#bottom-nav-bar {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  max-width: min(24rem, 100vw);
+}
+#bottom-nav-bar > .custom-nav-bar { min-width: 0; margin-right: clamp(8px, 3vw, 12px); }
+#nav-add-btn { flex-shrink: 0; }
+/* Very narrow phones (<= 340px): tighten the nav so the active tab's label
+   (e.g. Bengali "পরিসংখ্যান"/"প্রোফাইল") still fits inside the bar. */
+@media (max-width: 340px) {
+  #bottom-nav-bar > .custom-nav-bar { padding-left: 3px; padding-right: 3px; }
+  #bottom-nav-bar .nav-pill-active, #bottom-nav-bar .nav-pill-inactive { padding-left: 7px; padding-right: 7px; }
+  #bottom-nav-bar .nav-pill-active > span { font-size: 11px; margin-left: 4px !important; }
+  #nav-add-btn { width: 48px; height: 48px; min-width: 48px; }
+}
+body { padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important; }
+#app-root { padding-left: max(1rem, env(safe-area-inset-left, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px)); }
+
+/* Page-level scroll lock: when the active screen's content already fits
+   above the bottom nav bar, the page itself must not scroll at all (only
+   the inner history/other lists scroll). Toggled by setupPageScrollLock(),
+   which re-checks on every layout change, so a screen that really is
+   taller than the phone (or a small phone / open keyboard) still scrolls. */
+html.page-no-scroll, html.page-no-scroll body { overflow: hidden !important; }
+#screen-account-details.page-no-scroll { overflow-y: hidden !important; }
+
 /* Smooth scrolling fix (mobile WebView jank): iOS/Android WebViews default
    to a janky, stuttery ("kapa kapa") scroll unless momentum scrolling is
    explicitly turned on, and the browser will also try to chain the scroll
@@ -256,6 +319,7 @@ html.app-boot-pending #bottom-nav-bar { opacity: 0; visibility: hidden; pointer-
   z-index: 99999;
   background: #05070a;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   transition: opacity 0.35s ease;
@@ -268,14 +332,25 @@ html.app-boot-pending #bottom-nav-bar { opacity: 0; visibility: hidden; pointer-
 html:not(.dark-theme) #boot-splash {
   background: #ffffff;
 }
+/* Icon is static (no pulse / grow-shrink animation). */
 #boot-splash img {
-  width: 110px;
-  height: 110px;
-  animation: bootSplashPulse 1.6s ease-in-out infinite;
+  width: 120px;
+  height: 120px;
 }
-@keyframes bootSplashPulse {
-  0%, 100% { transform: scale(.88); }
-  50%      { transform: scale(1.15); }
+#boot-splash .boot-splash-tagline {
+  margin: 18px 0 0;
+  padding: 0 24px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #a3a8c3;
+}
+#boot-splash .boot-splash-tagline .tl-bn { display: none; }
+html.lang-bn #boot-splash .boot-splash-tagline .tl-en { display: none; }
+html.lang-bn #boot-splash .boot-splash-tagline .tl-bn { display: inline; }
+html:not(.dark-theme) #boot-splash .boot-splash-tagline {
+  color: #6b7280;
 }
 html:not(.app-boot-pending) #boot-splash {
   opacity: 0;
@@ -462,7 +537,8 @@ backdrop-filter: blur(22px) saturate(180%);
 -webkit-backdrop-filter: blur(22px) saturate(180%);
 border: 1px solid rgba(255, 255, 255, 0.1);
 border-radius: 9999px;
-padding: 6px 12px;
+padding: 6px clamp(6px, 2vw, 12px);
+min-width: 0;
 }
 /* The nav bar stays fixed on screen while everything else scrolls
    underneath it. Without its own compositor layer, the browser has to
@@ -480,11 +556,11 @@ color: #ffffff !important;
 font-weight: bold;
 background: rgba(255, 255, 255, 0.12);
 border-radius: 9999px;
-padding: 8px 12px;
+padding: 8px clamp(8px, 2.6vw, 12px);
 }
 .nav-pill-inactive {
 color: #ffffff !important;
-padding: 8px 12px;
+padding: 8px clamp(8px, 2.6vw, 12px);
 border-radius: 9999px;
 }
 @keyframes bellWobble {
@@ -1264,6 +1340,7 @@ button:not(#screen-pin-pad *):focus-visible,
 
 <div id="boot-splash">
   <img src="app-media/splash-icon.png" alt="loading">
+  <p class="boot-splash-tagline"><span class="tl-en">Spend Smart, Save More</span><span class="tl-bn">স্মার্ট খরচ, বেশি সঞ্চয়</span></p>
 </div>
 
 <div id="app-root" class="max-w-md mx-auto min-h-screen relative px-4 pt-6 flex flex-col justify-between">
@@ -1354,13 +1431,13 @@ button:not(#screen-pin-pad *):focus-visible,
 </button>
 
 <div id="category-breakdown-card" class="daymode-flip-card bg-black text-white p-5 rounded-[28px] shadow-xl relative overflow-hidden">
-<div class="flex justify-between items-start mb-3">
-<div class="flex items-center space-x-2.5">
+<div class="flex justify-between items-start gap-2 mb-3">
+<div class="flex items-center space-x-2.5 min-w-0">
 <span class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center shadow-sm flex-shrink-0">
 <i class="fas fa-chart-simple text-[var(--brand-red)] text-base"></i>
 </span>
-<div>
-<h3 class="font-bold text-sm tracking-tight whitespace-nowrap" data-i18n="home_category_breakdown" data-i18n-en="Category Breakdown">Category Breakdown</h3>
+<div class="min-w-0">
+<h3 class="font-bold text-sm tracking-tight" style="overflow-wrap:anywhere" data-i18n="home_category_breakdown" data-i18n-en="Category Breakdown">Category Breakdown</h3>
 <p class="text-[10px] text-zinc-400"><span id="chart-fund-title">Monthly Cash</span></p>
 </div>
 </div>
@@ -1449,7 +1526,7 @@ button:not(#screen-pin-pad *):focus-visible,
 </div>
 </div>
 
-<div id="logs-tx-list" class="space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 500px;"></div>
+<div id="logs-tx-list" class="scroll-fade space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 500px;"></div>
 </div>
 
 <!-- Debts Subtab ("I Owe") -->
@@ -1510,7 +1587,7 @@ button:not(#screen-pin-pad *):focus-visible,
 </div>
 
 
-<div id="debts-list" class="space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 620px;"></div>
+<div id="debts-list" class="scroll-fade space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 620px;"></div>
 </div>
 
 <!-- Receivables Subtab ("Owed to Me") -->
@@ -1571,7 +1648,7 @@ button:not(#screen-pin-pad *):focus-visible,
 </div>
 
 
-<div id="receivables-list" class="space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 620px;"></div>
+<div id="receivables-list" class="scroll-fade space-y-2 pt-1 overflow-y-auto no-scrollbar pr-0.5" style="max-height: 620px;"></div>
 </div>
 </div>
 
@@ -2226,6 +2303,7 @@ button:not(#screen-pin-pad *):focus-visible,
 
 <div id="popup-custom-confirm" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[200] hidden">
 <div class="glass-card rounded-[28px] w-full max-w-sm p-6 space-y-4 shadow-2xl text-center relative">
+<button id="confirm-modal-close-btn" onclick="_resolveConfirm(null)" aria-label="Close" class="hidden absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-lg text-gray-500 hover:text-gray-300 bg-transparent border-0 p-0 transition"><i class="fas fa-xmark"></i></button>
 <div id="confirm-modal-icon" class="w-12 h-12 mx-auto flex items-center justify-center text-3xl text-[var(--brand-red)]">
 <i class="fas fa-exclamation-triangle"></i>
 </div>
@@ -2649,7 +2727,7 @@ Yes, Delete
 </button>
 </div>
 </div>
-<div id="details-tx-list" class="space-y-2 overflow-y-auto no-scrollbar pr-0.5"></div>
+<div id="details-tx-list" class="scroll-fade space-y-2 overflow-y-auto no-scrollbar pr-0.5"></div>
 </div>
 </div>
 </div>
@@ -4282,6 +4360,10 @@ function customConfirm(message, opts = {}) {
     styleModalIcon(document.getElementById('confirm-modal-icon'), icon);
     const iconEl = document.querySelector('#confirm-modal-icon i');
     if (iconEl) iconEl.className = `fas ${icon}`;
+    // Optional plain X (no background) in the top-right corner - opt-in per
+    // call via opts.showClose. Resolves null, same as the X described above.
+    const closeBtn = document.getElementById('confirm-modal-close-btn');
+    if (closeBtn) closeBtn.classList.toggle('hidden', !opts.showClose);
     showPopup('popup-custom-confirm');
     _confirmResolver = resolve;
   });
@@ -4298,6 +4380,91 @@ function _resolveConfirm(result) {
   hidePopup('popup-custom-confirm');
   if (_confirmResolver) { const r = _confirmResolver; _confirmResolver = null; r(result); }
 }
+
+// Bottom-edge fade for every .scroll-fade list: whenever there is more
+// content below the visible part, the bottom edge stays softly faded (at
+// rest too, not just while scrolling); once the user reaches the very end
+// of the list the fade goes away. Updated on scroll, and whenever the list
+// is re-rendered or re-sized (fitListToVisibleCount sets its max-height a
+// frame after rendering), so it is correct from the first paint.
+function setupListScrollFade() {
+  const update = el => {
+    const scrollable = el.scrollHeight - el.clientHeight > 2;
+    const n = parseInt(el.dataset.sfCount, 10) || 0;
+    // Scrollable: fade while more content is hidden below. Not scrollable
+    // (everything fits): still fade the last card if the list holds at
+    // least one full page of cards.
+    const more = scrollable
+      ? el.scrollTop + el.clientHeight < el.scrollHeight - 2
+      : (n > 0 && el.children.length >= n);
+    el.classList.toggle('sf-static', !scrollable);
+    el.classList.toggle('sf-more', more);
+  };
+  document.addEventListener('scroll', e => {
+    const el = e.target;
+    if (el && el.classList && el.classList.contains('scroll-fade')) update(el);
+  }, true);
+  const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(entries => entries.forEach(en => update(en.target))) : null;
+  const mo = new MutationObserver(muts => muts.forEach(m => update(m.target)));
+  const attach = () => document.querySelectorAll('.scroll-fade').forEach(el => {
+    if (el.__sfBound) return;
+    el.__sfBound = true;
+    if (ro) ro.observe(el);
+    mo.observe(el, { childList: true, attributes: true, attributeFilter: ['style'] });
+    update(el);
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+  else attach();
+}
+setupListScrollFade();
+
+// Locks page scrolling whenever the visible screen fits on one page: the
+// content's bottom edge (ignoring the body's bottom padding that normally
+// leaves room to scroll above the nav bar) sits at or above the nav bar's
+// top. Only the inner lists scroll then. Re-evaluated on every size change.
+function setupPageScrollLock() {
+  const root = document.documentElement;
+  let queued = false;
+  const check = () => {
+    queued = false;
+    // Main tab screens share the window scroll.
+    const screen = Array.from(document.querySelectorAll('.screen-content')).find(el => !el.classList.contains('hidden'));
+    const nav = document.getElementById('bottom-nav-bar');
+    if (screen && nav) {
+      const navTop = nav.getBoundingClientRect().top;
+      const contentBottom = screen.getBoundingClientRect().bottom + (window.scrollY || 0);
+      // While the Home fund list is expanded the page must never scroll
+      // (only the inner fund list scrolls), no matter how tall the content is.
+      const fundsPanel = document.getElementById('funds-expansion-panel');
+      const fundsOpen = !!(fundsPanel && fundsPanel.style.display === 'block' && fundsPanel.offsetParent !== null);
+      root.classList.toggle('page-no-scroll', fundsOpen || contentBottom <= navTop + 4);
+    }
+    // Fund Details overlay has its own scroller.
+    const details = document.getElementById('screen-account-details');
+    if (details && !details.classList.contains('hidden')) {
+      const pb = parseFloat(getComputedStyle(details).paddingBottom) || 0;
+      const fits = details.scrollHeight - details.clientHeight <= pb + 2;
+      details.classList.toggle('page-no-scroll', fits);
+    }
+  };
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(check); } };
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(queue);
+    document.querySelectorAll('.screen-content').forEach(el => ro.observe(el));
+  }
+  const details = document.getElementById('screen-account-details');
+  if (details) {
+    new MutationObserver(queue).observe(details, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  }
+  window.addEventListener('resize', queue);
+  setTimeout(queue, 400);
+  window.__queuePageScrollLock = queue;
+  // Watch the funds panel's own open/close (inline display style) too.
+  const fp = document.getElementById('funds-expansion-panel');
+  if (fp) new MutationObserver(queue).observe(fp, { attributes: true, attributeFilter: ['style'] });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupPageScrollLock);
+else setupPageScrollLock();
 
 let _alertResolver = null;
 // The OK button in the alert modal (popup-custom-alert) calls this on
@@ -6904,6 +7071,7 @@ function toggleFundsPanel() {
     bottomNavHideReasons.fundsPanel = false;
     updateBottomNavVisibility(true);
   }
+  if (window.__queuePageScrollLock) window.__queuePageScrollLock();
 }
 
 // Auto-hides the bottom nav bar while the on-screen keyboard is up, and
@@ -9598,19 +9766,21 @@ function capDropdownToRows(listEl, maxRows, selectedIndex) {
   // to it, leaving the next row peeking through once the real styles
   // apply a moment later. Deferring one frame lets that settle first.
   requestAnimationFrame(() => {
-    const lastVisible = items[maxRows - 1];
     const paddingBottom = parseFloat(getComputedStyle(listEl).paddingBottom) || 0;
-    listEl.style.maxHeight = (lastVisible.offsetTop + lastVisible.offsetHeight + paddingBottom) + 'px';
+    const firstTop = items[0].offsetTop;
+    // One row at a time: size for the tallest window of maxRows rows.
+    let windowH = 0;
+    for (let i = 0; i + maxRows <= items.length; i++) {
+      const last = items[i + maxRows - 1];
+      windowH = Math.max(windowH, last.offsetTop + last.offsetHeight - items[i].offsetTop);
+    }
+    listEl.style.maxHeight = (firstTop + windowH + paddingBottom) + 'px';
+    listEl.style.scrollPaddingTop = firstTop + 'px';
     listEl.style.overflowY = 'auto';
     listEl.style.scrollSnapType = 'y mandatory';
     items.forEach((item, i) => {
-      if (i % maxRows === 0) {
-        item.style.scrollSnapAlign = 'start';
-        item.style.scrollSnapStop = 'always';
-      } else {
-        item.style.scrollSnapAlign = '';
-        item.style.scrollSnapStop = '';
-      }
+      item.style.scrollSnapAlign = 'start';
+      item.style.scrollSnapStop = 'normal';
     });
     // Auto-scroll so the already-selected fund is visible the moment the
     // dropdown opens, instead of always starting wherever it was last left
@@ -10613,6 +10783,10 @@ function renderHomeDebtsOverview() {
 // each single card instead of after each full group.
 function fitListToVisibleCount(container, count, gapPx, enableSnap) {
   if (!container) return;
+  // Remembered for the bottom-edge fade (setupListScrollFade): a list holding
+  // at least one full page of cards keeps its faded bottom card even when
+  // everything fits and there is nothing left to scroll.
+  container.dataset.sfCount = String(count);
   const items = container.children;
   if (!items || items.length <= count) {
     container.style.maxHeight = 'none';
@@ -10655,8 +10829,13 @@ function fitListToVisibleCountNow(container, items, count, gapPx, enableSnap) {
   if (typeof scanAndFitMoney === 'function') scanAndFitMoney(container);
 
   const gap = gapPx === undefined ? 8 : gapPx;
+  // Every snapping list shows `count` cards at rest but scrolls one card at
+  // a time (every card is a snap point), instead of jumping a whole page. Every window of `count` consecutive cards must
+  // then fit, so the height is measured over sliding windows, not pages.
+  const perItem = !!enableSnap;
+  const stepSize = perItem ? 1 : count;
   let maxGroupHeight = 0;
-  for (let start = 0; start < items.length; start += count) {
+  for (let start = 0; start < items.length; start += stepSize) {
     const end = Math.min(start + count, items.length);
     if (end - start < count) continue; // trailing partial page - always <= a full page's height, skip it
     let groupTotal = 0;
@@ -10682,9 +10861,14 @@ function fitListToVisibleCountNow(container, items, count, gapPx, enableSnap) {
   if (enableSnap) {
     container.style.scrollSnapType = 'y mandatory';
     container.style.scrollBehavior = 'smooth';
+    if (perItem) {
+      // Keep the list's own top padding visible when snapped to card 1.
+      container.style.scrollPaddingTop = getComputedStyle(container).paddingTop;
+    }
     for (let i = 0; i < items.length; i++) {
-      items[i].style.scrollSnapAlign = (i % count === 0) ? 'start' : 'none';
-      items[i].style.scrollSnapStop = (i % count === 0) ? 'always' : 'normal';
+      const isSnap = perItem || (i % count === 0);
+      items[i].style.scrollSnapAlign = isSnap ? 'start' : 'none';
+      items[i].style.scrollSnapStop = (!perItem && isSnap) ? 'always' : 'normal';
     }
   }
 }
@@ -10742,13 +10926,18 @@ function fitGridToVisibleRowsNow(container, items, rows, cols, gapPx, enableSnap
     if (idx >= items.length) break;
     rowHeights.push(items[idx].getBoundingClientRect().height);
   }
+  // Scrolling moves one row at a time (every row start is a snap point),
+  // so every window of `rows` consecutive rows must fit: measure sliding
+  // windows rather than whole pages.
   let maxPageHeight = 0;
-  let lastPageHeight = 0;
-  for (let r = 0; r < rowHeights.length; r += rows) {
+  for (let r = 0; r + rows <= rowHeights.length; r++) {
     const pageRows = rowHeights.slice(r, r + rows);
     const pageHeight = pageRows.reduce((sum, h) => sum + h, 0) + gap * (pageRows.length - 1);
     maxPageHeight = Math.max(maxPageHeight, pageHeight);
-    lastPageHeight = pageHeight; // slices march forward, so the final loop pass is the last page
+  }
+  if (maxPageHeight === 0) {
+    const pageRows = rowHeights.slice(0, rows);
+    maxPageHeight = pageRows.reduce((sum, h) => sum + h, 0) + gap * Math.max(0, pageRows.length - 1);
   }
   // Clamp the container to the tallest page's height, plus a small fixed
   // buffer (+6px) so a selected tile's own border/shadow/ring (drawn
@@ -10765,8 +10954,7 @@ function fitGridToVisibleRowsNow(container, items, rows, cols, gapPx, enableSnap
   // padding gives it just enough extra room to do so, restoring the
   // border-clip fix above without reintroducing the top-peek bug on a
   // shorter trailing page.
-  const deficit = windowHeight - lastPageHeight;
-  container.style.paddingBottom = (deficit > 0 ? deficit : 0) + 'px';
+  container.style.paddingBottom = '0px'; // per-row snapping needs no extra end padding
 
   if (enableSnap) {
     container.style.scrollSnapType = 'y mandatory';
@@ -10775,9 +10963,9 @@ function fitGridToVisibleRowsNow(container, items, rows, cols, gapPx, enableSnap
       // Only the first tile of each *page* (every `rows` rows) is a snap
       // point - not every row - so a full page scrolls into view at once,
       // matching the transaction lists' page-at-a-time snap.
-      const isPageStart = i % perPage === 0;
-      items[i].style.scrollSnapAlign = isPageStart ? 'start' : 'none';
-      items[i].style.scrollSnapStop = isPageStart ? 'always' : 'normal';
+      const isRowStart = i % cols === 0;
+      items[i].style.scrollSnapAlign = isRowStart ? 'start' : 'none';
+      items[i].style.scrollSnapStop = 'normal';
     }
   }
 }
@@ -11908,7 +12096,8 @@ async function exportLogs() {
         title: tr('export_choose_title', 'Export backup'),
         okLabel: tr('export_save_file', 'Save File'),
         cancelLabel: tr('export_share', 'Share'),
-        icon: 'fa-file-export'
+        icon: 'fa-file-export',
+        showClose: true
       }
     );
     if (choice === null) return;
