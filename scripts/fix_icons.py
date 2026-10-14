@@ -8,8 +8,8 @@ import glob, os, sys
 from PIL import Image, ImageDraw
 
 RES = sys.argv[1] if len(sys.argv) > 1 else 'android/app/src/main/res'
-ADAPTIVE_FILL = 0.56   # badge width as a share of the 108dp layer (visible window is ~0.667)
-LEGACY_FILL = 0.74     # badge width as a share of the legacy icon
+ADAPTIVE_FILL = 0.80   # badge width as a share of the 108dp layer (visible window is ~0.667)
+LEGACY_FILL = 0.78     # badge width as a share of the legacy icon
 RADIUS = 0.22          # legacy icon corner radius
 SS = 4
 
