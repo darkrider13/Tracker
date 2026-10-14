@@ -3344,6 +3344,7 @@ const I18N = {
     confirm_restore_backup: 'এই ব্যাকআপ থেকে আপনার নাম, ফান্ড, ব্যালেন্স, টার্গেট, রিমাইন্ডার, থিম, সেটিংস এবং পুরো লেনদেনের ইতিহাস পুনরুদ্ধার হবে, যা বর্তমান ডেটা প্রতিস্থাপন করবে। চালিয়ে যাবেন?',
     alert_backup_restored: 'ব্যাকআপ সফলভাবে পুনরুদ্ধার হয়েছে!',
     alert_backup_saved_to_documents: 'ব্যাকআপ Documents/{filename}-এ সেভ হয়েছে',
+    alert_backup_shared: 'ব্যাকআপ {filename} শেয়ার করা হয়েছে',
     alert_backup_saved: 'ব্যাকআপ সফলভাবে সেভ হয়েছে!',
     export_choose_title: 'ব্যাকআপ এক্সপোর্ট',
     export_choose_message: 'ফাইলটি সরাসরি Documents ফোল্ডারে সেভ করুন, অথবা ফোনের শেয়ার মেনু দিয়ে পাঠান।',
@@ -12145,7 +12146,14 @@ async function exportLogs() {
   }
 
   const method = await downloadFile(filename, 'application/json', jsonStr, exportMode);
-  if (method === 'cancelled' || method === 'native-share') return;
+  if (method === 'cancelled') return;
+  if (method === 'native-share') {
+    customAlert(
+      trf('alert_backup_shared', 'Backup {filename} shared', { filename }),
+      { icon: 'fa-circle-check' }
+    );
+    return;
+  }
   if (!method) {
     customAlert(tr('alert_backup_save_failed', "Couldn't save the backup file on this device. Please try again, or check that the app has storage/file permission."));
     return;
