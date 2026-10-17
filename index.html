@@ -1147,6 +1147,18 @@ html.dark-theme .via-gray-50 { --tw-gradient-via: #141416 !important; }
    seen at the bottom of the Welcome and Lock screens in dark mode. */
 html.dark-theme .to-red-50 { --tw-gradient-to: #141416 !important; }
 
+/* Welcome / Lock / PIN / Pattern screens only: pure black background (dark theme). */
+html.dark-theme #screen-onboarding,
+html.dark-theme #screen-biometric-lock,
+html.dark-theme #screen-pin-pad,
+html.dark-theme #screen-pattern-pad {
+  --tw-gradient-from: #000000 !important;
+  --tw-gradient-via: #000000 !important;
+  --tw-gradient-to: #000000 !important;
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
 /* All popups/modals/dropdowns/warning dialogs share this .glass-card
    shell - flattening it to the same #141414/#232323 panel color used
    across Home/Logs/Stats/Profile makes every popup in the app
@@ -4733,18 +4745,24 @@ function openExternalLink(url) {
    light, #0b0b0d dark). */
 const STATUS_BAR_LIGHT_BG = '#f4f4f4';
 const STATUS_BAR_DARK_BG = '#0b0b0d';
+const STATUS_BAR_PURE_BLACK = '#000000';
 
 // Matches the status bar to whatever theme the app is currently in
 // (light or dark). Called on launch, on every theme toggle, and again
 // whenever the app comes back to the foreground.
+const PURE_BLACK_SCREEN_IDS = ['screen-onboarding', 'screen-biometric-lock', 'screen-pin-pad', 'screen-pattern-pad'];
 async function applyStatusBarForTheme() {
   const cap = getCap();
   if (!cap || !cap.StatusBar || !isNativeApp()) return;
   const isLight = !document.documentElement.classList.contains('dark-theme');
+  const onPureBlackScreen = !isLight && PURE_BLACK_SCREEN_IDS.some(function(id) {
+    const el = document.getElementById(id);
+    return el && !el.classList.contains('hidden');
+  });
   try {
     await cap.StatusBar.setStyle({ style: isLight ? cap.Style.Light : cap.Style.Dark });
     if (cap.Capacitor.getPlatform() === 'android') {
-      await cap.StatusBar.setBackgroundColor({ color: isLight ? STATUS_BAR_LIGHT_BG : STATUS_BAR_DARK_BG });
+      await cap.StatusBar.setBackgroundColor({ color: isLight ? STATUS_BAR_LIGHT_BG : (onPureBlackScreen ? STATUS_BAR_PURE_BLACK : STATUS_BAR_DARK_BG) });
     }
   } catch (e) {}
 }
@@ -4770,6 +4788,14 @@ async function forceStatusBarDark() {
 function initStatusBarThemeSync() {
   const cap = getCap();
   applyStatusBarForTheme();
+  // Re-sync the status bar whenever Welcome/Lock/PIN/Pattern screens show or hide.
+  try {
+    const mo = new MutationObserver(function() { applyStatusBarForTheme(); });
+    PURE_BLACK_SCREEN_IDS.forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+    });
+  } catch (e) {}
   if (cap && cap.App && cap.App.addListener) {
     cap.App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
