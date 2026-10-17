@@ -2010,7 +2010,10 @@ button:not(#screen-pin-pad *):focus-visible,
 <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm text-green-500">
 <i class="fas fa-plus text-[10px]"></i>
 </div>
-<h3 id="add-money-modal-title" class="font-extrabold text-lg tracking-tight" data-i18n="modal_add_money_title" data-i18n-en="Add Money">Add Money</h3>
+<h3 id="add-money-modal-title" class="font-extrabold text-lg tracking-tight flex-1" data-i18n="modal_add_money_title" data-i18n-en="Add Money">Add Money</h3>
+<button type="button" id="add-money-delete-btn" onclick="deleteTransaction(editingAddMoneyId)" class="hidden w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-[var(--brand-red)] hover:text-red-700 transition">
+<i class="fas fa-trash-alt text-xs"></i>
+</button>
 </div>
 
 <div class="space-y-2.5">
@@ -3357,6 +3360,7 @@ const I18N = {
     alert_enter_person_name: 'দয়া করে ব্যক্তির নাম লিখুন!',
     alert_valid_amount: 'দয়া করে সঠিক পরিমাণ লিখুন!',
     alert_amount_below_paid: 'এই পরিমাণ ইতিমধ্যে পরিশোধিত অংশের (৳{amt}) চেয়ে কম হতে পারবে না।',
+    add_money_locked_alert: 'এটি আর পরিবর্তন বা মুছা যাবে না: এন্ট্রিটি ১ দিনের বেশি পুরনো, অথবা এরপর এই ফান্ডে অন্য লেনদেন হয়েছে।',
     tx_amount_locked_hint: 'ইতিহাস ১ দিনের বেশি হওয়ায় আপনি এটি পরিবর্তন করতে পারবেন না',
     debt_amount_locked_hint: 'ইতিহাস ৭ দিনের বেশি হওয়ায় আপনি এটি পরিবর্তন করতে পারবেন না',
     alert_amount_above_remaining: 'এটি বাকি থাকা পরিমাণের (৳{amt}) চেয়ে বেশি। বাকি থাকা পরিমাণের মধ্যে একটি সংখ্যা লিখুন।',
@@ -7856,9 +7860,11 @@ function generateDetailsTxMarkup(t) {
     : t.fromDebtPayment
       ? deleteOnlyBtn
       : isAddMoney
-      ? `<button onclick="openEditAddMoneyModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
+      ? (isAddMoneyEditable(t)
+        ? `<button onclick="openEditAddMoneyModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
         <i class="fas fa-pen text-xs"></i>
       </button>`
+        : `<span class="p-1.5 invisible"><i class="fas fa-pen text-xs"></i></span>`)
       : `<button onclick="openEditTransactionModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
         <i class="fas fa-pen text-xs"></i>
       </button>`;
@@ -7882,6 +7888,10 @@ async function deleteTransaction(txId) {
   // it should subtract that amount back out (the reverse of the refund
   // logic used for an expense below).
   if (tx.type === 'add_money') {
+    if (!tx.fromDebtPayment && !isAddMoneyEditable(tx)) {
+      customAlert(tr('add_money_locked_alert', "This entry can't be deleted: it is more than 1 day old, or another transaction has happened on this fund since."));
+      return;
+    }
     const ok = await customConfirm(tr('confirm_delete_debt_entry', "Delete this entry? The amount will be removed from the fund balance."), { icon: 'fa-trash-alt' });
     if (!ok) return;
     if (appState.funds[tx.fund] !== undefined) {
@@ -7889,6 +7899,7 @@ async function deleteTransaction(txId) {
     }
     appState.transactions = appState.transactions.filter(t => t.id !== txId);
     saveState();
+    if (editingAddMoneyId === txId) closeAddMoneyModal();
     initApp();
     if (currentDetailsFund) renderAccountDetails();
     return;
@@ -9989,6 +10000,7 @@ function openAddMoneyModal() {
   if (!currentDetailsFund) return;
   editingAddMoneyId = null;
   document.getElementById('add-money-modal-title').innerText = tr('modal_add_money_title', 'Add Money');
+  document.getElementById('add-money-delete-btn').classList.add('hidden');
   document.getElementById('add-money-save-btn').innerText = tr('modal_add_btn', 'Add');
   const addMoneyAmountInput = document.getElementById('add-money-amount-input');
   addMoneyAmountInput.value = '';
@@ -10002,13 +10014,17 @@ function openAddMoneyModal() {
 function openEditAddMoneyModal(txId) {
   const tx = appState.transactions.find(t => t.id === txId);
   if (!tx || tx.type !== 'add_money') return;
+  if (!isAddMoneyEditable(tx)) {
+    customAlert(tr('add_money_locked_alert', "This entry can't be edited: it is more than 1 day old, or another transaction has happened on this fund since."));
+    return;
+  }
   editingAddMoneyId = txId;
   document.getElementById('add-money-modal-title').innerText = tr('modal_edit_amount_title', 'Edit Amount');
   document.getElementById('add-money-save-btn').innerText = tr('common_save', 'Save');
   document.getElementById('add-money-amount-input').value = formatAmountForInput(tx.amount);
   // Same 1-day amount lock as regular transactions/transfers - Add Money
   // is just another transaction-section entry type (see isTxAmountLocked).
-  const addMoneyAmountLocked = isTxAmountLocked(tx);
+  const addMoneyAmountLocked = false; // editable here => unlocked (see isAddMoneyEditable)
   const addMoneyAmountInput = document.getElementById('add-money-amount-input');
   addMoneyAmountInput.readOnly = addMoneyAmountLocked;
   addMoneyAmountInput.classList.toggle('opacity-50', addMoneyAmountLocked);
@@ -10018,6 +10034,7 @@ function openEditAddMoneyModal(txId) {
     addMoneyLockHint.querySelector('span').innerText = tr('tx_amount_locked_hint', "You can't change this because the history is more than 1 day old.");
   }
   document.getElementById('add-money-description-input').value = tx.description || '';
+  document.getElementById('add-money-delete-btn').classList.remove('hidden');
   showPopup('popup-add-money');
 }
 
@@ -10279,7 +10296,8 @@ function saveAddMoney() {
     // If the amount is locked (>1 day old), ignore whatever is in the
     // input (readOnly prevents normal edits, but this guards against it
     // regardless) and keep the original amount.
-    const finalAmount = isTxAmountLocked(tx) ? tx.amount : amount;
+    if (!isAddMoneyEditable(tx)) { closeAddMoneyModal(); return; }
+    const finalAmount = amount;
     if (appState.funds[tx.fund] !== undefined) {
       appState.funds[tx.fund] -= tx.amount;
       appState.funds[tx.fund] += finalAmount;
@@ -10518,6 +10536,21 @@ const EDIT_TX_QUICK_CATEGORIES = ['Food', 'Shopping', 'Bills', 'Transport'].conc
 // tx.date, which is set once at creation time (see saveTransaction) and
 // never touched again by an edit - see saveEditedTransaction below.
 const TX_AMOUNT_LOCK_MS = 24 * 60 * 60 * 1000;
+
+// A manual "Add Money" entry can be edited/deleted only while BOTH hold:
+// (1) it is less than 1 day old, and (2) no other entry has been logged on
+// that fund after it (expense, transfer in/out, another add-money, debt
+// repayment...). Once either fails it is permanently locked. Entries created
+// by a Debt/Receivable settlement (fromDebtPayment) keep their old rules.
+function isAddMoneyEditable(tx) {
+  if (!tx || tx.type !== 'add_money') return false;
+  if (isTxAmountLocked(tx)) return false;
+  const t0 = new Date(tx.date).getTime();
+  const hasLater = (appState.transactions || []).some(o =>
+    o.id !== tx.id && o.fund === tx.fund &&
+    (new Date(o.date).getTime() > t0 || (new Date(o.date).getTime() === t0 && o.id > tx.id)));
+  return !hasLater;
+}
 function isTxAmountLocked(tx) {
   if (!tx || !tx.date) return false;
   return (Date.now() - new Date(tx.date).getTime()) > TX_AMOUNT_LOCK_MS;
@@ -13265,9 +13298,11 @@ function generateLogsTxMarkup(t, query) {
   const editBtn = (isTransferIn || t.fromDebtPayment)
     ? `<span class="p-1.5 invisible"><i class="fas fa-pen text-xs"></i></span>`
     : isAddMoney
-      ? `<button onclick="openEditAddMoneyModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
+      ? (isAddMoneyEditable(t)
+        ? `<button onclick="openEditAddMoneyModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
         <i class="fas fa-pen text-xs"></i>
       </button>`
+        : `<span class="p-1.5 invisible"><i class="fas fa-pen text-xs"></i></span>`)
       : `<button onclick="openEditTransactionModal(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
         <i class="fas fa-pen text-xs"></i>
       </button>`;
