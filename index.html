@@ -4500,6 +4500,32 @@ setupListScrollFade();
 // content's bottom edge (ignoring the body's bottom padding that normally
 // leaves room to scroll above the nav bar) sits at or above the nav bar's
 // top. Only the inner lists scroll then. Re-evaluated on every size change.
+// Logs > Transactions: how many WHOLE cards fit between the list's top edge
+// and the bottom nav bar, so the list (sized by fitListToVisibleCount) never
+// shows a cut-off card and the page itself doesn't need to scroll.
+function logsListFitCount(container) {
+  const nav = document.getElementById('bottom-nav-bar');
+  if (!container || !nav || container.offsetParent === null) return 5;
+  const items = Array.from(container.children);
+  if (!items.length) return 5;
+  const gap = 8;
+  const listTop = container.getBoundingClientRect().top + (window.scrollY || 0);
+  const budget = nav.getBoundingClientRect().top - listTop - 12;
+  const hs = items.map(el => el.getBoundingClientRect().height);
+  let best = 1;
+  for (let k = 2; k <= hs.length; k++) {
+    let worst = 0;
+    for (let i = 0; i + k <= hs.length; i++) {
+      let t = gap * (k - 1);
+      for (let j = i; j < i + k; j++) t += hs[j];
+      if (t > worst) worst = t;
+    }
+    if (worst > budget) break;
+    best = k;
+  }
+  return best;
+}
+
 function setupPageScrollLock() {
   const root = document.documentElement;
   let queued = false;
@@ -4515,7 +4541,20 @@ function setupPageScrollLock() {
       // (only the inner fund list scrolls), no matter how tall the content is.
       const fundsPanel = document.getElementById('funds-expansion-panel');
       const fundsOpen = !!(fundsPanel && fundsPanel.style.display === 'block' && fundsPanel.offsetParent !== null);
-      root.classList.toggle('page-no-scroll', fundsOpen || contentBottom <= navTop + 4);
+      // Logs > Transactions: page scrolling is always off; the list gets
+      // the remaining height above the nav bar and scrolls on its own.
+      const txList = document.getElementById('logs-tx-list');
+      const logsTxActive = screen.id === 'screen-logs' && !!txList && txList.offsetParent !== null;
+      if (logsTxActive) {
+        if (!root.classList.contains('logs-fill') && (window.scrollY || 0) > 0) window.scrollTo(0, 0);
+        // Re-fit the list to however many WHOLE cards now fit above the nav.
+        const k = logsListFitCount(txList);
+        if (txList.children.length > 0 && !txList.querySelector(':scope > .text-center') && String(k) !== txList.dataset.sfCount) {
+          fitListToVisibleCount(txList, k, undefined, true);
+        }
+      }
+      root.classList.toggle('logs-fill', logsTxActive);
+      root.classList.toggle('page-no-scroll', logsTxActive || fundsOpen || contentBottom <= navTop + 4);
     }
     // Fund Details overlay has its own scroller.
     const details = document.getElementById('screen-account-details');
@@ -8337,6 +8376,7 @@ function switchLogsSubtab(name) {
   if (name === 'receivables') { updateDebtFilterButtonsUI('receivables'); updateDebtSortButtonsUI('receivables'); renderReceivablesList(); }
   renderLogSectionNoteDots();
   updateAddButtonVisibility();
+  if (window.__queuePageScrollLock) { window.__queuePageScrollLock(); setTimeout(window.__queuePageScrollLock, 120); }
 }
 
 function handleGlobalAddButton() {
@@ -12043,7 +12083,7 @@ function renderLogsList() {
     return;
   }
   container.innerHTML = filtered.map(t => generateLogsTxMarkup(t, query)).join('');
-  fitListToVisibleCount(container, 5, undefined, true);
+  fitListToVisibleCount(container, (!document.documentElement.classList.contains('logs-fill') ? 5 : logsListFitCount(container)), undefined, true);
 }
 
 // Robust cross-environment file download. Wrapped WebView apps (e.g. apps built
