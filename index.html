@@ -4531,6 +4531,9 @@ function logsListFitCount(container) {
   if (!container || !nav || container.offsetParent === null) return 5;
   const items = Array.from(container.children);
   if (!items.length) return 5;
+  // Fewer than 5 cards: nothing is hidden, so never treat 4 cards as a
+  // "full page" (that made the 4th card fade). The fade belongs on the 5th.
+  if (items.length < 5) return 5;
   const gap = 8;
   const listTop = container.getBoundingClientRect().top + (window.scrollY || 0);
   const budget = nav.getBoundingClientRect().top - listTop - 12;
