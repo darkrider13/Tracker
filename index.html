@@ -240,8 +240,10 @@ html:not(.dark-theme) .note-textarea-frame::after { background: linear-gradient(
   display: block;
   position: sticky;
   bottom: 0;
-  height: 40px;
-  margin-top: -40px;
+  /* --sf-h is set per-list by setupListScrollFade() so the fade covers
+     ONLY the last visible card (never bleeds into the card above it). */
+  height: var(--sf-h, 40px);
+  margin-top: calc(-1 * var(--sf-h, 40px));
   pointer-events: none;
   border-radius: 0 0 0.75rem 0.75rem;
   opacity: 0;
@@ -4475,6 +4477,27 @@ function setupListScrollFade() {
     const more = scrollable
       ? el.scrollTop + el.clientHeight < el.scrollHeight - 2
       : (n > 0 && el.children.length >= n);
+    // Fade only the LAST visible card: the overlay height is capped to the
+    // visible part of whichever card sits on the bottom edge, so a card
+    // before it (e.g. the 3rd when a 4th is below/peeking) never gets faded.
+    let fadeH = 40;
+    const kids = el.children;
+    if (kids.length) {
+      const top = el.getBoundingClientRect().top;
+      const bottomEdge = scrollable ? el.clientHeight : Infinity;
+      let last = null;
+      for (let i = 0; i < kids.length; i++) {
+        if (kids[i].getBoundingClientRect().top - top < bottomEdge - 1) last = kids[i];
+        else break;
+      }
+      if (last) {
+        const r = last.getBoundingClientRect();
+        const lastBottom = r.bottom - top;
+        const visibleH = Math.min(lastBottom, bottomEdge) - Math.max(r.top - top, 0);
+        fadeH = Math.max(0, Math.min(40, Math.floor(visibleH)));
+      }
+    }
+    el.style.setProperty('--sf-h', fadeH + 'px');
     el.classList.toggle('sf-static', !scrollable);
     el.classList.toggle('sf-more', more);
   };
@@ -4740,6 +4763,16 @@ document.addEventListener('mousedown', warmUpKeyboardOnFirstTouch, { capture: tr
 window.onload = async function() {
   warmUpKeyboard();
   applyStaticTranslations();
+  // Fresh app launch: whichever fund was selected last time, always start
+  // with the very first (top-most) fund selected. Runs only here (launch),
+  // never on in-app re-renders, so switching funds mid-session still works.
+  try {
+    const _firstFund = Object.keys(appState.funds || {})[0];
+    if (_firstFund !== undefined) {
+      appState.activeFund = _firstFund;
+      saveState();
+    }
+  } catch (e) { console.error('Default fund reset failed:', e); }
   initApp();
   initStatusBarThemeSync();
   loadProfileFields();
