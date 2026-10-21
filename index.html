@@ -3121,6 +3121,7 @@ const I18N = {
     debt_note_paid_back_to: '{name}র দেনা পরিশোধ করলাম',
     debt_note_received_from: '{name}-এর ধারের টাকা পেলাম',
     debt_from_fund: '{fund} থেকে',
+    debt_to_fund: '{fund}-এ যোগ হয়েছে',
     debt_for_note: '({note}-এর জন্য)',
     debt_due: 'শেষ তারিখ',
     debt_due_notif_payable: '{person}-কে ৳{amt} টাকা দেওয়ার কথা ছিল, মনে আছে তো?',
@@ -3313,6 +3314,10 @@ const I18N = {
 
     // Debt Payment popup
     debt_payment_received_title: 'পরিশোধ গ্রহণ করুন',
+    debt_add_fund_locked_receivable: 'এই টাকা এই ফান্ড থেকে দেওয়া হবে',
+    debt_add_fund_locked_debt: 'এই টাকা এই ফান্ডে যোগ হবে',
+    debt_payment_fund_locked_receivable: 'এই টাকা এই ফান্ডে যোগ হবে',
+    debt_payment_fund_locked_debt: 'এই টাকা এই ফান্ড থেকে কাটা হবে',
     debt_payment_made_title: 'পরিশোধ করুন',
     debt_pay_full_remaining_btn: 'পুরো বাকি টাকা পরিশোধ করুন',
     debt_payment_fund_toggle_receivable: 'এই টাকা কোনো ফান্ডে যোগ করবেন?',
@@ -4686,6 +4691,10 @@ function customAlert(message, opts = {}) {
 let homeChartRange = 'month';
 let activeFilterType = '';
 let currentDetailsFund = null;
+// Set when Logs > Debts/Receivables is opened FROM a Fund Details screen (red/green
+// chip). While set, new debt/receivable cards and payments are tied to that fund and
+// show it locked instead of asking which fund to use. Cleared when leaving Logs.
+let debtsFundContext = null;
 // Optional filter applied to the Fund Details "Transaction History" list via
 // the calendar icon next to its heading. mode is null (no filter), 'month'
 // (value = "YYYY-MM" from an <input type="month">), or 'date' (value =
@@ -7627,10 +7636,12 @@ function closeAccountDetails() {
 // Red (debts) / green (receivables) chip next to the fund balance ->
 // close this fund screen and open Logs on the matching subtab.
 function goToLogsDebtsFromDetails(kind) {
+  const fromFund = currentDetailsFund;
   closeAccountDetails();
   logsSubtab = kind;
   switchTab('logs');
   switchLogsSubtab(kind);
+  debtsFundContext = (fromFund && appState.funds && appState.funds[fromFund] !== undefined) ? fromFund : null;
 }
 
 function openEditFromDetails() {
@@ -7660,7 +7671,7 @@ function renderAccountDetails() {
   // One single line after the balance (no brackets, no text labels):
   // [red up-arrow icon] debt total | [green down-arrow icon] receivable total
   // - only the parts above zero are shown.
-  const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;flex-shrink:0"><i class="fas ${arrowCls}" style="font-size:0.75em"></i></span>`;
+  const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;flex-shrink:0"><i class="fas fa-fw ${arrowCls}" style="font-size:0.75em;display:block;width:100%;text-align:center;line-height:1.3em;margin:0"></i></span>`;
   const bracketParts = [];
   if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-up', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
   if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
@@ -8414,6 +8425,7 @@ function resetDebtCategoryFilters(category) {
 }
 
 function switchTab(screenId) {
+  if (screenId !== 'logs') debtsFundContext = null;
   // Leaving Logs entirely (e.g. back to Home/Stats/Profile) counts as
   // "walking away" from the Transactions list, so any Home-Update jump
   // highlight still showing there should be cleared - see
@@ -9046,7 +9058,9 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   const verb = isReceivable ? tr('debt_lent', 'Lent') : tr('debt_borrowed', 'Borrowed');
   const noteText = d.note ? (noteIsMatch ? highlightMatch(d.note, query, highlightColor) : escapeHtml(d.note)) : '';
   const detailLine = d.fund
-    ? `${trf('debt_from_fund', `From ${escapeHtml(d.fund)}`, { fund: escapeHtml(d.fund) })}${noteText ? ' ' + trf('debt_for_note', `For ${noteText}`, { note: noteText }) : ''}`
+    ? `${isReceivable
+        ? trf('debt_from_fund', `From ${escapeHtml(d.fund)}`, { fund: escapeHtml(d.fund) })
+        : trf('debt_to_fund', `Added to ${escapeHtml(d.fund)}`, { fund: escapeHtml(d.fund) })}${noteText ? ' ' + trf('debt_for_note', `For ${noteText}`, { note: noteText }) : ''}`
     : noteText;
   const dueReminderSuffix = (!d.settled && d.dueDate && d.reminderTime) ? ` • <i class="fas fa-bell text-[9px]"></i> ${(() => { const { h12, minute, ampm } = to12Hour(d.reminderTime); const minuteStr = String(minute).padStart(2, '0'); const ampmLabel = ampm === 'PM' ? tr('reminder_pm', 'PM') : tr('reminder_am', 'AM'); return `${localizeDigits(h12)}:${localizeDigits(minuteStr)} ${ampmLabel}`; })()}` : '';
   const dueLine = (!d.settled && d.dueDate) ? `<p class="text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
@@ -9312,7 +9326,12 @@ function setupDebtAddFundSection(entry) {
   const picker = document.getElementById('debt-add-fund-picker');
   const btn = document.getElementById('debt-add-fund-btn');
   const fundNames = Object.keys(appState.funds || {});
-  const resetLock = () => { toggle.disabled = false; btn.style.pointerEvents = ''; btn.style.opacity = ''; };
+  const chev = document.getElementById('debt-add-account-chevron');
+  const resetLock = () => {
+    toggle.disabled = false; toggle.classList.remove('hidden');
+    btn.style.pointerEvents = ''; btn.style.opacity = '';
+    if (chev) chev.className = 'fas fa-chevron-down text-[10px] text-gray-400 transition-transform';
+  };
   resetLock();
   document.getElementById('debt-add-selected-fund').value = '';
 
@@ -9339,6 +9358,24 @@ function setupDebtAddFundSection(entry) {
     section.classList.add('hidden');
     toggle.checked = false;
     picker.classList.add('hidden');
+    return;
+  }
+  // Opened from a Fund Details screen: skip the question, show that fund locked.
+  if (debtsFundContext && appState.funds[debtsFundContext] !== undefined) {
+    const t = document.getElementById('debt-modal-type').value;
+    section.classList.remove('hidden');
+    toggle.checked = true;
+    toggle.classList.add('hidden');
+    document.getElementById('debt-add-fund-toggle-label').innerText = (t === 'receivable')
+      ? tr('debt_add_fund_locked_receivable', 'This money will be taken from this fund')
+      : tr('debt_add_fund_locked_debt', 'This money will be added to this fund');
+    picker.classList.remove('hidden');
+    document.getElementById('debt-add-selected-fund').value = debtsFundContext;
+    document.getElementById('debt-add-active-fund-label').innerText = fundDisplayName(debtsFundContext);
+    updateAccountButtonIcon('debt-add', debtsFundContext);
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.6';
+    if (chev) chev.className = 'fas fa-lock text-[10px] text-gray-400';
     return;
   }
   // New entry: toggle starts OFF - the fund list only appears (with the
@@ -9617,7 +9654,31 @@ function openDebtPaymentModal(id) {
   // can still be picked). Toggle is locked ON so the tracked money can
   // never silently vanish. Entries without a fund keep the optional toggle.
   const payToggle = document.getElementById('debt-payment-fund-toggle');
+  const payBtn = document.querySelector('#debt-payment-fund-picker > button');
+  const payChev = document.getElementById('debt-payment-account-chevron');
   payToggle.disabled = false;
+  payToggle.classList.remove('hidden');
+  if (payBtn) { payBtn.style.pointerEvents = ''; payBtn.style.opacity = ''; }
+  if (payChev) payChev.className = 'fas fa-chevron-down text-[10px] text-gray-400 transition-transform';
+  // Opened from a Fund Details screen: lock to that fund (unless this entry already
+  // belongs to a different fund, which keeps its own existing behaviour below).
+  const lockFund = (debtsFundContext && appState.funds[debtsFundContext] !== undefined && (!entry.fund || entry.fund === debtsFundContext)) ? debtsFundContext : null;
+  if (lockFund) {
+    payToggle.checked = true;
+    payToggle.classList.add('hidden');
+    document.getElementById('debt-payment-fund-section').classList.remove('hidden');
+    document.getElementById('debt-payment-fund-toggle-label').innerText = entry.type === 'receivable'
+      ? tr('debt_payment_fund_locked_receivable', 'This money will be added to this fund')
+      : tr('debt_payment_fund_locked_debt', 'This money will be taken from this fund');
+    document.getElementById('debt-payment-fund-picker').classList.remove('hidden');
+    document.getElementById('debt-payment-selected-fund').value = lockFund;
+    document.getElementById('debt-payment-active-fund-label').innerText = fundDisplayName(lockFund);
+    updateAccountButtonIcon('debt-payment', lockFund);
+    if (payBtn) { payBtn.style.pointerEvents = 'none'; payBtn.style.opacity = '0.6'; }
+    if (payChev) payChev.className = 'fas fa-lock text-[10px] text-gray-400';
+    showPopup('popup-debt-payment');
+    return;
+  }
   if (entry.fund && appState.funds[entry.fund] !== undefined) {
     payToggle.checked = true;
     payToggle.disabled = true;
