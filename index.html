@@ -7608,6 +7608,15 @@ function closeAccountDetails() {
   currentDetailsFund = null;
 }
 
+// Red (debts) / green (receivables) chip next to the fund balance ->
+// close this fund screen and open Logs on the matching subtab.
+function goToLogsDebtsFromDetails(kind) {
+  closeAccountDetails();
+  logsSubtab = kind;
+  switchTab('logs');
+  switchLogsSubtab(kind);
+}
+
 function openEditFromDetails() {
   if (currentDetailsFund) openEditFundModal(currentDetailsFund);
 }
@@ -7637,11 +7646,11 @@ function renderAccountDetails() {
   // - only the parts above zero are shown.
   const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;flex-shrink:0"><i class="fas ${arrowCls}" style="font-size:0.75em"></i></span>`;
   const bracketParts = [];
-  if (borrowedInFund > 0.005) bracketParts.push(`<span style="color:var(--brand-red);display:inline-flex;align-items:center">${iconBox('fa-arrow-up', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
-  if (toReceiveFromFund > 0.005) bracketParts.push(`<span style="color:var(--brand-green);display:inline-flex;align-items:center">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
+  if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-up', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
+  if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
   if (bracketParts.length) {
     const bracketSpan = document.createElement('span');
-    bracketSpan.style.cssText = 'font-size:0.56em;margin-left:12px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:0.5em;line-height:1.3;vertical-align:middle';
+    bracketSpan.style.cssText = 'font-size:0.36em;margin-left:10px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:0.5em;line-height:1.3;vertical-align:middle';
     bracketSpan.innerHTML = bracketParts.join('<span style="color:#9ca3af;margin:0 0.15em">|</span>');
     detailsBalanceEl.appendChild(bracketSpan);
   }
