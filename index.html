@@ -7673,8 +7673,8 @@ function renderAccountDetails() {
   // - only the parts above zero are shown.
   const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;flex-shrink:0"><i class="fas fa-fw ${arrowCls}" style="font-size:0.75em;display:block;width:100%;text-align:center;line-height:1.3em;margin:0"></i></span>`;
   const bracketParts = [];
-  if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-up', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
-  if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
+  if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-down', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
+  if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-up', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
   if (bracketParts.length) {
     const bracketSpan = document.createElement('span');
     bracketSpan.style.cssText = 'font-size:0.36em;margin-left:10px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:1em;line-height:1.3;vertical-align:middle';
@@ -7879,7 +7879,18 @@ function generateTxCardBody(t, actionsHtml, query) {
   // fa-hand-holding-dollar icon - mirrored horizontally for the collected
   // case so the hand visually "receives" from the opposite side instead
   // of "giving", distinguishing the two at a glance.
-  const categoryIconHtml = categoryIconHTML(t.category, 'text-gray-500 text-sm', (t.category === 'Debt Collection' || t.category === 'Debt Borrowed') ? 'transform: scaleX(-1)' : '');
+  // History card icon color follows the money direction: money coming IN
+  // to a fund (Add Money, Transfer In, Money Borrowed, Debt Collection) is
+  // green, money going OUT (expenses, Money Lent, Debt Repayment, Transfer
+  // Out) is red. Fund Transfer cards (both sides) keep the original two-arrow
+  // glyph, with the top (right-pointing) arrow red and the bottom (left-
+  // pointing) arrow green.
+  const iconIsIncoming = (t.type === 'transfer_in' || t.type === 'add_money');
+  const iconColorCls = iconIsIncoming ? 'text-green-600' : 'text-[var(--brand-red)]';
+  const isTransferCard = (t.type === 'transfer_in' || t.type === 'transfer_out');
+  const categoryIconHtml = isTransferCard
+    ? `<span class="text-sm" style="display:inline-grid;line-height:1"><i class="fas fa-right-left" style="grid-area:1/1;line-height:1;color:#dc2626;clip-path:inset(0 0 50% 0)"></i><i class="fas fa-right-left" style="grid-area:1/1;line-height:1;color:#16a34a;clip-path:inset(50% 0 0 0)"></i></span>`
+    : categoryIconHTML(t.category, iconColorCls + ' text-sm', (t.category === 'Debt Collection') ? 'transform: scaleX(-1)' : '');
   const categoryLabel = translatedCategoryLabel(t.category);
   const dateLabel = fmtDate(t.date, { day: '2-digit', month: 'short' });
   const timeLabel = fmtTime(t.date);
@@ -9053,7 +9064,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   // saved (new Date().toISOString()), so the exact borrow/lend time is
   // already there - no extra input needed, just show it alongside the date.
   const dateLabel = `${fmtDate(d.createdDate, { month: 'short', day: '2-digit', year: 'numeric' })} ${fmtTime(d.createdDate)}`;
-  const iconClass = isReceivable ? 'fa-arrow-down' : 'fa-arrow-up';
+  const iconClass = isReceivable ? 'fa-arrow-up' : 'fa-arrow-down'; // lent = up, borrowed = down (same as history cards)
   const iconBg = isReceivable ? 'bg-emerald-100 text-[var(--brand-green)]' : 'bg-rose-100 text-[var(--brand-red)]';
   const verb = isReceivable ? tr('debt_lent', 'Lent') : tr('debt_borrowed', 'Borrowed');
   const noteText = d.note ? (noteIsMatch ? highlightMatch(d.note, query, highlightColor) : escapeHtml(d.note)) : '';
@@ -13172,7 +13183,10 @@ function getCategoryFAIcon(label) {
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
   if (c.includes('debt repay') || c.includes('ধার পরিশোধ')) return 'fa-hand-holding-dollar';
-  if (c.includes('debt lent') || c.includes('debt borrowed') || c.includes('money lent') || c.includes('money borrowed') || c.includes('ধার দেওয়া') || c.includes('ধার নেওয়া')) return 'fa-hand-holding-dollar';
+  // Money Borrowed (ধার নেওয়া - money comes IN) -> down arrow;
+  // Money Lent (ধার দেওয়া - money goes OUT) -> up arrow.
+  if (c.includes('debt borrowed') || c.includes('money borrowed') || c.includes('ধার নেওয়া')) return 'fa-arrow-down';
+  if (c.includes('debt lent') || c.includes('money lent') || c.includes('ধার দেওয়া')) return 'fa-arrow-up';
   if (c.includes('grocery') || c.includes('মুদি')) return 'fa-cart-shopping';
   if (c.includes('medic') || c.includes('ওষুধ')) return 'fa-briefcase-medical';
   if (c.includes('event') || c.includes('অনুষ্ঠান')) return 'fa-calendar-days';
