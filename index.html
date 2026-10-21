@@ -7688,7 +7688,7 @@ function renderAccountDetails() {
     });
   }
 
-  const totalSpent = filteredTx.filter(t => t.type !== 'transfer_in' && t.type !== 'add_money' && t.type !== 'debt_lent' && t.category !== 'Debt Repayment').reduce((sum, t) => sum + t.amount, 0);
+  const totalSpent = filteredTx.filter(isSpendTx).reduce((sum, t) => sum + t.amount, 0);
   document.getElementById('details-fund-spent').innerText = `৳${fmtMoney(totalSpent)}`;
 
   // Soft-deleted (historyHidden) entries stay counted in Total Spent just
@@ -8263,6 +8263,17 @@ function addNewFund() {
   initApp();
 }
 
+// Single source of truth for "is this real spending?". Money that only
+// moves around (fund transfers in/out, money added, money lent/borrowed,
+// debt repayment) is NOT spending, so it never counts in Total Spent,
+// Home's spend chart or Spending Analytics.
+function isSpendTx(t) {
+  if (!t) return false;
+  if (t.type === 'transfer_in' || t.type === 'transfer_out' || t.type === 'add_money' || t.type === 'debt_lent') return false;
+  if (t.category === 'Debt Repayment') return false;
+  return true;
+}
+
 function calculateFinance() {
   // Guard against a stale/mismatched activeFund pointing at a fund that
   // no longer exists - fall back to the first available fund instead of
@@ -8281,7 +8292,7 @@ function calculateFinance() {
   const now = new Date();
   const totalSpentInActive = appState.transactions
     .filter(t => {
-      if (t.fund !== appState.activeFund || t.type === 'transfer_in' || t.type === 'add_money' || t.type === 'debt_lent' || t.category === 'Debt Repayment') return false;
+      if (t.fund !== appState.activeFund || !isSpendTx(t)) return false;
       const d = new Date(t.date);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     })
@@ -13165,7 +13176,7 @@ function renderAnalyticsList() {
 
   // Incoming transfer mirrors are excluded from spend analytics - they're
   // money arriving, not a category of spend.
-  let filtered = appState.transactions.filter(t => t.fund === appState.activeFund && t.type !== 'transfer_in' && t.type !== 'add_money' && t.type !== 'debt_lent' && t.category !== 'Debt Repayment');
+  let filtered = appState.transactions.filter(t => t.fund === appState.activeFund && isSpendTx(t));
 
   // Scope to whichever month the Transactions screen's Time filter
   // currently points at (see getStatsSpendMonthScope above).
@@ -14138,7 +14149,7 @@ function updateChart() {
   const canvas = document.getElementById('spendChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const currentFundTransactions = appState.transactions.filter(t => t.fund === appState.activeFund);
+  const currentFundTransactions = appState.transactions.filter(t => t.fund === appState.activeFund && isSpendTx(t));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
