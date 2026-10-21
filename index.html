@@ -7632,15 +7632,17 @@ function renderAccountDetails() {
   const toReceiveFromFund = (appState.debts || [])
     .filter(d => d.type === 'receivable' && !d.settled && d.fund === currentDetailsFund)
     .reduce((sum, d) => sum + getDebtRemaining(d), 0);
-  // One single bracket after the balance: red "ধার" total and/or green
-  // "পাওনা" total (only the ones that are above zero).
+  // One single line after the balance (no brackets, no text labels):
+  // [red up-arrow icon] debt total | [green down-arrow icon] receivable total
+  // - only the parts above zero are shown.
+  const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;vertical-align:-0.2em"><i class="fas ${arrowCls}" style="font-size:0.75em"></i></span>`;
   const bracketParts = [];
-  if (borrowedInFund > 0.005) bracketParts.push(`<span style="color:var(--brand-red)">${tr('debt_bracket_label', 'Debt')}: ৳${fmtMoney(borrowedInFund)}</span>`);
-  if (toReceiveFromFund > 0.005) bracketParts.push(`<span style="color:var(--brand-green)">${tr('receivable_bracket_label', 'Receivable')}: ৳${fmtMoney(toReceiveFromFund)}</span>`);
+  if (borrowedInFund > 0.005) bracketParts.push(`<span style="color:var(--brand-red)">${iconBox('fa-arrow-up', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
+  if (toReceiveFromFund > 0.005) bracketParts.push(`<span style="color:var(--brand-green)">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
   if (bracketParts.length) {
     const bracketSpan = document.createElement('span');
-    bracketSpan.style.cssText = 'font-size:0.42em;margin-left:6px;font-weight:800;white-space:nowrap';
-    bracketSpan.innerHTML = `<span style="color:#9ca3af">(</span>${bracketParts.join('<span style="color:#9ca3af"> | </span>')}<span style="color:#9ca3af">)</span>`;
+    bracketSpan.style.cssText = 'font-size:0.42em;margin-left:8px;font-weight:800;white-space:nowrap';
+    bracketSpan.innerHTML = bracketParts.join('<span style="color:#9ca3af"> | </span>');
     detailsBalanceEl.appendChild(bracketSpan);
   }
   fitBalanceText(document.getElementById('details-fund-balance'));
