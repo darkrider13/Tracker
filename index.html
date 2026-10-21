@@ -7641,8 +7641,8 @@ function renderAccountDetails() {
   if (toReceiveFromFund > 0.005) bracketParts.push(`<span style="color:var(--brand-green);display:inline-flex;align-items:center">${iconBox('fa-arrow-down', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
   if (bracketParts.length) {
     const bracketSpan = document.createElement('span');
-    bracketSpan.style.cssText = 'font-size:0.42em;margin-left:8px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.3';
-    bracketSpan.innerHTML = bracketParts.join('<span style="color:#9ca3af;margin:0 0.4em">|</span>');
+    bracketSpan.style.cssText = 'font-size:0.56em;margin-left:12px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:0.5em;line-height:1.3;vertical-align:middle';
+    bracketSpan.innerHTML = bracketParts.join('<span style="color:#9ca3af;margin:0 0.15em">|</span>');
     detailsBalanceEl.appendChild(bracketSpan);
   }
   fitBalanceText(document.getElementById('details-fund-balance'));
