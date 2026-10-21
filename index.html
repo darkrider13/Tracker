@@ -3301,6 +3301,14 @@ const I18N = {
     debt_pay_full_remaining_btn: 'পুরো বাকি টাকা পরিশোধ করুন',
     debt_payment_fund_toggle_receivable: 'এই টাকা কোনো ফান্ডে যোগ করবেন?',
     debt_payment_fund_toggle_debt: 'এই টাকা কোনো ফান্ড থেকে পরিশোধ করবেন?',
+    confirm_delete_debt_payment: 'এই পেমেন্ট মুছবেন? দেনা/পাওনার হিসাব আগের অবস্থায় ফিরে যাবে।',
+    debt_bracket_label: 'ধার',
+    receivable_bracket_label: 'পাওনা',
+    cat_debt_lent_log: 'ধার দেওয়া হয়েছে',
+    cat_debt_borrowed_log: 'ধার নেওয়া হয়েছে',
+    debt_note_lent_to: '{name}-কে ধার দিলাম',
+    debt_note_borrowed_from: '{name}-এর কাছ থেকে ধার নিলাম',
+    debt_delete_from_debts_alert: 'এই এন্ট্রি দেনা/পাওনা থেকে মুছুন।',
     debt_add_fund_toggle_receivable: 'এই টাকা কোনো ফান্ড থেকে ধার দেবেন?',
     debt_add_fund_toggle_debt: 'ধার নেওয়া টাকা কোনো ফান্ডে যোগ করবেন?',
     common_confirm: 'নিশ্চিত করুন',
@@ -3711,6 +3719,8 @@ function debtPaymentNoteText(t) {
   if (!t || !t.debtNoteKind || !t.debtNotePerson) return null;
   if (t.debtNoteKind === 'received_from') return trf('debt_note_received_from', `Received from ${t.debtNotePerson}`, { name: t.debtNotePerson });
   if (t.debtNoteKind === 'paid_back_to') return trf('debt_note_paid_back_to', `Paid back to ${t.debtNotePerson}`, { name: t.debtNotePerson });
+  if (t.debtNoteKind === 'lent_to') return trf('debt_note_lent_to', `Lent to ${t.debtNotePerson}`, { name: t.debtNotePerson });
+  if (t.debtNoteKind === 'borrowed_from') return trf('debt_note_borrowed_from', `Borrowed from ${t.debtNotePerson}`, { name: t.debtNotePerson });
   return null;
 }
 
@@ -7609,7 +7619,30 @@ function renderAccountDetails() {
   }
 
   document.getElementById('details-fund-name').innerText = fundDisplayName(currentDetailsFund);
-  document.getElementById('details-fund-balance').innerText = `৳${fmtMoney(appState.funds[currentDetailsFund])}`;
+  // Borrowed money still unpaid that sits inside this fund's balance
+  // (debts created/repaid with this fund) - shown in red brackets next
+  // to the balance.
+  const borrowedInFund = (appState.debts || [])
+    .filter(d => d.type === 'debt' && !d.settled && d.fund === currentDetailsFund)
+    .reduce((sum, d) => sum + getDebtRemaining(d), 0);
+  const detailsBalanceEl = document.getElementById('details-fund-balance');
+  detailsBalanceEl.innerText = `৳${fmtMoney(appState.funds[currentDetailsFund])}`;
+  // Money lent out from this fund that is still to be received back
+  // (receivables) - shown in green brackets.
+  const toReceiveFromFund = (appState.debts || [])
+    .filter(d => d.type === 'receivable' && !d.settled && d.fund === currentDetailsFund)
+    .reduce((sum, d) => sum + getDebtRemaining(d), 0);
+  // One single bracket after the balance: red "ধার" total and/or green
+  // "পাওনা" total (only the ones that are above zero).
+  const bracketParts = [];
+  if (borrowedInFund > 0.005) bracketParts.push(`<span style="color:var(--brand-red)">${tr('debt_bracket_label', 'Debt')}: ৳${fmtMoney(borrowedInFund)}</span>`);
+  if (toReceiveFromFund > 0.005) bracketParts.push(`<span style="color:var(--brand-green)">${tr('receivable_bracket_label', 'Receivable')}: ৳${fmtMoney(toReceiveFromFund)}</span>`);
+  if (bracketParts.length) {
+    const bracketSpan = document.createElement('span');
+    bracketSpan.style.cssText = 'font-size:0.42em;margin-left:6px;font-weight:800;white-space:nowrap';
+    bracketSpan.innerHTML = `<span style="color:#9ca3af">(</span>${bracketParts.join('<span style="color:#9ca3af"> | </span>')}<span style="color:#9ca3af">)</span>`;
+    detailsBalanceEl.appendChild(bracketSpan);
+  }
   fitBalanceText(document.getElementById('details-fund-balance'));
 
   const detailsMeta = ensureFundMeta(currentDetailsFund);
@@ -7653,7 +7686,7 @@ function renderAccountDetails() {
     });
   }
 
-  const totalSpent = filteredTx.filter(t => t.type !== 'transfer_in' && t.type !== 'add_money').reduce((sum, t) => sum + t.amount, 0);
+  const totalSpent = filteredTx.filter(t => t.type !== 'transfer_in' && t.type !== 'add_money' && t.type !== 'debt_lent' && t.category !== 'Debt Repayment').reduce((sum, t) => sum + t.amount, 0);
   document.getElementById('details-fund-spent').innerText = `৳${fmtMoney(totalSpent)}`;
 
   // Soft-deleted (historyHidden) entries stay counted in Total Spent just
@@ -7956,7 +7989,7 @@ function generateDetailsTxMarkup(t) {
   const deleteOnlyBtn = `<button onclick="deleteTransaction(${t.id})" class="${amountColor} hover:opacity-75 transition p-1.5">
         <i class="fas fa-trash-alt text-xs"></i>
       </button>`;
-  const actionsHtml = isTransferIn
+  const actionsHtml = (isTransferIn || t.debtEntryId)
     ? `<span class="p-1.5 invisible"><i class="fas fa-pen text-xs"></i></span>`
     : t.fromDebtPayment
       ? deleteOnlyBtn
@@ -7976,6 +8009,46 @@ function generateDetailsTxMarkup(t) {
 async function deleteTransaction(txId) {
   const tx = appState.transactions.find(t => t.id === txId);
   if (!tx) return;
+
+  // History line of a collected/repaid payment: deleting it also undoes
+  // that payment on the debt record (balance, remaining and settled status
+  // all go back), so the two can never disagree.
+  if (tx.debtPaymentEntryId) {
+    const payEntry = (appState.debts || []).find(d => d.id === tx.debtPaymentEntryId);
+    if (payEntry) {
+      const okPay = await customConfirm(tr('confirm_delete_debt_payment', "Delete this payment? The debt/receivable balance will go back as it was before this payment."), { icon: 'fa-trash-alt' });
+      if (!okPay) return;
+      const isCollected = payEntry.type === 'receivable';
+      if (isCollected && appState.funds[tx.fund] !== undefined && appState.funds[tx.fund] < tx.amount) {
+        customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
+        return;
+      }
+      if (appState.funds[tx.fund] !== undefined) appState.funds[tx.fund] += isCollected ? -tx.amount : tx.amount;
+      payEntry.payments = (payEntry.payments || []).filter(pm => pm.txId !== tx.id);
+      if (getDebtRemaining(payEntry) > 0.005) { payEntry.settled = false; payEntry.settledDate = null; }
+      appState.transactions = appState.transactions.filter(t => t.id !== txId);
+      saveState();
+      initApp();
+      if (currentDetailsFund) renderAccountDetails();
+      return;
+    }
+  }
+
+  // History line created by an Add Debt/Receivable with a fund: it is
+  // removed together with its debt record (see deleteDebtEntry), never on
+  // its own. If that record is already gone (orphan), just drop the line -
+  // no refund, since the fund balance was already settled with the record.
+  if (tx.debtEntryId) {
+    if ((appState.debts || []).some(d => d.id === tx.debtEntryId)) {
+      customAlert(tr('debt_delete_from_debts_alert', 'Delete this entry from Debts/Receivables.'));
+      return;
+    }
+    appState.transactions = appState.transactions.filter(t => t.id !== txId);
+    saveState();
+    initApp();
+    if (currentDetailsFund) renderAccountDetails();
+    return;
+  }
 
   // Fund Transfer entries (either side) delete as a pair through the
   // dedicated transfer flow, so both accounts get reversed together.
@@ -8091,6 +8164,7 @@ function saveFundUpdates() {
 
     (appState.debts || []).forEach(d => {
       if (d.fund === fundName) d.fund = newName;
+      (d.payments || []).forEach(pm => { if (pm.fund === fundName) pm.fund = newName; });
     });
 
     if (appState.activeFund === fundName) appState.activeFund = newName;
@@ -8131,6 +8205,12 @@ function confirmAndExecuteDelete() {
   if (appState.fundMeta) delete appState.fundMeta[originalName];
   if (appState.fundNotes) delete appState.fundNotes[originalName];
   appState.transactions = appState.transactions.filter(t => t.fund !== originalName);
+  // Debts/receivables that were tied to this fund lose the link, so a new
+  // fund created later with the same name can't be wrongly refunded/charged.
+  (appState.debts || []).forEach(d => {
+    if (d.fund === originalName) d.fund = null;
+    (d.payments || []).forEach(pm => { if (pm.fund === originalName) pm.fund = null; });
+  });
 
   appState.activeFund = Object.keys(appState.funds)[0];
 
@@ -8199,7 +8279,7 @@ function calculateFinance() {
   const now = new Date();
   const totalSpentInActive = appState.transactions
     .filter(t => {
-      if (t.fund !== appState.activeFund || t.type === 'transfer_in' || t.type === 'add_money') return false;
+      if (t.fund !== appState.activeFund || t.type === 'transfer_in' || t.type === 'add_money' || t.type === 'debt_lent' || t.category === 'Debt Repayment') return false;
       const d = new Date(t.date);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     })
@@ -9223,13 +9303,12 @@ function setupDebtAddFundSection(entry) {
     picker.classList.add('hidden');
     return;
   }
+  // New entry: toggle starts OFF - the fund list only appears (with the
+  // active fund pre-selected, see toggleDebtAddFundPicker) once the user
+  // switches it on themselves.
   section.classList.remove('hidden');
-  toggle.checked = true;
-  picker.classList.remove('hidden');
-  const defaultFund = (appState.activeFund && appState.funds[appState.activeFund] !== undefined) ? appState.activeFund : fundNames[0];
-  document.getElementById('debt-add-selected-fund').value = defaultFund;
-  document.getElementById('debt-add-active-fund-label').innerText = fundDisplayName(defaultFund);
-  updateAccountButtonIcon('debt-add', defaultFund);
+  toggle.checked = false;
+  picker.classList.add('hidden');
 }
 function toggleDebtAddFundPicker() {
   const checked = document.getElementById('debt-add-fund-toggle').checked;
@@ -9384,6 +9463,15 @@ function saveDebtEntry() {
       }
       appState.funds[entry.fund] += delta;
     }
+    (appState.transactions || []).forEach(t => {
+      if (t.debtEntryId === entry.id) {
+        t.amount = finalAmount;
+        if (t.debtNotePerson !== undefined) {
+          t.debtNotePerson = person;
+          t.description = debtPaymentNoteText(t) || t.description;
+        }
+      }
+    });
 
     entry.type = type;
     entry.person = person;
@@ -9402,8 +9490,39 @@ function saveDebtEntry() {
       entry.settledDate = null;
     }
   } else {
+    const newDebtId = Date.now();
+    // History line in the fund's log. Lent money = 'debt_lent' (shows as
+    // money going out but is excluded from every Total Spent / analytics
+    // sum); borrowed money = 'add_money' (already excluded from spend).
+    if (newEntryFund) {
+      appState.transactions.unshift(type === 'receivable' ? {
+        id: newDebtId + 1,
+        type: 'debt_lent',
+        fund: newEntryFund,
+        category: 'Debt Lent',
+        description: trf('debt_note_lent_to', `Lent to ${person}`, { name: person }),
+        debtNoteKind: 'lent_to',
+        debtNotePerson: person,
+        amount: amount,
+        date: new Date().toISOString(),
+        fromDebtPayment: true,
+        debtEntryId: newDebtId
+      } : {
+        id: newDebtId + 1,
+        type: 'add_money',
+        fund: newEntryFund,
+        category: 'Debt Borrowed',
+        description: trf('debt_note_borrowed_from', `Borrowed from ${person}`, { name: person }),
+        debtNoteKind: 'borrowed_from',
+        debtNotePerson: person,
+        amount: amount,
+        date: new Date().toISOString(),
+        fromDebtPayment: true,
+        debtEntryId: newDebtId
+      });
+    }
     appState.debts.unshift({
-      id: Date.now(),
+      id: newDebtId,
       type: type,
       person: person,
       amount: amount,
@@ -9453,6 +9572,22 @@ function openDebtPaymentModal(id) {
   document.getElementById('debt-payment-fund-toggle-label').innerText = entry.type === 'receivable'
     ? tr('debt_payment_fund_toggle_receivable', 'Add this to a fund?')
     : tr('debt_payment_fund_toggle_debt', 'Pay this from a fund?');
+
+  // An entry that moved money in/out of a fund when it was created must
+  // keep the fund books balanced: collecting/repaying it always goes
+  // through a fund (that entry's own fund is pre-selected; another fund
+  // can still be picked). Toggle is locked ON so the tracked money can
+  // never silently vanish. Entries without a fund keep the optional toggle.
+  const payToggle = document.getElementById('debt-payment-fund-toggle');
+  payToggle.disabled = false;
+  if (entry.fund && appState.funds[entry.fund] !== undefined) {
+    payToggle.checked = true;
+    payToggle.disabled = true;
+    document.getElementById('debt-payment-fund-picker').classList.remove('hidden');
+    document.getElementById('debt-payment-selected-fund').value = entry.fund;
+    document.getElementById('debt-payment-active-fund-label').innerText = fundDisplayName(entry.fund);
+    updateAccountButtonIcon('debt-payment', entry.fund);
+  }
 
   showPopup('popup-debt-payment');
 }
@@ -9567,7 +9702,17 @@ async function submitDebtPayment() {
   }
 
   if (!entry.payments) entry.payments = [];
-  entry.payments.push({ amount: amount, date: new Date().toISOString(), fund: paymentFund });
+  const paymentRecord = { amount: amount, date: new Date().toISOString(), fund: paymentFund };
+  if (paymentFund) {
+    // The history line just created for this payment (first in the list)
+    // is linked both ways, so deleting it later also undoes the payment.
+    const payTx = appState.transactions[0];
+    if (payTx && payTx.fromDebtPayment && !payTx.debtEntryId) {
+      payTx.debtPaymentEntryId = entry.id;
+      paymentRecord.txId = payTx.id;
+    }
+  }
+  entry.payments.push(paymentRecord);
 
   if (getDebtRemaining(entry) <= 0.005) {
     entry.settled = true;
@@ -9662,14 +9807,20 @@ async function deleteDebtEntry(id) {
     if (entry.type === 'receivable') {
       appState.funds[entry.fund] += undoAmt; // undo the lend
     } else {
-      appState.funds[entry.fund] = Math.max(0, appState.funds[entry.fund] - undoAmt); // undo the borrow
+      if (appState.funds[entry.fund] < undoAmt - 0.005) {
+        customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
+        return;
+      }
+      appState.funds[entry.fund] -= undoAmt; // undo the borrow
     }
   }
 
+  appState.transactions = (appState.transactions || []).filter(t => t.debtEntryId !== id);
   appState.debts = appState.debts.filter(d => d.id !== id);
 
   saveState();
   initApp();
+  if (currentDetailsFund) renderAccountDetails();
 }
 
 const QUICK_CATEGORIES_MORE = ['Grocery', 'Medicine', 'Event', 'Rent', 'Recharge', 'Education', 'Fun', 'Fuel', 'Family', 'Donation', 'Insurance', 'Fitness', 'Loan', 'Travel', 'Self Care', 'Pet Care', 'Gifts', 'Subscription', 'Internet', 'Repair', 'Other'];
@@ -9727,6 +9878,8 @@ function translatedCategoryLabel(raw) {
   if (stripped === 'Add Money') return tr('cat_add_money_log', 'Money Added');
   if (stripped === 'Debt Collection') return tr('cat_debt_collection_log', 'Receivable Collected');
   if (stripped === 'Debt Repayment') return tr('cat_debt_repayment_log', 'Debt Repayment');
+  if (stripped === 'Debt Lent') return tr('cat_debt_lent_log', 'Money Lent');
+  if (stripped === 'Debt Borrowed') return tr('cat_debt_borrowed_log', 'Money Borrowed');
   if (stripped === 'Fund Transfer') return tr('cat_fund_transfer_log', 'Fund Transfer');
   const canonical = resolveCanonicalCategory(stripped);
   return canonical ? categoryDisplayName(canonical) : stripped;
@@ -9757,6 +9910,14 @@ function categorySearchLabels(raw) {
   if (stripped === 'Debt Repayment') {
     const bn = I18N.bn['cat_debt_repayment_log'];
     return bn ? ['Debt Repayment', bn] : ['Debt Repayment'];
+  }
+  if (stripped === 'Debt Lent') {
+    const bn = I18N.bn['cat_debt_lent_log'];
+    return bn ? ['Money Lent', bn] : ['Money Lent'];
+  }
+  if (stripped === 'Debt Borrowed') {
+    const bn = I18N.bn['cat_debt_borrowed_log'];
+    return bn ? ['Money Borrowed', bn] : ['Money Borrowed'];
   }
   if (stripped === 'Fund Transfer') {
     const bn = I18N.bn['cat_fund_transfer_log'];
@@ -10969,7 +11130,7 @@ function showUpdateSlide(recent) {
   // language's template just states the amount + its own already-correct
   // label, mirroring how the "spent on {cat}" branch below reads
   // naturally in both languages without needing per-language wording.
-  else if (t.category === 'Debt Collection') msg = trf('home_latest_collected_as', `Latest: ৳${fmtMoney(t.amount)} ${categoryLabel}`, { amt: fmtMoney(t.amount), cat: categoryLabel });
+  else if (t.category === 'Debt Collection' || t.category === 'Debt Lent' || t.category === 'Debt Borrowed') msg = trf('home_latest_collected_as', `Latest: ৳${fmtMoney(t.amount)} ${categoryLabel}`, { amt: fmtMoney(t.amount), cat: categoryLabel });
   else if (t.type === 'add_money') msg = trf('home_latest_added', `Latest: ৳${fmtMoney(t.amount)} added to fund`, { amt: fmtMoney(t.amount) });
   else msg = trf('home_latest_spent_on', `Latest: ৳${fmtMoney(t.amount)} spent on ${categoryLabel}`, { amt: fmtMoney(t.amount), cat: categoryLabel });
   textEl.style.opacity = 0;
@@ -12912,6 +13073,7 @@ function getCategoryFAIcon(label) {
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
   if (c.includes('debt repay') || c.includes('ধার পরিশোধ')) return 'fa-hand-holding-dollar';
+  if (c.includes('money lent') || c.includes('money borrowed') || c.includes('ধার দেওয়া') || c.includes('ধার নেওয়া')) return 'fa-hand-holding-dollar';
   if (c.includes('grocery') || c.includes('মুদি')) return 'fa-cart-shopping';
   if (c.includes('medic') || c.includes('ওষুধ')) return 'fa-briefcase-medical';
   if (c.includes('event') || c.includes('অনুষ্ঠান')) return 'fa-calendar-days';
@@ -13001,7 +13163,7 @@ function renderAnalyticsList() {
 
   // Incoming transfer mirrors are excluded from spend analytics - they're
   // money arriving, not a category of spend.
-  let filtered = appState.transactions.filter(t => t.fund === appState.activeFund && t.type !== 'transfer_in' && t.type !== 'add_money');
+  let filtered = appState.transactions.filter(t => t.fund === appState.activeFund && t.type !== 'transfer_in' && t.type !== 'add_money' && t.type !== 'debt_lent' && t.category !== 'Debt Repayment');
 
   // Scope to whichever month the Transactions screen's Time filter
   // currently points at (see getStatsSpendMonthScope above).
@@ -13481,7 +13643,7 @@ function addMoneyInlineBadge(t) {
 // (debtPaymentNoteText/t.description, e.g. "Paid back to X") instead of
 // the fund name, colored red since the money is leaving that fund.
 function debtRepaymentInlineBadge(t) {
-  if (t.category !== 'Debt Repayment' || !t.fund) return '';
+  if ((t.category !== 'Debt Repayment' && t.category !== 'Debt Lent') || !t.fund) return '';
   const label = debtPaymentNoteText(t) || t.description || fundDisplayName(t.fund);
   const span = `<span style="color:var(--brand-red)" class="whitespace-nowrap">${escapeHtml(label)}</span>`;
   return `<span class="inline-flex items-center gap-0.5 text-[7px] font-bold flex-shrink-0 min-w-0">${span}</span>`;
@@ -13499,7 +13661,7 @@ function generateLogsTxMarkup(t, query) {
   // Debts/Receivables settlement entry (t.fromDebtPayment) isn't editable
   // here at all - same restriction as Fund Details (generateDetailsTxMarkup) -
   // since its amount/description are derived from the debt record itself.
-  const editBtn = (isTransferIn || t.fromDebtPayment)
+  const editBtn = (isTransferIn || t.fromDebtPayment || t.debtEntryId)
     ? `<span class="p-1.5 invisible"><i class="fas fa-pen text-xs"></i></span>`
     : isAddMoney
       ? (isAddMoneyEditable(t)
