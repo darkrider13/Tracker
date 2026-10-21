@@ -9068,10 +9068,10 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   const iconBg = isReceivable ? 'bg-emerald-100 text-[var(--brand-green)]' : 'bg-rose-100 text-[var(--brand-red)]';
   const verb = isReceivable ? tr('debt_lent', 'Lent') : tr('debt_borrowed', 'Borrowed');
   const noteText = d.note ? (noteIsMatch ? highlightMatch(d.note, query, highlightColor) : escapeHtml(d.note)) : '';
+  // Fund name followed by the note in brackets - e.g. "Monthly Cash (note)" -
+  // with no "Added to" / "From" wording, same for Debts and Receivables.
   const detailLine = d.fund
-    ? `${isReceivable
-        ? trf('debt_from_fund', `From ${escapeHtml(d.fund)}`, { fund: escapeHtml(d.fund) })
-        : trf('debt_to_fund', `Added to ${escapeHtml(d.fund)}`, { fund: escapeHtml(d.fund) })}${noteText ? ' ' + trf('debt_for_note', `For ${noteText}`, { note: noteText }) : ''}`
+    ? `${escapeHtml(d.fund)}${noteText ? ' (' + noteText + ')' : ''}`
     : noteText;
   const dueReminderSuffix = (!d.settled && d.dueDate && d.reminderTime) ? ` • <i class="fas fa-bell text-[9px]"></i> ${(() => { const { h12, minute, ampm } = to12Hour(d.reminderTime); const minuteStr = String(minute).padStart(2, '0'); const ampmLabel = ampm === 'PM' ? tr('reminder_pm', 'PM') : tr('reminder_am', 'AM'); return `${localizeDigits(h12)}:${localizeDigits(minuteStr)} ${ampmLabel}`; })()}` : '';
   const dueLine = (!d.settled && d.dueDate) ? `<p class="text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
@@ -9687,6 +9687,9 @@ function openDebtPaymentModal(id) {
     updateAccountButtonIcon('debt-payment', lockFund);
     if (payBtn) { payBtn.style.pointerEvents = 'none'; payBtn.style.opacity = '0.6'; }
     if (payChev) payChev.className = 'fas fa-lock text-[10px] text-gray-400';
+    // The entry already carries the fund chosen when it was created, so
+    // there is nothing left to ask - the fund is used silently.
+    if (entry.fund && entry.fund === lockFund) document.getElementById('debt-payment-fund-section').classList.add('hidden');
     showPopup('popup-debt-payment');
     return;
   }
@@ -9697,6 +9700,10 @@ function openDebtPaymentModal(id) {
     document.getElementById('debt-payment-selected-fund').value = entry.fund;
     document.getElementById('debt-payment-active-fund-label').innerText = fundDisplayName(entry.fund);
     updateAccountButtonIcon('debt-payment', entry.fund);
+    // Fund was already chosen when this debt/receivable was created, so
+    // don't ask "which fund?" again - the toggle stays checked and the
+    // hidden selected-fund value is used as-is when the payment is submitted.
+    document.getElementById('debt-payment-fund-section').classList.add('hidden');
   }
 
   showPopup('popup-debt-payment');
