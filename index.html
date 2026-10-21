@@ -3103,7 +3103,7 @@ const I18N = {
     debt_lent: 'ধার দিয়েছেন',
     debt_borrowed: 'ধার নিয়েছেন',
     debt_note_paid_back_to: '{name}র দেনা পরিশোধ করলাম',
-    debt_note_received_from: '{name}র ধারের টাকা পেলাম',
+    debt_note_received_from: '{name}-এর ধারের টাকা পেলাম',
     debt_from_fund: '{fund} থেকে',
     debt_for_note: '({note}-এর জন্য)',
     debt_due: 'শেষ তারিখ',
@@ -7841,7 +7841,7 @@ function generateTxCardBody(t, actionsHtml, query) {
   // fa-hand-holding-dollar icon - mirrored horizontally for the collected
   // case so the hand visually "receives" from the opposite side instead
   // of "giving", distinguishing the two at a glance.
-  const categoryIconHtml = categoryIconHTML(t.category, 'text-gray-500 text-sm', (t.category === 'Debt Collection') ? 'transform: scaleX(-1)' : '');
+  const categoryIconHtml = categoryIconHTML(t.category, 'text-gray-500 text-sm', (t.category === 'Debt Collection' || t.category === 'Debt Borrowed') ? 'transform: scaleX(-1)' : '');
   const categoryLabel = translatedCategoryLabel(t.category);
   const dateLabel = fmtDate(t.date, { day: '2-digit', month: 'short' });
   const timeLabel = fmtTime(t.date);
@@ -13073,7 +13073,7 @@ function getCategoryFAIcon(label) {
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
   if (c.includes('debt repay') || c.includes('ধার পরিশোধ')) return 'fa-hand-holding-dollar';
-  if (c.includes('money lent') || c.includes('money borrowed') || c.includes('ধার দেওয়া') || c.includes('ধার নেওয়া')) return 'fa-hand-holding-dollar';
+  if (c.includes('debt lent') || c.includes('debt borrowed') || c.includes('money lent') || c.includes('money borrowed') || c.includes('ধার দেওয়া') || c.includes('ধার নেওয়া')) return 'fa-hand-holding-dollar';
   if (c.includes('grocery') || c.includes('মুদি')) return 'fa-cart-shopping';
   if (c.includes('medic') || c.includes('ওষুধ')) return 'fa-briefcase-medical';
   if (c.includes('event') || c.includes('অনুষ্ঠান')) return 'fa-calendar-days';
