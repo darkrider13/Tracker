@@ -729,8 +729,24 @@ html.dark-theme .bg-\[\#f4f4f4\] { background-color: #0b0b0d !important; }
    generates at runtime, this targets the element's own ID directly so
    it always paints an opaque background regardless of theme/load
    timing. */
-#screen-account-details { background-color: #f4f4f4; }
-html.dark-theme #screen-account-details { background-color: #0b0b0d; }
+/* Fund Details uses the SAME background as the Home page (the body::before
+   layer: pure black + soft centre glow in dark, soft gray/red-tint gradient
+   in light) - painted on the overlay itself since it must stay opaque. */
+#screen-account-details {
+  background-color: #f9fafb !important;
+  background-image: radial-gradient(ellipse 130% 55% at 50% 100%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0) 75%), linear-gradient(to bottom, #f9fafb 0%, #f9fafb 30%, rgba(var(--brand-red-rgb),0.12) 100%) !important;
+}
+html.dark-theme #screen-account-details {
+  background-color: #000000 !important;
+  background-image: radial-gradient(ellipse 110% 42% at 50% 50%, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.04) 50%, rgba(255,255,255,0) 100%) !important;
+}
+/* Dark mode: Fund Details boxes use the exact same surface + edge as the Home
+   boxes (Balance / Update / Debts cards) so they stand out from the page
+   (day mode already flips these to light, untouched). */
+html.dark-theme #screen-account-details .daymode-flip-card {
+  background-color: #141414 !important;
+  border: 0.5px solid #232323 !important;
+}
 
 html.dark-theme .bg-white { background-color: #131315 !important; }
 html.dark-theme .bg-white\/40 { background-color: rgba(28,28,31,0.55) !important; }
@@ -7730,8 +7746,8 @@ function renderAccountDetails() {
 
   const sorted = [...visibleTx].sort((a, b) => new Date(b.date) - new Date(a.date));
   listContainer.innerHTML = sorted.map(t => generateDetailsTxMarkup(t)).join('');
-  // 5 cards per view: the 5th (last visible) card is the one that fades.
-  fitListToVisibleCount(listContainer, 5, undefined, true);
+  // 4 cards per view: the 4th (last visible) card is the one that fades.
+  fitListToVisibleCount(listContainer, 4, undefined, true);
 }
 
 // ---------- Fund Details "Transaction History" calendar filter ----------
