@@ -1401,6 +1401,18 @@ button:not(#screen-pin-pad *):focus-visible,
    Debt/Receivable cards (date, due, "of ৳X", reason, paid • % • left). */
 html.dark-theme .debt-sub { color: #d6d7de !important; }
 html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
+@keyframes onboardNameShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-10px); }
+  30% { transform: translateX(9px); }
+  45% { transform: translateX(-7px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(2px); }
+}
+.onboard-name-shake { animation: onboardNameShake 0.5s ease-in-out; }
+#onboard-name-input.onboard-name-error { border-color: #ef4444 !important; }
+#onboard-name-input.onboard-name-error::placeholder { color: #ef4444 !important; }
 </style>
 </head>
 <body class="font-sans antialiased text-gray-900 pb-32">
@@ -2856,7 +2868,7 @@ Yes, Delete
 <div class="bg-gray-200/60 rounded-[28px] p-6 mt-10 space-y-5">
 <h3 class="text-xl font-bold text-gray-900" data-i18n="onboard_your_profile" data-i18n-en="Your Profile">Your Profile</h3>
 
-<div class="flex items-center space-x-3">
+<div id="onboard-name-row" class="flex items-center space-x-3">
 <div class="w-9 h-9 rounded-full bg-gray-300/70 flex items-center justify-center text-gray-500 flex-shrink-0">
 <i class="fas fa-user text-sm"></i>
 </div>
@@ -6397,15 +6409,34 @@ function updateUsername(val) {
 
 /* ---------- Onboarding (first launch) ---------- */
 
+document.addEventListener('input', function (e) {
+  if (e.target && e.target.id === 'onboard-name-input') e.target.classList.remove('onboard-name-error');
+});
+
 function showOnboarding() {
   document.getElementById('onboard-name-input').value = (appState.username && appState.username !== 'User') ? appState.username : '';
   document.getElementById('screen-onboarding').classList.remove('hidden');
 }
 
 async function completeOnboarding() {
-  const name = document.getElementById('onboard-name-input').value.trim();
+  const nameInput = document.getElementById('onboard-name-input');
+  const name = nameInput.value.trim();
 
-  appState.username = name || 'User';
+  // A name is required - without one, shake the name box (red underline)
+  // and stay on this screen instead of entering the app.
+  if (!name) {
+    const row = document.getElementById('onboard-name-row');
+    row.classList.remove('onboard-name-shake');
+    void row.offsetWidth; // restart the animation if it's already shaking
+    row.classList.add('onboard-name-shake');
+    nameInput.classList.add('onboard-name-error');
+    if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+    nameInput.focus();
+    setTimeout(() => row.classList.remove('onboard-name-shake'), 600);
+    return;
+  }
+
+  appState.username = name;
   appState.onboardingComplete = true;
 
   saveState();
