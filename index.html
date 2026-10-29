@@ -7617,7 +7617,7 @@ function setupFundReorder(container) {
     const naturalTop = r.top - curTy;
     const desiredTop = pointerY - grabOffsetY;
     curTy = desiredTop - naturalTop;
-    card.style.transform = 'translateY(' + curTy + 'px) scale(1.02)';
+    card.style.transform = 'translateY(' + curTy + 'px)';
 
     // Find where the dragged card's centre sits among the other cards
     const center = desiredTop + r.height / 2;
@@ -7633,7 +7633,7 @@ function setupFundReorder(container) {
       // layout changed - re-anchor the transform to the new natural slot
       const r2 = card.getBoundingClientRect();
       curTy += desiredTop - r2.top;
-      card.style.transform = 'translateY(' + curTy + 'px) scale(1.02)';
+      card.style.transform = 'translateY(' + curTy + 'px)';
     }
   }
 
@@ -7668,7 +7668,7 @@ function setupFundReorder(container) {
     card.style.transition = 'none';
     card.style.zIndex = '50';
     card.style.position = 'relative';
-    card.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
+    card.style.boxShadow = '0 8px 14px -8px rgba(0,0,0,0.45)';
     card.style.opacity = '0.95';
     if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
     raf = requestAnimationFrame(autoScrollLoop);
