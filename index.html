@@ -1396,6 +1396,11 @@ button:not(#screen-pin-pad *):focus-visible,
   box-shadow: none;
 }
 
+.fund-card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Dark mode: soft, readable light-gray for the small secondary lines on
+   Debt/Receivable cards (date, due, "of ৳X", reason, paid • % • left). */
+html.dark-theme .debt-sub { color: #d6d7de !important; }
+html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 </style>
 </head>
 <body class="font-sans antialiased text-gray-900 pb-32">
@@ -3411,7 +3416,7 @@ const I18N = {
     confirm_delete_transaction_locked: 'এই এন্ট্রিটি মুছে ফেলবেন? এটি ১ দিনের বেশি পুরনো হওয়ায় পরিমাণটি ফান্ডে ফেরত যোগ হবে না - এটি খরচ হিসেবেই গণ্য থাকবে।',
     alert_type_account_name: 'দয়া করে একটি ফান্ডের নাম লিখুন!',
     alert_fund_name_needs_letter: 'ফান্ডের নামে শুধু সংখ্যা রাখা যাবে না, অন্তত একটি অক্ষর থাকতে হবে।',
-    alert_fund_starting_balance_required: 'দয়া করে ০-এর বেশি একটি শুরুর ব্যালেন্স লিখুন!',
+    alert_fund_starting_balance_required: 'দয়া করে একটি সঠিক শুরুর ব্যালেন্স লিখুন!',
     alert_fund_name_exists: 'এই নামে ইতিমধ্যে একটি ফান্ড আছে। অন্য একটি নাম লিখুন।',
     alert_enter_person_name: 'দয়া করে ব্যক্তির নাম লিখুন!',
     alert_valid_amount: 'দয়া করে সঠিক পরিমাণ লিখুন!',
@@ -7472,6 +7477,7 @@ const FUNDS_VISIBLE_COUNT = 4;
 function renderFundsList() {
   const container = document.getElementById('funds-list-container');
   const fundNames = Object.keys(appState.funds);
+  setupFundReorder(container);
 
   container.innerHTML = fundNames.map(fund => {
     const isActive = appState.activeFund === fund;
@@ -7494,7 +7500,7 @@ function renderFundsList() {
           <path d="M7 16H11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>`
       : '';
-    return `<div class="w-full flex items-center rounded-2xl overflow-hidden shadow-sm border transition flex-shrink-0 ${isActive ? 'border-2' : 'bg-white border-gray-200'}" style="${isActive ? `border-color:${meta.color}; background:${meta.color}0D;` : ''}">
+    return `<div data-fund-idx="${fundNames.indexOf(fund)}" class="fund-card w-full flex items-center rounded-2xl overflow-hidden shadow-sm border transition flex-shrink-0 ${isActive ? 'border-2' : 'bg-white border-gray-200'}" style="${isActive ? `border-color:${meta.color}; background:${meta.color}0D;` : ''}">
       <button onclick="shiftActiveAssetDirectly('${fund}')" class="flex-1 flex items-center space-x-3 px-3 py-2.5 text-left transition min-w-0">
         <span class="w-10 h-10 rounded-full flex items-center justify-center text-sm flex-shrink-0" style="background:${meta.color}22; color:${meta.color}">
           ${fundIconHTML(meta)}
@@ -7557,6 +7563,163 @@ function renderFundsList() {
     // above the next time it's actually expanded.
     container.scrollTop = 0;
   }
+}
+
+/* ---------- Long-press & drag to reorder funds ----------
+   Press and hold a fund card (~0.4s), then drag up/down to move it.
+   On release the new order is saved into appState.funds (object key
+   order), so every fund list/dropdown in the app follows it. */
+function setupFundReorder(container) {
+  if (!container || container._reorderBound) return;
+  container._reorderBound = true;
+
+  const HOLD_MS = 400, MOVE_TOL = 10;
+  let timer = null, card = null, dragging = false;
+  let startX = 0, startY = 0, grabOffsetY = 0, pointerY = 0, pointerId = null;
+  let curTy = 0, raf = null, saved = {};
+
+  const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
+
+  function applyDragTransform() {
+    if (!dragging || !card) return;
+    const r = card.getBoundingClientRect();
+    const naturalTop = r.top - curTy;
+    const desiredTop = pointerY - grabOffsetY;
+    curTy = desiredTop - naturalTop;
+    card.style.transform = 'translateY(' + curTy + 'px) scale(1.02)';
+
+    // Find where the dragged card's centre sits among the other cards
+    const center = desiredTop + r.height / 2;
+    const siblings = Array.from(container.children).filter(c => c !== card);
+    let before = null;
+    for (const sib of siblings) {
+      const sr = sib.getBoundingClientRect();
+      if (center < sr.top + sr.height / 2) { before = sib; break; }
+    }
+    const currentNext = card.nextElementSibling;
+    if (before !== currentNext) {
+      container.insertBefore(card, before);
+      // layout changed - re-anchor the transform to the new natural slot
+      const r2 = card.getBoundingClientRect();
+      curTy += desiredTop - r2.top;
+      card.style.transform = 'translateY(' + curTy + 'px) scale(1.02)';
+    }
+  }
+
+  function autoScrollLoop() {
+    if (!dragging) return;
+    const cr = container.getBoundingClientRect();
+    const edge = 36;
+    let d = 0;
+    if (pointerY < cr.top + edge) d = -8;
+    else if (pointerY > cr.bottom - edge) d = 8;
+    if (d !== 0 && container.scrollHeight > container.clientHeight) {
+      container.scrollTop += d;
+      applyDragTransform();
+    }
+    raf = requestAnimationFrame(autoScrollLoop);
+  }
+
+  function startDrag() {
+    timer = null;
+    if (!card) return;
+    dragging = true;
+    const r = card.getBoundingClientRect();
+    grabOffsetY = pointerY - r.top;
+    curTy = 0;
+    saved = {
+      snap: container.style.scrollSnapType,
+      beh: container.style.scrollBehavior,
+      cardTransition: card.style.transition
+    };
+    container.style.scrollSnapType = 'none';
+    container.style.scrollBehavior = 'auto';
+    card.style.transition = 'none';
+    card.style.zIndex = '50';
+    card.style.position = 'relative';
+    card.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
+    card.style.opacity = '0.95';
+    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+    raf = requestAnimationFrame(autoScrollLoop);
+  }
+
+  function endDrag(commit) {
+    clearTimer();
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    document.removeEventListener('pointermove', onMove, true);
+    document.removeEventListener('pointerup', onUp, true);
+    document.removeEventListener('pointercancel', onCancel, true);
+    if (!dragging) { card = null; return; }
+    dragging = false;
+    const el = card;
+    card = null;
+    el.style.transform = '';
+    el.style.transition = saved.cardTransition || '';
+    el.style.zIndex = '';
+    el.style.position = '';
+    el.style.boxShadow = '';
+    el.style.opacity = '';
+    container.style.scrollSnapType = saved.snap || '';
+    container.style.scrollBehavior = saved.beh || 'smooth';
+    container._justDragged = true;
+    setTimeout(() => { container._justDragged = false; }, 400);
+
+    if (commit) {
+      const oldNames = Object.keys(appState.funds);
+      const newNames = Array.from(container.children)
+        .map(c => oldNames[parseInt(c.getAttribute('data-fund-idx'), 10)])
+        .filter(n => n !== undefined);
+      if (newNames.length === oldNames.length && newNames.some((n, i) => n !== oldNames[i])) {
+        // Re-insert every key in the new order (keeps the same object reference)
+        newNames.forEach(n => { const v = appState.funds[n]; delete appState.funds[n]; appState.funds[n] = v; });
+        saveState();
+      }
+    }
+    renderFundsList();
+  }
+
+  function onMove(e) {
+    if (e.pointerId !== pointerId) return;
+    pointerY = e.clientY;
+    if (!dragging) {
+      if (Math.abs(e.clientX - startX) > MOVE_TOL || Math.abs(e.clientY - startY) > MOVE_TOL) {
+        // user is scrolling the list, not long-pressing
+        clearTimer();
+        document.removeEventListener('pointermove', onMove, true);
+        document.removeEventListener('pointerup', onUp, true);
+        document.removeEventListener('pointercancel', onCancel, true);
+        card = null;
+      }
+      return;
+    }
+    e.preventDefault();
+    applyDragTransform();
+  }
+  function onUp(e) { if (e.pointerId === pointerId) endDrag(true); }
+  function onCancel(e) { if (e.pointerId === pointerId) endDrag(false); }
+
+  container.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const c = e.target.closest && e.target.closest('.fund-card');
+    if (!c || !container.contains(c)) return;
+    card = c;
+    pointerId = e.pointerId;
+    startX = e.clientX; startY = e.clientY; pointerY = e.clientY;
+    clearTimer();
+    timer = setTimeout(startDrag, HOLD_MS);
+    document.addEventListener('pointermove', onMove, true);
+    document.addEventListener('pointerup', onUp, true);
+    document.addEventListener('pointercancel', onCancel, true);
+  });
+
+  // While dragging, stop the page/list from scrolling under the finger
+  container.addEventListener('touchmove', e => { if (dragging) e.preventDefault(); }, { passive: false });
+  // Block long-press text-selection / context menu on the cards
+  container.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.fund-card')) e.preventDefault(); });
+  // Swallow the click that fires right after a drag ends
+  container.addEventListener('click', e => {
+    if (container._justDragged) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
 }
 
 function shiftActiveAssetDirectly(fundName) {
@@ -8283,14 +8446,14 @@ function addNewFund() {
     return;
   }
 
-  // The Starting Balance field must actually have a number greater than
-  // 0 typed in at creation time (e.g. 0.1+) - it can drop to ৳0 later
-  // through normal use, but it can't be left blank or 0 up front.
-  if (isNaN(rawAmount) || rawAmount <= 0) {
-    customAlert(tr('alert_fund_starting_balance_required', "Please enter a Starting Balance greater than 0!"));
+  // Starting Balance can be 0 (or left blank, which counts as 0) - a fund
+  // can be created empty and topped up later. Only negative / invalid
+  // numbers are rejected.
+  const amount = isNaN(rawAmount) ? 0 : rawAmount;
+  if (amount < 0) {
+    customAlert(tr('alert_fund_starting_balance_required', "Please enter a valid Starting Balance!"));
     return;
   }
-  const amount = rawAmount;
 
   if (appState.funds[name] !== undefined) {
     appState.funds[name] += amount;
@@ -9074,7 +9237,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
     ? `${escapeHtml(d.fund)}${noteText ? ' (' + noteText + ')' : ''}`
     : noteText;
   const dueReminderSuffix = (!d.settled && d.dueDate && d.reminderTime) ? ` • <i class="fas fa-bell text-[9px]"></i> ${(() => { const { h12, minute, ampm } = to12Hour(d.reminderTime); const minuteStr = String(minute).padStart(2, '0'); const ampmLabel = ampm === 'PM' ? tr('reminder_pm', 'PM') : tr('reminder_am', 'AM'); return `${localizeDigits(h12)}:${localizeDigits(minuteStr)} ${ampmLabel}`; })()}` : '';
-  const dueLine = (!d.settled && d.dueDate) ? `<p class="text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
+  const dueLine = (!d.settled && d.dueDate) ? `<p class="debt-sub text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
   const settledBadge = d.settled ? `<span class="text-[9px] font-bold text-white bg-green-500 px-2 py-0.5 rounded-full">${tr('debt_settled', 'Settled')}</span>` : '';
 
   // The reason/note used to sit in its own row right under the header,
@@ -9101,7 +9264,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
       <div class="w-full h-1.5 bg-gray-300/50 rounded-full overflow-hidden">
         <div class="h-full" style="width:${pct}%; background-color:${debtProgressColor(pct)}"></div>
       </div>
-      <div class="flex justify-between items-center gap-2 mt-1 text-[8px] text-gray-400 font-bold">
+      <div class="debt-sub-strong flex justify-between items-center gap-2 mt-1 text-[8px] text-gray-400 font-bold">
         ${reasonSpan}
         <span class="flex-shrink-0 whitespace-nowrap">${statsText}</span>
       </div>
@@ -9120,8 +9283,8 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   const paddingCls = d.settled ? 'p-5 pb-6 space-y-2.5' : 'p-4 pb-4 space-y-1.5';
   const buttonRowCls = d.settled ? 'flex justify-between items-center pt-2 mt-auto' : 'flex justify-between items-center pt-1 mt-auto';
   const detailLineCls = d.settled
-    ? 'text-xs text-gray-500 font-medium border-t debt-card-divider pt-2'
-    : 'text-xs text-gray-500 font-medium border-t debt-card-divider pt-1 truncate';
+    ? 'debt-sub-strong text-xs text-gray-500 font-medium border-t debt-card-divider pt-2'
+    : 'debt-sub-strong text-xs text-gray-500 font-medium border-t debt-card-divider pt-1 truncate';
   // Debts/Receivables amounts are always shown in their tab's own color
   // (red for what you owe, green for what's owed to you - see
   // highlightColor, passed in per-tab by the caller) rather than the
@@ -9141,13 +9304,13 @@ function generateDebtCardMarkup(d, query, highlightColor) {
           <p class="text-sm font-bold text-gray-900 flex items-center gap-1">
             <span class="truncate">${personIsMatch ? highlightMatch(d.person, query, highlightColor) : escapeHtml(d.person)}</span>
           </p>
-          <p class="text-[8px] text-gray-400 font-medium flex items-center gap-1.5">${verb}: ${dateLabel}${!d.settled ? `<span class="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style="background:${isReceivable ? 'var(--brand-green)' : 'var(--brand-red)'}"></span>` : ''}</p>
+          <p class="debt-sub text-[8px] text-gray-400 font-medium flex items-center gap-1.5">${verb}: ${dateLabel}${!d.settled ? `<span class="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style="background:${isReceivable ? 'var(--brand-green)' : 'var(--brand-red)'}"></span>` : ''}</p>
           ${dueLine}
         </div>
       </div>
       <div class="text-right flex-shrink min-w-0 max-w-[42%] pl-2">
         <p class="text-base font-black truncate" style="color:${highlightColor}">৳${amountHtml}</p>
-        ${!d.settled && hasPayments ? `<p class="text-[8px] text-gray-400 font-bold truncate">${trf('debt_of_amount', `of <span class="money-amt">৳${fmtMoney(d.amount)}</span>`, { amt: `<span class="money-amt">৳${fmtMoney(d.amount)}</span>` })}</p>` : ''}
+        ${!d.settled && hasPayments ? `<p class="debt-sub text-[8px] text-gray-400 font-bold truncate">${trf('debt_of_amount', `of <span class="money-amt">৳${fmtMoney(d.amount)}</span>`, { amt: `<span class="money-amt">৳${fmtMoney(d.amount)}</span>` })}</p>` : ''}
         ${settledBadge}
       </div>
     </div>
