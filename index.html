@@ -9265,7 +9265,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   // Fund name followed by the note in brackets - e.g. "Monthly Cash (note)" -
   // with no "Added to" / "From" wording, same for Debts and Receivables.
   const detailLine = d.fund
-    ? `${escapeHtml(d.fund)}${noteText ? ' (' + noteText + ')' : ''}`
+    ? `${escapeHtml(fundDisplayName(d.fund))}${noteText ? ' (' + noteText + ')' : ''}`
     : noteText;
   const dueReminderSuffix = (!d.settled && d.dueDate && d.reminderTime) ? ` • <i class="fas fa-bell text-[9px]"></i> ${(() => { const { h12, minute, ampm } = to12Hour(d.reminderTime); const minuteStr = String(minute).padStart(2, '0'); const ampmLabel = ampm === 'PM' ? tr('reminder_pm', 'PM') : tr('reminder_am', 'AM'); return `${localizeDigits(h12)}:${localizeDigits(minuteStr)} ${ampmLabel}`; })()}` : '';
   const dueLine = (!d.settled && d.dueDate) ? `<p class="debt-sub text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
