@@ -3893,6 +3893,41 @@ function debtPaymentNoteText(t) {
   return null;
 }
 
+// When a Debt/Receivable is an own-fund deal (one fund lends to another),
+// the "other side" in the history note is a FUND, not a person. Returns that
+// other fund's name (looked up live from the debt record so it survives
+// renames), or null for a normal person-to-person entry / older data.
+function debtNoteOtherFund(t) {
+  if (!t || !t.fromDebtPayment) return null;
+  const entryId = t.debtEntryId || t.debtPaymentEntryId;
+  if (!entryId) return null;
+  const entry = (appState.debts || []).find(d => d.id === entryId);
+  if (!entry || !entry.counterFund || !entry.fund) return null;
+  const other = (t.fund === entry.fund) ? entry.counterFund : entry.fund;
+  return (appState.funds && appState.funds[other] !== undefined) ? other : null;
+}
+
+// Same note text as debtPaymentNoteText, but the fund's name is shown as a
+// small fund-styled chip (the fund's own icon + color) so it reads as "this
+// is a fund" and not a person. The rest of the sentence keeps lineColor.
+function debtFundNoteBadgeHtml(t, lineColor) {
+  const other = debtNoteOtherFund(t);
+  if (!other || !t.debtNoteKind) return '';
+  const key = { lent_to: 'debt_note_lent_to', borrowed_from: 'debt_note_borrowed_from',
+                received_from: 'debt_note_received_from', paid_back_to: 'debt_note_paid_back_to' }[t.debtNoteKind];
+  if (!key) return '';
+  const fallback = { lent_to: 'Lent to {name}', borrowed_from: 'Borrowed from {name}',
+                     received_from: 'Received from {name}', paid_back_to: 'Paid back to {name}' }[t.debtNoteKind];
+  const parts = tr(key, fallback).split('{name}');
+  if (parts.length !== 2) return '';
+  const meta = ensureFundMeta(other);
+  const chip = `<span class="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-1 py-px" style="color:${meta.color};background:${meta.color}26">` +
+    `${fundIconHTML(meta, '')}<span>${escapeHtml(fundDisplayName(other))}</span></span>`;
+  const before = parts[0] ? `<span class="whitespace-nowrap">${escapeHtml(parts[0])}</span>` : '';
+  const after = parts[1] ? `<span class="whitespace-nowrap">${escapeHtml(parts[1])}</span>` : '';
+  return `<span class="inline-flex items-center gap-0.5 text-[7px] font-bold flex-shrink-0 min-w-0" style="color:${lineColor}">${before}${chip}${after}</span>`;
+}
+
 // Updates every element with a data-i18n attribute to the current language,
 // and toggles the Bangla font class on <html>. Safe to call anytime - never
 // throws even if some elements aren't in the DOM yet.
@@ -7988,15 +8023,23 @@ function renderAccountDetails() {
   // Borrowed money still unpaid that sits inside this fund's balance
   // (debts created/repaid with this fund) - shown in red brackets next
   // to the balance.
+  // Own-fund deals have two sides: the entry's main fund (d.fund) and the
+  // other fund (d.counterFund) which plays the opposite role. E.g. Meal
+  // borrows from Savings -> Meal is the debt side (red), Savings is the
+  // receivable side (green) - so count BOTH sides here.
   const borrowedInFund = (appState.debts || [])
-    .filter(d => d.type === 'debt' && !d.settled && d.fund === currentDetailsFund)
+    .filter(d => !d.settled && (
+      (d.type === 'debt' && d.fund === currentDetailsFund) ||
+      (d.type === 'receivable' && d.counterFund === currentDetailsFund)))
     .reduce((sum, d) => sum + getDebtRemaining(d), 0);
   const detailsBalanceEl = document.getElementById('details-fund-balance');
   detailsBalanceEl.innerText = `৳${fmtMoney(appState.funds[currentDetailsFund])}`;
   // Money lent out from this fund that is still to be received back
   // (receivables) - shown in green brackets.
   const toReceiveFromFund = (appState.debts || [])
-    .filter(d => d.type === 'receivable' && !d.settled && d.fund === currentDetailsFund)
+    .filter(d => !d.settled && (
+      (d.type === 'receivable' && d.fund === currentDetailsFund) ||
+      (d.type === 'debt' && d.counterFund === currentDetailsFund)))
     .reduce((sum, d) => sum + getDebtRemaining(d), 0);
   // One single line after the balance (no brackets, no text labels):
   // [red up-arrow icon] debt total | [green down-arrow icon] receivable total
@@ -9418,8 +9461,10 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   const noteText = d.note ? (noteIsMatch ? highlightMatch(d.note, query, highlightColor) : escapeHtml(d.note)) : '';
   // Fund name followed by the note in brackets - e.g. "Monthly Cash (note)" -
   // with no "Added to" / "From" wording, same for Debts and Receivables.
+  // If the note itself already contains brackets, join with " - " instead so
+  // it never reads as a confusing double bracket "Fund (note (inner))".
   const detailLine = d.fund
-    ? `${escapeHtml(fundDisplayName(d.fund))}${noteText ? ' (' + noteText + ')' : ''}`
+    ? `${escapeHtml(fundDisplayName(d.fund))}${noteText ? (/[()（）]/.test(d.note || '') ? ' - ' + noteText : ' (' + noteText + ')') : ''}`
     : noteText;
   const dueReminderSuffix = (!d.settled && d.dueDate && d.reminderTime) ? ` • <i class="fas fa-bell text-[9px]"></i> ${(() => { const { h12, minute, ampm } = to12Hour(d.reminderTime); const minuteStr = String(minute).padStart(2, '0'); const ampmLabel = ampm === 'PM' ? tr('reminder_pm', 'PM') : tr('reminder_am', 'AM'); return `${localizeDigits(h12)}:${localizeDigits(minuteStr)} ${ampmLabel}`; })()}` : '';
   const dueLine = (!d.settled && d.dueDate) ? `<p class="debt-sub text-[8px] text-gray-400 font-medium">${tr('debt_due', 'Due')}: ${fmtDate(d.dueDate, { month: 'short', day: '2-digit', year: 'numeric' })}${dueReminderSuffix}</p>` : '';
@@ -14287,6 +14332,8 @@ function addMoneyInlineBadge(t) {
   // e.g. "Received from X") is more useful than which fund it landed in.
   // A genuine "Add Money" entry (not fromDebtPayment) still shows the
   // fund it was added to.
+  const fundNoteBadge = t.fromDebtPayment ? debtFundNoteBadgeHtml(t, 'var(--brand-green)') : '';
+  if (fundNoteBadge) return fundNoteBadge;
   const label = t.fromDebtPayment ? (debtPaymentNoteText(t) || t.description || fundDisplayName(t.fund)) : fundDisplayName(t.fund);
   const span = `<span style="color:var(--brand-green)" class="whitespace-nowrap">${escapeHtml(label)}</span>`;
   return `<span class="inline-flex items-center gap-0.5 text-[7px] font-bold flex-shrink-0 min-w-0">${span}</span>`;
@@ -14299,6 +14346,8 @@ function addMoneyInlineBadge(t) {
 // the fund name, colored red since the money is leaving that fund.
 function debtRepaymentInlineBadge(t) {
   if ((t.category !== 'Debt Repayment' && t.category !== 'Debt Lent') || !t.fund) return '';
+  const fundNoteBadge = debtFundNoteBadgeHtml(t, 'var(--brand-red)');
+  if (fundNoteBadge) return fundNoteBadge;
   const label = debtPaymentNoteText(t) || t.description || fundDisplayName(t.fund);
   const span = `<span style="color:var(--brand-red)" class="whitespace-nowrap">${escapeHtml(label)}</span>`;
   return `<span class="inline-flex items-center gap-0.5 text-[7px] font-bold flex-shrink-0 min-w-0">${span}</span>`;
