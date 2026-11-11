@@ -2224,6 +2224,28 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 <div id="debt-add-account-dropdown" class="fixed left-6 right-6 top-1/2 -translate-y-1/2 bg-gray-100 rounded-lg p-2 shadow-2xl z-20 hidden"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-1" data-i18n="modal_select_fund" data-i18n-en="Select Fund">Select Fund</p><div id="debt-add-account-dropdown-list" class="space-y-2 overflow-y-auto no-scrollbar"></div></div>
 </div>
 <input type="hidden" id="debt-add-selected-fund">
+
+<!-- Own-fund borrowing/lending: the other side of the deal is ANOTHER fund of
+     mine (not a person). Money moves between the two funds AND a repayable
+     debt/receivable entry is kept so the history is never lost. -->
+<div id="debt-own-section" class="space-y-2 hidden pt-1">
+<label class="flex items-center justify-between gap-2 py-0.5 cursor-pointer select-none">
+<span class="text-xs font-bold text-gray-600" id="debt-own-toggle-label">Borrow from another of my funds?</span>
+<input type="checkbox" id="debt-own-toggle" onchange="toggleDebtOwnPicker()" class="w-4 h-4 accent-[var(--brand-red)] flex-shrink-0">
+</label>
+<div id="debt-own-picker" class="relative hidden">
+<p id="debt-own-caption" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1"></p>
+<button type="button" id="debt-own-fund-btn" onclick="toggleAccountDropdown('debt-own')" class="w-full bg-white/80 p-3 rounded-xl flex justify-between items-center text-xs font-bold text-gray-800 border border-gray-200">
+<span class="flex items-center space-x-2 min-w-0">
+<span id="debt-own-active-fund-icon" class="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"><i class="fas text-[9px] text-white"></i></span>
+<span id="debt-own-active-fund-label" class="truncate">Fund</span>
+</span>
+<i id="debt-own-account-chevron" class="fas fa-chevron-down text-[10px] text-gray-400 transition-transform"></i>
+</button>
+<div id="debt-own-account-dropdown" class="fixed left-6 right-6 top-1/2 -translate-y-1/2 bg-gray-100 rounded-lg p-2 shadow-2xl z-20 hidden"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-1" data-i18n="modal_select_fund" data-i18n-en="Select Fund">Select Fund</p><div id="debt-own-account-dropdown-list" class="space-y-2 overflow-y-auto no-scrollbar"></div></div>
+</div>
+<input type="hidden" id="debt-own-selected-fund">
+</div>
 </div>
 <div class="flex space-x-2 pt-2">
 <button onclick="closeAddDebtModal()" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition" data-i18n="common_cancel" data-i18n-en="Cancel">Cancel</button>
@@ -3349,6 +3371,13 @@ const I18N = {
     debt_delete_from_debts_alert: 'এই এন্ট্রি দেনা/পাওনা থেকে মুছুন।',
     debt_add_fund_toggle_receivable: 'এই টাকা কোনো ফান্ড থেকে ধার দেবেন?',
     debt_add_fund_toggle_debt: 'ধার নেওয়া টাকা কোনো ফান্ডে যোগ করবেন?',
+    debt_own_toggle_debt: 'নিজের আরেকটা ফান্ড থেকে ধার নিচ্ছেন?',
+    debt_own_toggle_receivable: 'নিজের আরেকটা ফান্ডকে ধার দিচ্ছেন?',
+    debt_own_pick_debt: 'কোন ফান্ড থেকে টাকা কাটা হবে',
+    debt_own_pick_receivable: 'কোন ফান্ডে টাকা যোগ হবে',
+    alert_own_fund_insufficient: '"{fund}" ফান্ডে মাত্র ৳{bal} আছে, তাই ৳{amt} দেওয়া যাবে না!',
+    alert_own_fund_same: 'দুটো ফান্ড আলাদা হতে হবে!',
+    alert_own_fund_pick: 'কোন ফান্ডের সাথে লেনদেন হচ্ছে সেটা বেছে নিন!',
     common_confirm: 'নিশ্চিত করুন',
     debt_remaining_amt: 'বাকি: ৳{amt}',
 
@@ -8261,6 +8290,24 @@ async function deleteTransaction(txId) {
     if (payEntry) {
       const okPay = await customConfirm(tr('confirm_delete_debt_payment', "Delete this payment? The debt/receivable balance will go back as it was before this payment."), { icon: 'fa-trash-alt' });
       if (!okPay) return;
+      const internalRec = (payEntry.payments || []).find(pm => pm.internal && (pm.txId === tx.id || (pm.txIds || []).includes(tx.id)));
+      if (internalRec) {
+        const toF = internalRec.toFund, fromF = internalRec.fromFund;
+        if (appState.funds[toF] !== undefined && appState.funds[toF] < internalRec.amount - 0.005) {
+          customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
+          return;
+        }
+        if (appState.funds[toF] !== undefined) appState.funds[toF] -= internalRec.amount;
+        if (appState.funds[fromF] !== undefined) appState.funds[fromF] += internalRec.amount;
+        payEntry.payments = payEntry.payments.filter(pm => pm !== internalRec);
+        if (getDebtRemaining(payEntry) > 0.005) { payEntry.settled = false; payEntry.settledDate = null; }
+        const gone = internalRec.txIds || [tx.id];
+        appState.transactions = appState.transactions.filter(t => !gone.includes(t.id));
+        saveState();
+        initApp();
+        if (currentDetailsFund) renderAccountDetails();
+        return;
+      }
       const isCollected = payEntry.type === 'receivable';
       if (isCollected && appState.funds[tx.fund] !== undefined && appState.funds[tx.fund] < tx.amount) {
         customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
@@ -9512,9 +9559,17 @@ function openAddDebtModal(presetType) {
   updateDebtReminderTimeDisplay();
   document.getElementById('debt-modal-delete-btn').classList.add('hidden');
 
+  const debtPersonInputAdd = document.getElementById('debt-person-input');
+  debtPersonInputAdd.readOnly = false;
+  debtPersonInputAdd.classList.remove('opacity-50');
+  debtPersonInputAdd.dataset.autoFilled = '';
+  document.getElementById('debt-own-toggle').checked = false;
+  document.getElementById('debt-own-selected-fund').value = '';
+
   setDebtModalType(presetType || 'debt');
   document.getElementById('debt-modal-title').textContent = (presetType === 'receivable') ? tr('debt_add_receivable_title', 'Add Receivable') : tr('debt_add_debt_title', 'Add Debt');
   setupDebtAddFundSection(null);
+  refreshDebtOwnSection();
   showPopup('popup-add-debt');
 }
 
@@ -9593,14 +9648,84 @@ function setupDebtAddFundSection(entry) {
 function toggleDebtAddFundPicker() {
   const checked = document.getElementById('debt-add-fund-toggle').checked;
   document.getElementById('debt-add-fund-picker').classList.toggle('hidden', !checked);
-  if (!checked) { document.getElementById('debt-add-selected-fund').value = ''; return; }
-  if (document.getElementById('debt-add-selected-fund').value) return;
+  if (!checked) { document.getElementById('debt-add-selected-fund').value = ''; refreshDebtOwnSection(); return; }
+  if (document.getElementById('debt-add-selected-fund').value) { refreshDebtOwnSection(); return; }
   const fundNames = Object.keys(appState.funds || {});
   const defaultFund = (appState.activeFund && appState.funds[appState.activeFund] !== undefined) ? appState.activeFund : fundNames[0];
   if (!defaultFund) return;
   document.getElementById('debt-add-selected-fund').value = defaultFund;
   document.getElementById('debt-add-active-fund-label').innerText = fundDisplayName(defaultFund);
   updateAccountButtonIcon('debt-add', defaultFund);
+  refreshDebtOwnSection();
+}
+
+/* ---------- Own-fund borrow / lend ----------
+   Debt  : money comes from ANOTHER of my funds (that fund goes down), into
+           the fund chosen above (goes up). The other fund is the "person".
+   Receivable: money goes out of the fund chosen above, INTO another of my
+           funds. Either way a repayable entry is kept (entry.counterFund),
+           so "who owes whom" is never forgotten. */
+function setDebtOwnPerson(show) {
+  const input = document.getElementById('debt-person-input');
+  const own = document.getElementById('debt-own-selected-fund').value;
+  if (show && own) {
+    input.value = fundDisplayName(own);
+    input.readOnly = true;
+    input.classList.add('opacity-50');
+    input.dataset.autoFilled = '1';
+  } else if (input.dataset.autoFilled === '1') {
+    input.value = '';
+    input.readOnly = false;
+    input.classList.remove('opacity-50');
+    input.dataset.autoFilled = '';
+  }
+}
+function refreshDebtOwnSection() {
+  const sec = document.getElementById('debt-own-section');
+  if (!sec) return;
+  const toggle = document.getElementById('debt-own-toggle');
+  const picker = document.getElementById('debt-own-picker');
+  const ownInput = document.getElementById('debt-own-selected-fund');
+  const type = document.getElementById('debt-modal-type').value;
+  const editId = document.getElementById('debt-edit-id').value;
+  const mainFund = document.getElementById('debt-add-selected-fund').value;
+  const mainOn = document.getElementById('debt-add-fund-toggle').checked && mainFund;
+  const fundNames = Object.keys(appState.funds || {});
+  const show = !editId && !!mainOn && fundNames.length >= 2;
+  sec.classList.toggle('hidden', !show);
+  document.getElementById('debt-own-toggle-label').innerText = (type === 'receivable')
+    ? tr('debt_own_toggle_receivable', 'Lend to another of my funds?')
+    : tr('debt_own_toggle_debt', 'Borrow from another of my funds?');
+  document.getElementById('debt-own-caption').innerText = (type === 'receivable')
+    ? tr('debt_own_pick_receivable', 'Which fund receives the money')
+    : tr('debt_own_pick_debt', 'Which fund the money is taken from');
+  if (!show) {
+    toggle.checked = false;
+    picker.classList.add('hidden');
+    ownInput.value = '';
+    setDebtOwnPerson(false);
+    return;
+  }
+  // The same fund can't be on both sides.
+  if (ownInput.value === mainFund) ownInput.value = '';
+  if (toggle.checked) {
+    if (!ownInput.value) {
+      const def = fundNames.find(f => f !== mainFund);
+      ownInput.value = def;
+      document.getElementById('debt-own-active-fund-label').innerText = fundDisplayName(def);
+      updateAccountButtonIcon('debt-own', def);
+    }
+    picker.classList.remove('hidden');
+    setDebtOwnPerson(true);
+  } else {
+    picker.classList.add('hidden');
+  }
+}
+function toggleDebtOwnPicker() {
+  const toggle = document.getElementById('debt-own-toggle');
+  if (!toggle.checked) document.getElementById('debt-own-selected-fund').value = '';
+  refreshDebtOwnSection();
+  if (!toggle.checked) setDebtOwnPerson(false);
 }
 
 /* Opens the same Add Debt/Receivable modal pre-filled with an existing
@@ -9628,6 +9753,10 @@ function editDebtEntry(id) {
   if (debtAmountLocked) {
     debtLockHint.querySelector('span').innerText = tr('debt_amount_locked_hint', "You can't change this because the history is more than 7 days old.");
   }
+  const debtPersonInputEdit = document.getElementById('debt-person-input');
+  debtPersonInputEdit.dataset.autoFilled = '';
+  debtPersonInputEdit.readOnly = !!entry.counterFund;
+  debtPersonInputEdit.classList.toggle('opacity-50', !!entry.counterFund);
   document.getElementById('debt-note-input').value = entry.note || '';
   document.getElementById('debt-duedate-input').value = entry.dueDate || '';
   document.getElementById('debt-reminder-time-input').value = entry.reminderTime || '10:00';
@@ -9638,6 +9767,7 @@ function editDebtEntry(id) {
   setDebtModalType(entry.type);
   document.getElementById('debt-modal-title').textContent = (entry.type === 'receivable') ? tr('debt_edit_receivable_title', 'Edit Receivable') : tr('debt_edit_debt_title', 'Edit Debt');
   setupDebtAddFundSection(entry);
+  refreshDebtOwnSection();
   showPopup('popup-add-debt');
 }
 
@@ -9694,16 +9824,33 @@ function saveDebtEntry() {
   // New entry only: optional fund. Lend (receivable) -> fund balance goes
   // down; borrow (debt) -> goes up. Validated before saving anything.
   let newEntryFund = null;
+  let newEntryCounter = null;
   if (!editId) {
     const fundOn = document.getElementById('debt-add-fund-toggle').checked;
     const pickedFund = document.getElementById('debt-add-selected-fund').value;
     if (fundOn && pickedFund && appState.funds[pickedFund] !== undefined) {
-      if (type === 'receivable' && appState.funds[pickedFund] < amount) {
+      const ownSecVisible = !document.getElementById('debt-own-section').classList.contains('hidden');
+      const ownOn = ownSecVisible && document.getElementById('debt-own-toggle').checked;
+      const ownFund = document.getElementById('debt-own-selected-fund').value;
+      if (ownOn) {
+        if (!ownFund || appState.funds[ownFund] === undefined) { customAlert(tr('alert_own_fund_pick', 'Please pick which fund this is with!')); return; }
+        if (ownFund === pickedFund) { customAlert(tr('alert_own_fund_same', 'The two funds must be different!')); return; }
+        // Whichever fund the money leaves must have enough balance.
+        const payerFund = (type === 'receivable') ? pickedFund : ownFund;
+        if (appState.funds[payerFund] < amount - 0.005) {
+          customAlert(trf('alert_own_fund_insufficient', `"${fundDisplayName(payerFund)}" only has ৳${fmtMoney(appState.funds[payerFund])}, so ৳${fmtMoney(amount)} can't be given!`, { fund: fundDisplayName(payerFund), bal: fmtMoney(appState.funds[payerFund]), amt: fmtMoney(amount) }));
+          return;
+        }
+      } else if (type === 'receivable' && appState.funds[pickedFund] < amount) {
         customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
         return;
       }
       newEntryFund = pickedFund;
       appState.funds[pickedFund] += (type === 'receivable') ? -amount : amount;
+      if (ownOn) {
+        newEntryCounter = ownFund;
+        appState.funds[ownFund] += (type === 'receivable') ? amount : -amount;
+      }
     }
   }
 
@@ -9737,16 +9884,18 @@ function saveDebtEntry() {
     if (entry.fund && appState.funds[entry.fund] !== undefined && finalAmount !== entry.amount) {
       const diff = finalAmount - entry.amount;
       const delta = (entry.type === 'receivable') ? -diff : diff;
-      if (appState.funds[entry.fund] + delta < -0.005) {
+      const hasCounterEdit = entry.counterFund && appState.funds[entry.counterFund] !== undefined;
+      if (appState.funds[entry.fund] + delta < -0.005 || (hasCounterEdit && appState.funds[entry.counterFund] - delta < -0.005)) {
         customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
         return;
       }
       appState.funds[entry.fund] += delta;
+      if (hasCounterEdit) appState.funds[entry.counterFund] -= delta;
     }
     (appState.transactions || []).forEach(t => {
       if (t.debtEntryId === entry.id) {
         t.amount = finalAmount;
-        if (t.debtNotePerson !== undefined) {
+        if (t.debtNotePerson !== undefined && !entry.counterFund) {
           t.debtNotePerson = person;
           t.description = debtPaymentNoteText(t) || t.description;
         }
@@ -9801,12 +9950,46 @@ function saveDebtEntry() {
         debtEntryId: newDebtId
       });
     }
+    // Own-fund deal: the OTHER fund gets its own history line too, so both
+    // funds show what happened (e.g. Savings: "Lent to Meal", Meal: "Borrowed
+    // from Savings"). Removed together with the entry (debtEntryId).
+    if (newEntryFund && newEntryCounter) {
+      const mainName = fundDisplayName(newEntryFund);
+      appState.transactions.unshift(type === 'receivable' ? {
+        id: newDebtId + 2,
+        type: 'add_money',
+        fund: newEntryCounter,
+        category: 'Debt Borrowed',
+        description: trf('debt_note_borrowed_from', `Borrowed from ${mainName}`, { name: mainName }),
+        debtNoteKind: 'borrowed_from',
+        debtNotePerson: mainName,
+        amount: amount,
+        date: new Date().toISOString(),
+        fromDebtPayment: true,
+        debtEntryId: newDebtId,
+        debtCounterTx: true
+      } : {
+        id: newDebtId + 2,
+        type: 'debt_lent',
+        fund: newEntryCounter,
+        category: 'Debt Lent',
+        description: trf('debt_note_lent_to', `Lent to ${mainName}`, { name: mainName }),
+        debtNoteKind: 'lent_to',
+        debtNotePerson: mainName,
+        amount: amount,
+        date: new Date().toISOString(),
+        fromDebtPayment: true,
+        debtEntryId: newDebtId,
+        debtCounterTx: true
+      });
+    }
     appState.debts.unshift({
       id: newDebtId,
       type: type,
       person: person,
       amount: amount,
       fund: newEntryFund,
+      counterFund: newEntryCounter,
       note: note,
       dueDate: dueDate,
       reminderTime: reminderTime,
@@ -9830,6 +10013,10 @@ function saveDebtEntry() {
    a partial payment and leaves the rest pending, tracked in
    entry.payments so the full history is always visible. */
 
+function isDebtInternal(entry) {
+  return !!(entry && entry.counterFund && entry.fund
+    && appState.funds[entry.fund] !== undefined && appState.funds[entry.counterFund] !== undefined);
+}
 function openDebtPaymentModal(id) {
   const entry = (appState.debts || []).find(d => d.id === id);
   if (!entry) return;
@@ -9884,6 +10071,7 @@ function openDebtPaymentModal(id) {
     // The entry already carries the fund chosen when it was created, so
     // there is nothing left to ask - the fund is used silently.
     if (entry.fund && entry.fund === lockFund) document.getElementById('debt-payment-fund-section').classList.add('hidden');
+    if (isDebtInternal(entry)) document.getElementById('debt-payment-fund-section').classList.add('hidden');
     showPopup('popup-debt-payment');
     return;
   }
@@ -9899,6 +10087,7 @@ function openDebtPaymentModal(id) {
     // hidden selected-fund value is used as-is when the payment is submitted.
     document.getElementById('debt-payment-fund-section').classList.add('hidden');
   }
+  if (isDebtInternal(entry)) document.getElementById('debt-payment-fund-section').classList.add('hidden');
 
   showPopup('popup-debt-payment');
 }
@@ -9956,6 +10145,42 @@ async function submitDebtPayment() {
   // before this feature existed. Checked before anything else is mutated,
   // so an insufficient-balance debt payment aborts cleanly with nothing
   // saved at all, not a half-applied state.
+  // Own-fund entry: repaying always moves the money back between the two
+  // funds (debt: this fund -> lender fund; receivable: borrower fund -> this
+  // fund). No fund picker - both sides are already known.
+  if (isDebtInternal(entry)) {
+    const fromFund = (entry.type === 'receivable') ? entry.counterFund : entry.fund;
+    const toFund = (entry.type === 'receivable') ? entry.fund : entry.counterFund;
+    if (appState.funds[fromFund] < amount - 0.005) {
+      customAlert(trf('alert_own_fund_insufficient', `"${fundDisplayName(fromFund)}" only has ৳${fmtMoney(appState.funds[fromFund])}, so ৳${fmtMoney(amount)} can't be given!`, { fund: fundDisplayName(fromFund), bal: fmtMoney(appState.funds[fromFund]), amt: fmtMoney(amount) }));
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const baseId = Date.now();
+    appState.funds[fromFund] -= amount;
+    appState.funds[toFund] += amount;
+    const toName = fundDisplayName(toFund), fromName = fundDisplayName(fromFund);
+    appState.transactions.unshift({
+      id: baseId + 1, type: 'add_money', fund: toFund, category: 'Debt Collection',
+      description: trf('debt_note_received_from', `Received from ${fromName}`, { name: fromName }),
+      debtNoteKind: 'received_from', debtNotePerson: fromName,
+      amount: amount, date: nowIso, fromDebtPayment: true, debtPaymentEntryId: entry.id
+    });
+    appState.transactions.unshift({
+      id: baseId, fund: fromFund, category: 'Debt Repayment',
+      description: trf('debt_note_paid_back_to', `Paid back to ${toName}`, { name: toName }),
+      debtNoteKind: 'paid_back_to', debtNotePerson: toName,
+      amount: amount, date: nowIso, fromDebtPayment: true, debtPaymentEntryId: entry.id
+    });
+    if (!entry.payments) entry.payments = [];
+    entry.payments.push({ amount: amount, date: nowIso, fund: entry.fund, internal: true, fromFund: fromFund, toFund: toFund, txId: baseId, txIds: [baseId, baseId + 1] });
+    if (getDebtRemaining(entry) <= 0.005) { entry.settled = true; entry.settledDate = nowIso; }
+    saveState();
+    closeDebtPaymentModal();
+    requestAnimationFrame(() => { initApp(); });
+    return;
+  }
+
   const fundToggled = document.getElementById('debt-payment-fund-toggle').checked;
   const selectedFund = document.getElementById('debt-payment-selected-fund').value;
   let paymentFund = null;
@@ -10115,14 +10340,21 @@ async function deleteDebtEntry(id) {
     // Only the still-unpaid part is reversed - anything already collected/
     // repaid with a fund was applied to that fund when the payment was made.
     const undoAmt = getDebtRemaining(entry);
+    const hasCounterDel = entry.counterFund && appState.funds[entry.counterFund] !== undefined;
     if (entry.type === 'receivable') {
+      if (hasCounterDel && appState.funds[entry.counterFund] < undoAmt - 0.005) {
+        customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
+        return;
+      }
       appState.funds[entry.fund] += undoAmt; // undo the lend
+      if (hasCounterDel) appState.funds[entry.counterFund] -= undoAmt;
     } else {
       if (appState.funds[entry.fund] < undoAmt - 0.005) {
         customAlert(tr('alert_insufficient_balance_edit_fund', "Insufficient balance in that fund! Please edit fund/add cash first."));
         return;
       }
       appState.funds[entry.fund] -= undoAmt; // undo the borrow
+      if (hasCounterDel) appState.funds[entry.counterFund] += undoAmt;
     }
   }
 
@@ -10449,7 +10681,7 @@ const TRANSFER_CONTEXT_PAIR = {
 };
 
 function closeAllAccountDropdowns() {
-  ['modal', 'edit-tx', 'transfer-from', 'transfer-to', 'edit-transfer-from', 'edit-transfer-to', 'debt-payment', 'debt-add'].forEach(ctx => {
+  ['modal', 'edit-tx', 'transfer-from', 'transfer-to', 'edit-transfer-from', 'edit-transfer-to', 'debt-payment', 'debt-add', 'debt-own'].forEach(ctx => {
     const el = document.getElementById(ctx + '-account-dropdown');
     if (el) el.classList.add('hidden');
     const chev = document.getElementById(ctx + '-account-chevron');
@@ -10485,7 +10717,7 @@ function renderAccountDropdownList(context) {
   const rowPad = compact ? 'p-1' : 'p-1.5';
   const nameTextSize = compact ? 'text-[9px]' : 'text-[11px]';
   const checkTextSize = compact ? 'text-[8px]' : 'text-[10px]';
-  const visibleFunds = Object.keys(appState.funds);
+  const visibleFunds = Object.keys(appState.funds).filter(f => !(context === 'debt-own' && f === document.getElementById('debt-add-selected-fund').value));
   const selectedIndex = visibleFunds.indexOf(selectedFund);
   listEl.innerHTML = visibleFunds.map(fund => {
     const isSelected = fund === selectedFund;
@@ -10620,6 +10852,8 @@ function pickAccountDropdown(context, fundName) {
     }
   }
 
+  if (context === 'debt-own') setDebtOwnPerson(true);
+  if (context === 'debt-add') refreshDebtOwnSection();
   closeAllAccountDropdowns();
 }
 
