@@ -23,17 +23,14 @@ LIFT_DP = 21                         # web splash centres icon+tagline as a grou
 
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 
-src = Image.open(SRC).convert('RGBA')
 
-# 1) splash icon, one PNG per density, canvas = 288dp
+# 1) splash icon: fully transparent on purpose. The web splash now has its
+#    own layout (name / icon / tagline) with an entrance animation, so the
+#    native splash only shows the background colour and the web animation
+#    fades in on top of it with no icon "jump".
 for name, d in DENSITIES.items():
     canvas_px = int(CANVAS_DP * d)
-    icon_px = int(round(WEB_ICON_DP * d))
     canvas = Image.new('RGBA', (canvas_px, canvas_px), (0, 0, 0, 0))
-    icon = src.resize((icon_px, icon_px), Image.LANCZOS)
-    x = (canvas_px - icon_px) // 2
-    y = (canvas_px - icon_px) // 2 - int(round(LIFT_DP * d))
-    canvas.alpha_composite(icon, (x, y))
     out = os.path.join(RES, 'drawable-' + name)
     os.makedirs(out, exist_ok=True)
     canvas.save(os.path.join(out, 'splash_icon.png'))
