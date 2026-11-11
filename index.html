@@ -9488,7 +9488,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
     (checkNote && !!d.note && normalizeHyphenForSearch(d.note).trim().toLowerCase() === query) ||
     (checkAmount && amountTextExactMatchesQuery(displayedAmountText, query))
   );
-  const fullMatchCls = (isFullMatch || debtJumpHighlightIds.includes(d.id)) ? (isReceivable ? ' debt-card-full-match-green' : ' logs-tx-card-full-match') : '';
+  const fullMatchCls = isFullMatch ? (isReceivable ? ' debt-card-full-match-green' : ' logs-tx-card-full-match') : '';
   // createdDate is captured as a full timestamp the instant the entry is
   // saved (new Date().toISOString()), so the exact borrow/lend time is
   // already there - no extra input needed, just show it alongside the date.
