@@ -2210,7 +2210,7 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
      logged as a transaction, so Total Spent is never affected. -->
 <div id="debt-add-fund-section" class="space-y-2 hidden">
 <label class="flex items-center justify-between gap-2 py-0.5 cursor-pointer select-none">
-<span class="text-xs font-bold text-gray-600" id="debt-add-fund-toggle-label">Lend from a fund?</span>
+<span class="text-xs font-bold text-gray-600" id="debt-add-fund-toggle-label">Are you lending from any fund?</span>
 <input type="checkbox" id="debt-add-fund-toggle" onchange="toggleDebtAddFundPicker()" class="w-4 h-4 accent-[var(--brand-red)] flex-shrink-0">
 </label>
 <div id="debt-add-fund-picker" class="relative hidden">
@@ -2230,7 +2230,7 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
      debt/receivable entry is kept so the history is never lost. -->
 <div id="debt-own-section" class="space-y-2 hidden pt-1">
 <label class="flex items-center justify-between gap-2 py-0.5 cursor-pointer select-none">
-<span class="text-xs font-bold text-gray-600" id="debt-own-toggle-label">Borrow from another of my funds?</span>
+<span class="text-xs font-bold text-gray-600" id="debt-own-toggle-label">Are you borrowing money from another fund?</span>
 <input type="checkbox" id="debt-own-toggle" onchange="toggleDebtOwnPicker()" class="w-4 h-4 accent-[var(--brand-red)] flex-shrink-0">
 </label>
 <div id="debt-own-picker" class="relative hidden">
@@ -3369,12 +3369,12 @@ const I18N = {
     debt_note_lent_to: '{name}-কে ধার দিলাম',
     debt_note_borrowed_from: '{name}-এর কাছ থেকে ধার নিলাম',
     debt_delete_from_debts_alert: 'এই এন্ট্রি দেনা/পাওনা থেকে মুছুন।',
-    debt_add_fund_toggle_receivable: 'এই টাকা কোনো ফান্ড থেকে ধার দেবেন?',
+    debt_add_fund_toggle_receivable: 'কোনো ফান্ড থেকে ধার দিচ্ছেন?',
     debt_add_fund_toggle_debt: 'ধার নেওয়া টাকা কোনো ফান্ডে যোগ করবেন?',
-    debt_own_toggle_debt: 'নিজের আরেকটা ফান্ড থেকে ধার নিচ্ছেন?',
-    debt_own_toggle_receivable: 'নিজের আরেকটা ফান্ডকে ধার দিচ্ছেন?',
-    debt_own_pick_debt: 'কোন ফান্ড থেকে টাকা কাটা হবে',
-    debt_own_pick_receivable: 'কোন ফান্ডে টাকা যোগ হবে',
+    debt_own_toggle_debt: 'আপনি কি অন্য কোনো ফান্ড থেকে টাকা ধার নিচ্ছেন?',
+    debt_own_toggle_receivable: 'আপনি কি অন্য কোনো ফান্ডকে টাকা ধার দিচ্ছেন?',
+    debt_own_pick_debt: 'কোন ফান্ড থেকে ধার নেওয়া হচ্ছে?',
+    debt_own_pick_receivable: 'ধার নেওয়া টাকা কোন ফান্ডে জমা হবে?',
     alert_own_fund_insufficient: '"{fund}" ফান্ডে মাত্র ৳{bal} আছে, তাই ৳{amt} দেওয়া যাবে না!',
     alert_own_fund_same: 'দুটো ফান্ড আলাদা হতে হবে!',
     alert_own_fund_pick: 'কোন ফান্ডের সাথে লেনদেন হচ্ছে সেটা বেছে নিন!',
@@ -9694,11 +9694,11 @@ function refreshDebtOwnSection() {
   const show = !editId && !!mainOn && fundNames.length >= 2;
   sec.classList.toggle('hidden', !show);
   document.getElementById('debt-own-toggle-label').innerText = (type === 'receivable')
-    ? tr('debt_own_toggle_receivable', 'Lend to another of my funds?')
-    : tr('debt_own_toggle_debt', 'Borrow from another of my funds?');
+    ? tr('debt_own_toggle_receivable', 'Are you lending money to another fund?')
+    : tr('debt_own_toggle_debt', 'Are you borrowing money from another fund?');
   document.getElementById('debt-own-caption').innerText = (type === 'receivable')
-    ? tr('debt_own_pick_receivable', 'Which fund receives the money')
-    : tr('debt_own_pick_debt', 'Which fund the money is taken from');
+    ? tr('debt_own_pick_receivable', 'Which fund will receive the borrowed money?')
+    : tr('debt_own_pick_debt', 'Which fund is the money being borrowed from?');
   if (!show) {
     toggle.checked = false;
     picker.classList.add('hidden');
@@ -9797,7 +9797,7 @@ function setDebtModalType(type) {
   document.getElementById('debt-modal-type').value = type;
   const fundToggleLabel = document.getElementById('debt-add-fund-toggle-label');
   if (fundToggleLabel) fundToggleLabel.innerText = (type === 'receivable')
-    ? tr('debt_add_fund_toggle_receivable', 'Lend this from a fund?')
+    ? tr('debt_add_fund_toggle_receivable', 'Are you lending from any fund?')
     : tr('debt_add_fund_toggle_debt', 'Add the borrowed money to a fund?');
   document.getElementById('debt-modal-title').textContent = (type === 'receivable') ? tr('debt_add_receivable_title', 'Add Receivable') : tr('debt_add_debt_title', 'Add Debt');
 }
