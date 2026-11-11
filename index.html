@@ -3259,8 +3259,8 @@ const I18N = {
     logs_no_matching_tx: 'এখনো কোনো লেনদেন যুক্ত করা হয়নি।',
     debt_lent: 'ধার দিয়েছেন',
     debt_borrowed: 'ধার নিয়েছেন',
-    debt_note_paid_back_to: '{name}র দেনা পরিশোধ করলাম',
-    debt_note_received_from: '{name}-এর ধারের টাকা পেলাম',
+    debt_note_paid_back_to: '{name}র দেনা পরিশোধ করেছি',
+    debt_note_received_from: '{name}-এর ধারের টাকা পেয়েছি',
     debt_from_fund: '{fund} থেকে',
     debt_to_fund: '{fund}-এ যোগ হয়েছে',
     debt_for_note: '({note}-এর জন্য)',
@@ -3468,8 +3468,8 @@ const I18N = {
     receivable_bracket_label: 'পাওনা',
     cat_debt_lent_log: 'ধার দেওয়া হয়েছে',
     cat_debt_borrowed_log: 'ধার নেওয়া হয়েছে',
-    debt_note_lent_to: '{name}-কে ধার দিলাম',
-    debt_note_borrowed_from: '{name}-এর কাছ থেকে ধার নিলাম',
+    debt_note_lent_to: '{name}-কে ধার দিয়েছি',
+    debt_note_borrowed_from: '{name}-এর কাছ থেকে ধার নিয়েছি',
     debt_delete_from_debts_alert: 'এই এন্ট্রি দেনা/পাওনা থেকে মুছুন।',
     debt_add_fund_toggle_receivable: 'কোনো ফান্ড থেকে ধার দিচ্ছেন?',
     debt_add_fund_toggle_debt: 'ধার নেওয়া টাকা কোনো ফান্ডে যোগ করবেন?',
@@ -3921,7 +3921,10 @@ function debtFundNoteBadgeHtml(t, lineColor) {
   const parts = tr(key, fallback).split('{name}');
   if (parts.length !== 2) return '';
   const meta = ensureFundMeta(other);
-  const chip = `<span class="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-1 py-px" style="color:${meta.color};background:${meta.color}26">` +
+  // Chip follows the line's own direction color (green = money in, red =
+  // money out) - the fund's icon is kept, but not the fund's own color.
+  const chipTint = String(lineColor).includes('green') ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)';
+  const chip = `<span class="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-1 py-px" style="color:${lineColor};background:${chipTint}">` +
     `${fundIconHTML(meta, '')}<span>${escapeHtml(fundDisplayName(other))}</span></span>`;
   const before = parts[0] ? `<span class="whitespace-nowrap">${escapeHtml(parts[0])}</span>` : '';
   const after = parts[1] ? `<span class="whitespace-nowrap">${escapeHtml(parts[1])}</span>` : '';
