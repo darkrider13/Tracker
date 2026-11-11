@@ -4881,6 +4881,9 @@ let currentDetailsFund = null;
 // chip). While set, new debt/receivable cards and payments are tied to that fund and
 // show it locked instead of asking which fund to use. Cleared when leaving Logs.
 let debtsFundContext = null;
+// Own-fund deal jump (green/red chip on Fund Details): ids of the debt/receivable
+// cards to keep highlighted in Logs. Cleared when leaving the Debts/Receivables tabs.
+let debtJumpHighlightIds = [];
 // Optional filter applied to the Fund Details "Transaction History" list via
 // the calendar icon next to its heading. mode is null (no filter), 'month'
 // (value = "YYYY-MM" from an <input type="month">), or 'date' (value =
@@ -8005,11 +8008,41 @@ function closeAccountDetails() {
 // close this fund screen and open Logs on the matching subtab.
 function goToLogsDebtsFromDetails(kind) {
   const fromFund = currentDetailsFund;
+  // Pending entries that make up this chip's amount. Own-fund deals
+  // (entry.counterFund set) are stored on ONE side only - e.g. Savings
+  // lends to Meal is a 'receivable' (fund=Savings) - so from the other
+  // fund's screen the chip's entry can live in the opposite tab.
+  const contributing = (appState.debts || []).filter(d => !d.settled && (kind === 'receivables'
+    ? ((d.type === 'receivable' && d.fund === fromFund) || (d.type === 'debt' && d.counterFund === fromFund))
+    : ((d.type === 'debt' && d.fund === fromFund) || (d.type === 'receivable' && d.counterFund === fromFund))));
+  const ownDeals = contributing.filter(d => d.counterFund);
+  const hasPersonDeals = contributing.some(d => !d.counterFund);
+  const defaultType = kind === 'receivables' ? 'receivable' : 'debt';
+  let targetType = defaultType;
+  // Only own-fund deals behind this chip -> open the tab/card that deal
+  // actually lives in. Mixed with normal person entries -> keep the
+  // chip's own tab as before.
+  if (ownDeals.length && !hasPersonDeals && !ownDeals.some(d => d.type === defaultType)) targetType = ownDeals[0].type;
+  const targetTab = targetType === 'receivable' ? 'receivables' : 'debts';
+  const jumpIds = ownDeals.filter(d => d.type === targetType).map(d => d.id);
+
   closeAccountDetails();
-  logsSubtab = kind;
+  logsSubtab = targetTab;
   switchTab('logs');
-  switchLogsSubtab(kind);
+  if (jumpIds.length) resetDebtCategoryFilters(targetTab); // make sure the card is visible (Pending, no search/sort)
+  switchLogsSubtab(targetTab);
   debtsFundContext = (fromFund && appState.funds && appState.funds[fromFund] !== undefined) ? fromFund : null;
+  if (jumpIds.length) {
+    debtJumpHighlightIds = jumpIds;
+    if (targetTab === 'receivables') renderReceivablesList(); else renderDebtsList();
+    setTimeout(() => {
+      const list = document.getElementById(`${targetTab}-list`);
+      const card = list && list.querySelector(`[data-debt-id="${jumpIds[0]}"]`);
+      if (!card) return;
+      const lr = list.getBoundingClientRect(), cr = card.getBoundingClientRect();
+      list.scrollTo({ top: Math.max(0, list.scrollTop + (cr.top - lr.top) - list.clientHeight / 2 + cr.height / 2), behavior: 'smooth' });
+    }, 80);
+  }
 }
 
 function openEditFromDetails() {
@@ -8831,6 +8864,7 @@ function resetDebtCategoryFilters(category) {
 
 function switchTab(screenId) {
   if (screenId !== 'logs') debtsFundContext = null;
+  if (screenId !== 'logs') debtJumpHighlightIds = [];
   // Leaving Logs entirely (e.g. back to Home/Stats/Profile) counts as
   // "walking away" from the Transactions list, so any Home-Update jump
   // highlight still showing there should be cleared - see
@@ -8958,6 +8992,7 @@ function switchLogsSubtab(name) {
   // the rest of the session (only a fresh app launch resets them - see
   // the reset calls at the top of initApp()).
   logsSubtab = name;
+  debtJumpHighlightIds = [];
   const subtabs = ['transactions', 'debts', 'receivables'];
 
   subtabs.forEach(s => {
@@ -9453,7 +9488,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
     (checkNote && !!d.note && normalizeHyphenForSearch(d.note).trim().toLowerCase() === query) ||
     (checkAmount && amountTextExactMatchesQuery(displayedAmountText, query))
   );
-  const fullMatchCls = isFullMatch ? (isReceivable ? ' debt-card-full-match-green' : ' logs-tx-card-full-match') : '';
+  const fullMatchCls = (isFullMatch || debtJumpHighlightIds.includes(d.id)) ? (isReceivable ? ' debt-card-full-match-green' : ' logs-tx-card-full-match') : '';
   // createdDate is captured as a full timestamp the instant the entry is
   // saved (new Date().toISOString()), so the exact borrow/lend time is
   // already there - no extra input needed, just show it alongside the date.
@@ -9527,7 +9562,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   // it just never recolors the digits beyond their normal tab color.
   const amountHtml = escapeHtml(displayedAmountText);
 
-  return `<div class="bg-gray-100/70 rounded-2xl ${paddingCls} cursor-pointer transition${CARD_HEIGHT_CLS}${fullMatchCls}" onclick="openDebtHistoryModal(${d.id})">
+  return `<div class="bg-gray-100/70 rounded-2xl ${paddingCls} cursor-pointer transition${CARD_HEIGHT_CLS}${fullMatchCls}" data-debt-id="${d.id}" onclick="openDebtHistoryModal(${d.id})">
     <div class="flex justify-between items-start">
       <div class="flex items-center space-x-3 min-w-0 flex-1">
         <div class="w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0">
