@@ -149,7 +149,50 @@ jobs:
 
       - name: Sync Capacitor Android
         run: npx cap sync android
+      - name: Sign with permanent key + bump version (so new APK updates over the old one)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::KEYSTORE_BASE64 / KEYSTORE_PASSWORD secrets are missing. Add them in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/tracker.keystore
+          python3 - << 'EOF'
+          import re, os
+          path = 'android/app/build.gradle'
+          c = open(path).read()
+
+          # 1) Same signing key on every build (this is what lets Android treat
+          #    the new APK as an update instead of a different app).
+          signing = '\n'.join([
+              '    signingConfigs {',
+              '        debug {',
+              '            storeFile file("tracker.keystore")',
+              '            storePassword System.getenv("KEYSTORE_PASSWORD")',
+              '            keyAlias "tracker"',
+              '            keyPassword System.getenv("KEYSTORE_PASSWORD")',
+              '        }',
+              '    }',
+              ''
+          ])
+          c, n = re.subn(r'(^android\s*\{[^\n]*\n)', lambda m: m.group(1) + signing, c, count=1, flags=re.M)
+          assert n == 1, 'android block not found in build.gradle'
+
+          # 2) versionCode must go up on every build, otherwise Android refuses the update.
+          run = os.environ['GITHUB_RUN_NUMBER']
+          c, n1 = re.subn(r'versionCode\s+\d+', 'versionCode ' + run, c, count=1)
+          c, n2 = re.subn(r'versionName\s+"[^"]*"', 'versionName "1.0.' + run + '"', c, count=1)
+          assert n1 == 1 and n2 == 1, 'versionCode/versionName not found'
+
+          open(path, 'w').write(c)
+          print('build.gradle patched: versionCode', run)
+          EOF
+
       - name: Build Debug APK with Gradle
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
