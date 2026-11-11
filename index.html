@@ -343,7 +343,7 @@ html.app-boot-pending #bottom-nav-bar { opacity: 0; visibility: hidden; pointer-
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.35s ease;
 }
 /* Day mode: boot splash background should be white instead of the
    dark #05070a used for dark mode. The dark/light class is already
@@ -369,7 +369,7 @@ html:not(.dark-theme) #boot-splash {
   color: #f5f7fa;
   opacity: 0;
   will-change: transform, opacity;
-  animation: bs-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  animation: bs-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0s both;
 }
 html:not(.dark-theme) #boot-splash .boot-splash-title {
   color: #0f172a;
@@ -381,7 +381,7 @@ html:not(.dark-theme) #boot-splash .boot-splash-title {
   margin: 64px 0 0;
   opacity: 0;
   will-change: transform, opacity;
-  animation: bs-pop 1s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+  animation: bs-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
 #boot-splash .boot-splash-icon-wrap::before {
   content: '';
@@ -390,7 +390,7 @@ html:not(.dark-theme) #boot-splash .boot-splash-title {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, rgba(59, 91, 219, 0.14) 45%, rgba(0, 0, 0, 0) 70%);
   opacity: 0;
-  animation: bs-glow 3.2s ease-in-out 1.3s infinite;
+  animation: bs-glow 3.2s ease-in-out 0.7s infinite;
 }
 #boot-splash .boot-splash-icon-wrap img {
   position: relative;
@@ -410,7 +410,7 @@ html:not(.dark-theme) #boot-splash .boot-splash-title {
   color: #a3a8c3;
   opacity: 0;
   will-change: transform, opacity;
-  animation: bs-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
+  animation: bs-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
 }
 #boot-splash .boot-splash-tagline .tl-bn { display: none; }
 html.lang-bn #boot-splash .boot-splash-tagline .tl-en { display: none; }
@@ -437,6 +437,17 @@ html:not(.dark-theme) #boot-splash .boot-splash-tagline {
   #boot-splash .boot-splash-icon-wrap::before { animation: none; }
   @keyframes bs-fade { from { opacity: 0; } to { opacity: 1; } }
 }
+
+/* Decorative background icons (same set as Welcome/Lock). They live only in
+   the top/bottom zones and the far left/right edges, so nothing sits behind
+   the title, icon or tagline in the centre column. */
+#boot-splash .bs-deco { position: absolute; inset: 0; pointer-events: none; overflow: hidden; animation: bs-fade-in 0.5s ease both; }
+#boot-splash .bs-deco i { position: absolute; color: var(--brand-red); opacity: 0.07; }
+#boot-splash .bs-deco i.w { color: #fff; opacity: 0.05; }
+html.dark-theme #boot-splash .bs-deco i { opacity: 0.2; }
+html.dark-theme #boot-splash .bs-deco i.w { opacity: 0.16; }
+#boot-splash .boot-splash-title, #boot-splash .boot-splash-icon-wrap, #boot-splash .boot-splash-tagline { position: relative; z-index: 1; }
+@keyframes bs-fade-in { from { opacity: 0; } to { opacity: 1; } }
 html:not(.app-boot-pending) #boot-splash {
   opacity: 0;
   pointer-events: none;
@@ -1485,6 +1496,21 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
   style="position:fixed; top:-999px; left:-999px; width:1px; height:1px; opacity:0; border:0; padding:0; pointer-events:none; font-size:16px;">
 
 <div id="boot-splash">
+  <div class="bs-deco" aria-hidden="true">
+    <i class="fas fa-chart-pie" style="font-size:3.75rem; top:5%; left:8%; transform:rotate(-15deg);"></i>
+    <i class="fas fa-coins w" style="font-size:2.25rem; top:9%; right:22%; transform:rotate(12deg);"></i>
+    <i class="fas fa-landmark w" style="font-size:3rem; top:19%; right:8%; transform:rotate(8deg);"></i>
+    <i class="fas fa-percentage" style="font-size:2.25rem; top:20%; left:20%; transform:rotate(-8deg);"></i>
+    <i class="fas fa-wallet" style="font-size:4.5rem; top:38%; left:-5%; transform:rotate(-10deg);"></i>
+    <i class="fas fa-university w" style="font-size:4.5rem; top:36%; right:-7%; transform:rotate(8deg);"></i>
+    <i class="fas fa-receipt w" style="font-size:2.25rem; top:55%; right:3%; transform:rotate(16deg);"></i>
+    <i class="fas fa-money-bill-wave" style="font-size:3rem; top:56%; left:-2%; transform:rotate(-6deg);"></i>
+    <i class="fas fa-hand-holding-usd" style="font-size:3rem; bottom:20%; left:26%; transform:rotate(-6deg);"></i>
+    <i class="fas fa-file-invoice-dollar w" style="font-size:3rem; bottom:18%; right:14%; transform:rotate(14deg);"></i>
+    <i class="fas fa-calculator w" style="font-size:3.75rem; bottom:6%; left:6%; transform:rotate(10deg);"></i>
+    <i class="fas fa-credit-card" style="font-size:3rem; bottom:7%; right:-3%; transform:rotate(-14deg);"></i>
+    <i class="fas fa-chart-line" style="font-size:3.75rem; bottom:-2%; left:42%; transform:rotate(-8deg);"></i>
+  </div>
   <div class="boot-splash-title">Tracker</div>
   <div class="boot-splash-icon-wrap"><img src="app-media/splash-icon.png" alt="Tracker"></div>
   <p class="boot-splash-tagline"><span class="tl-en">Money management, made simpler.</span><span class="tl-bn">টাকার হিসাব হোক আরও সহজ।</span></p>
@@ -4931,7 +4957,7 @@ function warmUpKeyboardOnFirstTouch() {
 document.addEventListener('touchstart', warmUpKeyboardOnFirstTouch, { capture: true, once: true, passive: true });
 document.addEventListener('mousedown', warmUpKeyboardOnFirstTouch, { capture: true, once: true });
 
-window.onload = async function() {
+async function __bootApp() {
   warmUpKeyboard();
   applyStaticTranslations();
   // Fresh app launch: whichever fund was selected last time, always start
@@ -4956,7 +4982,7 @@ window.onload = async function() {
   // The splash is kept up for a minimum of 2.5s total (from the very start
   // of boot) even if everything below finished loading faster than that,
   // so it never flashes by too quickly on a fast load.
-  const MIN_SPLASH_MS = 2500;
+  const MIN_SPLASH_MS = 1300;
   const elapsed = Date.now() - (window.__bootStartTime || Date.now());
   const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
 
@@ -4999,7 +5025,12 @@ window.onload = async function() {
       }
     }, remaining);
   }
-};
+}
+// Start as soon as the DOM + deferred scripts (tailwind/chart/bridge) are
+// ready, instead of window.onload which also waits for fonts/images and
+// made the first (blank) screen last noticeably longer.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __bootApp);
+else __bootApp();
 
 /* ---------- Capacitor native bridge helpers ---------- */
 
