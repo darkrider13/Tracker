@@ -15234,12 +15234,17 @@ function updateChart() {
   const fmtDayTitle = d => getLang() === 'bn'
     ? `${BN_WEEKDAYS[d.getDay()]}, ${fmtDate(d)}`
     : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
-  const isLabeledMonthDay = idx => { const day = idx + 1; return day === 1 || day % 5 === 0 || day === dayDates.length; };
+  const isLabeledMonthDay = idx => {
+    const day = idx + 1, dim = dayDates.length;
+    if (day === dim) return true;            // last day of the month always shown
+    if (dim - day <= 1) return false;        // ...so the day right before it becomes a dot (no collision)
+    return day === 1 || day % 5 === 0;
+  };
   const xLabel = (d, idx) => {
     if (isWeek) return getLang() === 'bn' ? BN_SHORT_WD[d.getDay()] : d.toLocaleDateString([], { weekday: 'short' });
     // Month view: only some dates are written (no room for 30 numbers);
     // every other day gets a small dot so each bar still maps to one day.
-    return localizeDigits(String(idx + 1));
+    return isLabeledMonthDay(idx) ? localizeDigits(String(idx + 1)) : '';
   };
 
   // Draws the amount above bars: every bar in Week view, only the tallest
@@ -15280,29 +15285,33 @@ function updateChart() {
     afterDraw(chart) {
       if (isWeek) return;
       const xs = chart.scales.x;
-      const items = xs._labelItems || [];
-      const ref = items.find(it => it && it.label) ;
       const c = chart.ctx;
-      let midY = ref && ref.options && ref.options.translation
-        ? ref.options.translation[1]
-        : xs.top + 3 + 5.5;
-      if (ref && ref.font && ref.font.string) {
-        // label is drawn with textBaseline 'middle'; use the glyphs' real
-        // ink box so the dots sit in the visual middle of the digits.
-        c.save();
-        c.font = ref.font.string;
-        c.textBaseline = ref.options.textBaseline || 'middle';
-        const m = c.measureText(ref.label);
-        if (m.actualBoundingBoxAscent != null) midY -= (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
-        c.restore();
-      }
+      const fam = getComputedStyle(document.body).fontFamily || 'sans-serif';
       c.save();
+      // slot = pixel width of one day; 28-30 day months keep the normal size,
+      // 31 days (narrower slots) shrink text + dots a little so nothing touches
+      const slot = Math.abs(xs.getPixelForTick(1) - xs.getPixelForTick(0)) || 10;
+      const fs = Math.max(7, Math.min(9, slot * 1.02));
+      const dotR = Math.max(1.2, Math.min(1.6, slot * 0.18));
+      c.font = 'bold ' + fs.toFixed(1) + 'px ' + fam;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      // one shared centre line: the vertical middle of the digits' real ink box
+      const baseY = xs.top + 4 + 6;
+      const m = c.measureText('০১২৩৪৫৬৭৮৯0123456789');
+      const inkMid = (m.actualBoundingBoxAscent != null)
+        ? baseY - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
+        : baseY;
       c.fillStyle = tickColor;
       dayDates.forEach((d, i) => {
-        if (isLabeledMonthDay(i)) return;
-        c.beginPath();
-        c.arc(xs.getPixelForTick(i), midY, 1.6, 0, Math.PI * 2);
-        c.fill();
+        const x = xs.getPixelForTick(i);
+        if (isLabeledMonthDay(i)) {
+          c.fillText(localizeDigits(String(i + 1)), x, baseY);
+        } else {
+          c.beginPath();
+          c.arc(x, inkMid, dotR, 0, Math.PI * 2);
+          c.fill();
+        }
       });
       c.restore();
     }
@@ -15330,11 +15339,11 @@ function updateChart() {
           backgroundColor: brandRed,
           borderRadius: isWeek ? 6 : 3,
           maxBarThickness: isWeek ? 26 : 12,
-          barPercentage: isWeek ? 0.6 : 0.75,
+          barPercentage: isWeek ? 0.6 : (dayDates.length >= 31 ? 0.68 : 0.75),
           categoryPercentage: 1
         }]
       },
-      plugins: [valueLabelPlugin],
+      plugins: [valueLabelPlugin, dayDotsPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -15365,10 +15374,9 @@ function updateChart() {
             grid: { display: false },
             border: { display: false },
             ticks: {
-              color: ctx => (!isWeek && !isLabeledMonthDay(ctx.index)) ? (isDarkTheme ? '#71717a' : '#8b8b94') : tickColor,
+              color: ctx => isWeek ? tickColor : 'rgba(0,0,0,0)',
               autoSkip: false, maxRotation: 0, minRotation: 0, padding: 4,
-              font: ctx => isWeek ? { size: 9, weight: 'bold' }
-                : (isLabeledMonthDay(ctx.index) ? { size: 7, weight: 'bold' } : { size: 6, weight: 'normal' })
+              font: { size: 9, weight: 'bold' }
             }
           },
           y: {
