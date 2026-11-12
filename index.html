@@ -8092,12 +8092,12 @@ function renderAccountDetails() {
       (d.type === 'debt' && d.counterFund === currentDetailsFund)))
     .reduce((sum, d) => sum + getDebtRemaining(d), 0);
   // One single line after the balance (no brackets, no text labels):
-  // [red right-arrow icon] debt total (money goes out) | [green left-arrow icon] receivable total (money comes in)
+  // [red up-right arrow] debt total (money goes out) | [green down-left arrow] receivable total (money comes in)
   // - only the parts above zero are shown.
   const iconBox = (arrowCls, bg, fg) => `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:0.35em;background:${bg};color:${fg};margin-right:0.3em;flex-shrink:0"><i class="fas fa-fw ${arrowCls}" style="font-size:0.75em;display:block;width:100%;text-align:center;line-height:1.3em;margin:0"></i></span>`;
   const bracketParts = [];
-  if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-right', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
-  if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-left', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
+  if (borrowedInFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('debts')" style="color:var(--brand-red);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-up-right', '#fee2e2', '#b91c1c')}৳${fmtMoney(borrowedInFund)}</span>`);
+  if (toReceiveFromFund > 0.005) bracketParts.push(`<span onclick="goToLogsDebtsFromDetails('receivables')" style="color:var(--brand-green);display:inline-flex;align-items:center;cursor:pointer">${iconBox('fa-arrow-down-left', '#dcfce7', '#16a34a')}৳${fmtMoney(toReceiveFromFund)}</span>`);
   if (bracketParts.length) {
     const bracketSpan = document.createElement('span');
     bracketSpan.style.cssText = 'font-size:0.36em;margin-left:10px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:1em;line-height:1.3;vertical-align:middle';
@@ -9507,7 +9507,7 @@ function generateDebtCardMarkup(d, query, highlightColor) {
   // saved (new Date().toISOString()), so the exact borrow/lend time is
   // already there - no extra input needed, just show it alongside the date.
   const dateLabel = `${fmtDate(d.createdDate, { month: 'short', day: '2-digit', year: 'numeric' })} ${fmtTime(d.createdDate)}`;
-  const iconClass = isReceivable ? 'fa-arrow-left' : 'fa-arrow-right'; // receivable (money to receive) = left, debt (money to pay) = right
+  const iconClass = isReceivable ? 'fa-arrow-down-left' : 'fa-arrow-up-right'; // receivable (money coming in) = down-left, debt (money going out) = up-right
   const iconBg = isReceivable ? 'bg-emerald-100 text-[var(--brand-green)]' : 'bg-rose-100 text-[var(--brand-red)]';
   const verb = isReceivable ? tr('debt_lent', 'Lent') : tr('debt_borrowed', 'Borrowed');
   const noteText = d.note ? (noteIsMatch ? highlightMatch(d.note, query, highlightColor) : escapeHtml(d.note)) : '';
@@ -13948,10 +13948,10 @@ function getCategoryFAIcon(label) {
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
   if (c.includes('debt repay') || c.includes('ধার পরিশোধ')) return 'fa-hand-holding-dollar';
-  // Debt / Money Borrowed (ধার নেওয়া - has to be paid back) -> right arrow;
-  // Receivable / Money Lent (ধার দেওয়া - money to receive back) -> left arrow.
-  if (c.includes('debt borrowed') || c.includes('money borrowed') || c.includes('ধার নেওয়া')) return 'fa-arrow-right';
-  if (c.includes('debt lent') || c.includes('money lent') || c.includes('ধার দেওয়া')) return 'fa-arrow-left';
+  // Debt / Money Borrowed (ধার নেওয়া - has to be paid back) -> up-right arrow;
+  // Receivable / Money Lent (ধার দেওয়া - money to receive back) -> down-left arrow.
+  if (c.includes('debt borrowed') || c.includes('money borrowed') || c.includes('ধার নেওয়া')) return 'fa-arrow-up-right';
+  if (c.includes('debt lent') || c.includes('money lent') || c.includes('ধার দেওয়া')) return 'fa-arrow-down-left';
   if (c.includes('grocery') || c.includes('মুদি')) return 'fa-cart-shopping';
   if (c.includes('medic') || c.includes('ওষুধ')) return 'fa-briefcase-medical';
   if (c.includes('event') || c.includes('অনুষ্ঠান')) return 'fa-calendar-days';
