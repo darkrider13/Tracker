@@ -10728,6 +10728,10 @@ function renderCategorySlider(containerId, idPrefix, clickHandlerName, categorie
   el.dataset.kind = clickHandlerName;
   el.style.columnGap = '10px';
   el.style.flexWrap = 'nowrap';
+  // overflow-x:auto also clips vertically - pad (and cancel with negative margin)
+  // so a lifted chip's circle/shadow is never cut at the top or bottom.
+  el.style.paddingTop = '8px'; el.style.paddingBottom = '8px';
+  el.style.marginTop = '-8px'; el.style.marginBottom = '-8px';
   el.innerHTML = chips + plus;
   // Fresh default view always starts from the first chip (see selectQuickCategory)
   el.scrollLeft = 0;
@@ -10747,7 +10751,7 @@ function bindCategoryReorder(el) {
     const r = drag.chip.getBoundingClientRect();
     const naturalCenter = r.left + r.width / 2 - drag.tx;
     drag.tx = lastX - naturalCenter;
-    drag.chip.style.transform = `translateX(${drag.tx}px) scale(1.12)`;
+    drag.chip.style.transform = `translateX(${drag.tx}px) scale(1.08)`;
   }
   function trySwap() {
     const chips = Array.from(el.querySelectorAll('[data-cat]'));
@@ -10757,7 +10761,10 @@ function bindCategoryReorder(el) {
       if (lastX >= r.left && lastX <= r.right) {
         const before = !!(c.compareDocumentPosition(drag.chip) & Node.DOCUMENT_POSITION_FOLLOWING);
         // c is before drag.chip in DOM -> move drag.chip in front of c; else after c
-        if (before) el.insertBefore(drag.chip, c); else el.insertBefore(drag.chip, c.nextSibling);
+        // Move the NEIGHBOUR around the dragged chip. Re-inserting the dragged
+        // node itself detaches it from the DOM mid-touch, which makes the browser
+        // drop its touch/pointer events (the drag then freezes).
+        if (before) el.insertBefore(c, drag.chip.nextSibling); else el.insertBefore(c, drag.chip);
         break;
       }
     }
@@ -10994,6 +11001,7 @@ function renderFilteredCategoryChips(containerId, idPrefix, clickHandlerName, ca
   if (!el) return;
   el.dataset.mode = 'filter';
   el.style.columnGap = '';
+  el.style.paddingTop = ''; el.style.paddingBottom = ''; el.style.marginTop = ''; el.style.marginBottom = '';
   const lower = typed.toLowerCase();
   const matches = categories.filter(name => categoryDisplayName(name).toLowerCase().startsWith(lower));
   if (matches.length === 0) {
