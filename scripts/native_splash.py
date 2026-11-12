@@ -57,6 +57,26 @@ else:
     open(styles, 'w').write(c)
     print('launch theme patched')
 
+# 3b) the window background AFTER the system splash goes away (before the page
+#     paints) must be the same colour too - otherwise a differently-coloured
+#     (pure black / white) frame shows between the native splash and the web one.
+c = open(styles).read()
+m = re.search(r'(<style\s+name="AppTheme\.NoActionBar"[^>]*>)(.*?)(</style>)', c, re.S)
+if not m:
+    print('AppTheme.NoActionBar not found - window background left unchanged')
+elif 'app_splash_bg' in m.group(2):
+    print('window background already patched')
+else:
+    body = m.group(2)
+    item = '<item name="android:background">@color/app_splash_bg</item>'
+    if re.search(r'<item\s+name="android:background">[^<]*</item>', body):
+        body = re.sub(r'<item\s+name="android:background">[^<]*</item>', item, body)
+    else:
+        body = body + '    ' + item + '\n    '
+    c = c[:m.start(2)] + body + c[m.end(2):]
+    open(styles, 'w').write(c)
+    print('window background patched')
+
 # 4) blank legacy full-screen splash.png files (old Capacitor logo splash)
 n = 0
 for p in glob.glob(os.path.join(RES, 'drawable*', 'splash.png')):
