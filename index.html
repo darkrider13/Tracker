@@ -10715,9 +10715,9 @@ function renderCategorySlider(containerId, idPrefix, clickHandlerName, categorie
   const el = document.getElementById(containerId);
   if (!el) return;
   syncCustomCategories();
-  // One continuous row: ~5 chips visible, the next one peeks in so it is clear
-  // the row scrolls. The "+" (new category) chip always sits last in the row.
-  const chipStyle = 'flex:0 0 calc((100% - 40px) / 5.4);min-width:0;';
+  // One continuous row: exactly 5 chips fit the width, the rest are reached by
+  // scrolling. The "+" (new category) chip always sits last in the row.
+  const chipStyle = 'flex:0 0 calc((100% - 40px) / 5);min-width:0;scroll-snap-align:start;';
   const chips = categories.map(name => buildCategoryChipHtml(name, idPrefix, clickHandlerName, 0, chipStyle)).join('');
   const plus = `<button type="button" onclick="openAddCategoryModal('${clickHandlerName}')" class="qc-add-chip flex flex-col items-center space-y-1.5 min-w-0 active:scale-95 transition snap-start" style="${chipStyle}">
 <div class="w-10 h-10 rounded-full border border-dashed border-gray-400/60 flex items-center justify-center text-gray-500"><i class="fas fa-plus text-xs"></i></div>
@@ -12312,7 +12312,7 @@ function fitListToVisibleCountNow(container, items, count, gapPx, enableSnap) {
     if (end - start < count) continue; // trailing partial page - always <= a full page's height, skip it
     let groupTotal = 0;
     for (let i = start; i < end; i++) {
-      groupTotal += items[i].getBoundingClientRect().height;
+      groupTotal += (items[i].offsetHeight || items[i].getBoundingClientRect().height);
       if (i < end - 1) groupTotal += gap;
     }
     if (groupTotal > maxGroupHeight) maxGroupHeight = groupTotal;
@@ -12396,7 +12396,10 @@ function fitGridToVisibleRowsNow(container, items, rows, cols, gapPx, enableSnap
   for (let r = 0; r < totalRows; r++) {
     const idx = r * cols;
     if (idx >= items.length) break;
-    rowHeights.push(items[idx].getBoundingClientRect().height);
+    // offsetHeight ignores CSS transforms: the popup is still mid scale-in
+    // animation when this runs, and getBoundingClientRect() would return the
+    // shrunken height, locking the window too short and clipping the last row.
+    rowHeights.push(items[idx].offsetHeight || items[idx].getBoundingClientRect().height);
   }
   // Scrolling moves one row at a time (every row start is a snap point),
   // so every window of `rows` consecutive rows must fit: measure sliding
