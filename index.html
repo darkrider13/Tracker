@@ -15292,7 +15292,7 @@ function updateChart() {
       // 31 days (narrower slots) shrink text + dots a little so nothing touches
       const slot = Math.abs(xs.getPixelForTick(1) - xs.getPixelForTick(0)) || 10;
       const fs = Math.max(7, Math.min(9, slot * 1.02));
-      const dotR = Math.max(1.2, Math.min(1.6, slot * 0.18));
+      const dotR = Math.max(0.8, Math.min(1.1, slot * 0.12));
       c.font = 'bold ' + fs.toFixed(1) + 'px ' + fam;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
