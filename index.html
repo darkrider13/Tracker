@@ -14188,6 +14188,16 @@ function openAllCategoriesSummary() {
   }
 }
 
+// Home > Category Breakdown row tapped: jump to Stats > Spending and open the
+// "See all" (সব দেখুন) All Categories Summary right away - same data as the
+// Stats screen's Top Spending Category card.
+function openHomeCategoryDetails() {
+  window._statsCatData = null;          // never show another fund's/month's stale data
+  switchTab('stats');
+  switchStatsSubtab('spending');
+  if (window._statsCatData) openAllCategoriesSummary();
+}
+
 function closeAllCategoriesSummary() {
   const o = document.getElementById('all-categories-overlay');
   if (o) o.remove();
@@ -15234,7 +15244,8 @@ function updateChart() {
   rangeFiltered.forEach(t => { const k = dayKey(new Date(t.date)); perDay[k] = (perDay[k] || 0) + t.amount; });
   const dayTotals = dayDates.map(d => perDay[dayKey(d)] || 0);
   // Y-axis: neat step (1/2/5 × 10^n) so labels read 10-20-30… instead of 50-100
-  const yMaxData = Math.max(1, ...dayTotals);
+  // No spending yet -> still draw the axes with a sample 0-1000 scale (empty bars)
+  const yMaxData = totalSpent <= 0 ? 1000 : Math.max(1, ...dayTotals);
   let yStep = 1;
   for (const p of [1, 10, 100, 1000, 10000, 100000, 1000000]) {
     const found = [1, 2, 5].map(m => m * p).find(s => yMaxData / s <= 6);
@@ -15333,10 +15344,8 @@ function updateChart() {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
   const summaryEl = document.getElementById('home-chart-summary');
-  if (totalSpent <= 0) {
-    canvas.style.display = 'none';
-    if (summaryEl) summaryEl.classList.add('hidden');
-  } else {
+  {
+    // Always draw the chart (even with no spending) so the x/y axes stay visible
     canvas.style.display = 'block';
     if (summaryEl) {
       summaryEl.classList.remove('hidden');
@@ -15439,7 +15448,7 @@ function updateChart() {
   listEl.innerHTML = groups.map(g => {
     const pct = totalSpent > 0 ? Math.round((g.total / totalSpent) * 100) : 0;
     const iconHtml = categoryIconHTML(g.label, 'text-zinc-300 text-xs');
-    return `<div class="flex items-center justify-between flex-shrink-0">
+    return `<div class="flex items-center justify-between flex-shrink-0 cursor-pointer active:opacity-70 transition" onclick="openHomeCategoryDetails()">
       <div class="flex items-center space-x-2.5">
         <div class="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0">
           ${iconHtml}
