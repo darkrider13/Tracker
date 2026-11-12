@@ -1835,14 +1835,14 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 </div>
 
 <div id="screen-stats" class="screen-content space-y-4 hidden">
-<div class="flex items-start justify-between">
+<div class="flex items-center justify-between">
 <div>
 <h1 id="stats-title" class="text-2xl font-bold tracking-tight text-gray-900">Spending Analytics</h1>
 <p id="stats-subtitle" class="text-xs text-gray-500 mt-0.5">Deep insights into your spending patterns.</p>
 </div>
-<button type="button" id="stats-month-btn" onclick="openAllCatMonthPicker()" class="flex-shrink-0 flex items-center space-x-1.5 bg-gray-200/60 rounded-full pl-2.5 pr-3 py-1.5 active:scale-95 transition">
-<i class="far fa-calendar-alt text-[var(--brand-red)] text-xs"></i>
-<span id="stats-month-btn-label" class="text-[10px] font-extrabold text-gray-700 whitespace-nowrap"></span>
+<button type="button" id="stats-month-btn" onclick="openAllCatMonthPicker()" class="flex-shrink-0 flex items-center space-x-2 bg-gray-200/60 rounded-full pl-3.5 pr-4 py-2.5 active:scale-95 transition">
+<i class="far fa-calendar-alt text-[var(--brand-red)] text-base"></i>
+<span id="stats-month-btn-label" class="text-xs font-extrabold text-gray-700 whitespace-nowrap"></span>
 </button>
 </div>
 
@@ -2011,7 +2011,6 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<div class="flex items-center justify-end" style="height:16px;"><button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:26px;height:26px;margin-right:2px;background:none;color:#fff;"><i class="fas fa-plus text-[10px]"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="modal-quick-categories"></div>
 </div>
@@ -2065,7 +2064,6 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<div class="flex items-center justify-end" style="height:16px;"><button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:26px;height:26px;margin-right:4px;background:none;color:#fff;"><i class="fas fa-plus text-[10px]"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="edit-tx-quick-categories"></div>
 </div>
@@ -3340,6 +3338,7 @@ const I18N = {
     home_chart_total: 'মোট',
     home_chart_avg: 'দৈনিক গড়',
     cat_new_title: 'নতুন ক্যাটাগরি',
+    cat_add_short: 'নতুন',
     cat_new_name_placeholder: 'ক্যাটাগরির নাম',
     cat_choose_icon: 'আইকন বেছে নিন',
     cat_my_categories: 'আমার বানানো ক্যাটাগরি',
@@ -3672,6 +3671,7 @@ const I18N = {
     fund_history_year_label: 'বছর',
     fund_history_clear_filter: 'ফিল্টার মুছুন',
     filter_clear_filter: 'ফিল্টার পরিষ্কার করুন',
+    filter_reset_btn: 'ফিল্টার রিসেট',
     fund_history_no_tx_month: 'নির্বাচিত মাসে কোনো লেনদেন নেই।',
     fund_history_no_tx_date: 'নির্বাচিত তারিখে কোনো লেনদেন নেই।',
 
@@ -10582,8 +10582,13 @@ async function deleteDebtEntry(id) {
   if (currentDetailsFund) renderAccountDetails();
 }
 
-const QUICK_CATEGORIES_MORE = ['Grocery', 'Medicine', 'Event', 'Rent', 'Recharge', 'Education', 'Fun', 'Fuel', 'Family', 'Donation', 'Insurance', 'Fitness', 'Loan', 'Travel', 'Self Care', 'Pet Care', 'Gifts', 'Subscription', 'Internet', 'Repair', 'Other'];
-const QUICK_CATEGORIES = ['Food', 'Shopping', 'Bills', 'Transport'].concat(QUICK_CATEGORIES_MORE);
+// Only these 5 show by default in the category picker. Everything the person
+// creates themselves is added in front, and they can long-press + drag to reorder.
+const DEFAULT_QUICK_CATEGORIES = ['Food', 'Shopping', 'Bills', 'Transport', 'Medicine'];
+// Every built-in name the app still understands (old transactions, typed text,
+// translations, icons, stats) even though it is no longer shown as a chip.
+const ALL_CANONICAL_CATEGORIES = ['Food', 'Shopping', 'Bills', 'Transport', 'Grocery', 'Medicine', 'Event', 'Rent', 'Recharge', 'Education', 'Fun', 'Fuel', 'Family', 'Donation', 'Insurance', 'Fitness', 'Loan', 'Travel', 'Self Care', 'Pet Care', 'Gifts', 'Subscription', 'Internet', 'Repair', 'Other'];
+const QUICK_CATEGORIES = DEFAULT_QUICK_CATEGORIES.slice();
 
 // Maps each canonical (English) category name to its I18N key, so the
 // quick-category chips and any place a category is displayed can show the
@@ -10618,7 +10623,8 @@ function categoryDisplayName(name) {
 function resolveCanonicalCategory(raw) {
   if (!raw) return null;
   const rawLower = raw.trim().toLowerCase();
-  return QUICK_CATEGORIES.find(c => {
+  const pool = QUICK_CATEGORIES.concat(ALL_CANONICAL_CATEGORIES.filter(c => !QUICK_CATEGORIES.includes(c)));
+  return pool.find(c => {
     if (c.toLowerCase() === rawLower) return true;
     const key = CATEGORY_I18N_KEYS[c];
     const bnName = key ? I18N.bn[key] : null;
@@ -10709,26 +10715,108 @@ function renderCategorySlider(containerId, idPrefix, clickHandlerName, categorie
   const el = document.getElementById(containerId);
   if (!el) return;
   syncCustomCategories();
-  const pageSize = 5;
-  let html = '';
-  for (let i = 0; i < categories.length; i += pageSize) {
-    const page = categories.slice(i, i + pageSize);
-    html += `<div class="grid grid-cols-5 gap-x-2.5 gap-y-1.5 shrink-0 w-full snap-start snap-always overflow-hidden">${
-      page.map(name => buildCategoryChipHtml(name, idPrefix, clickHandlerName, 0)).join('')
-    }</div>`;
-  }
-  el.innerHTML = html;
-  // This is the horizontally-swipeable, snap-paged slider (see the
-  // overflow-x-auto snap-x container in the markup). Restoring it after a
-  // search (handleCategoryTyped clearing back to '', or right after a
-  // selectQuickCategory() tap) swaps the DOM back to the paged layout, but
-  // the container's own scrollLeft is untouched by an innerHTML swap - so
-  // if the person had swiped to page 2/3 before searching, the "reset"
-  // view silently reappeared already scrolled there instead of showing
-  // page 1 like a fresh open of the modal would. Snap it back to the start
-  // every time this default view is (re)built.
+  // One continuous row: ~5 chips visible, the next one peeks in so it is clear
+  // the row scrolls. The "+" (new category) chip always sits last in the row.
+  const chipStyle = 'flex:0 0 calc((100% - 40px) / 5.4);min-width:0;';
+  const chips = categories.map(name => buildCategoryChipHtml(name, idPrefix, clickHandlerName, 0, chipStyle)).join('');
+  const plus = `<button type="button" onclick="openAddCategoryModal('${clickHandlerName}')" class="qc-add-chip flex flex-col items-center space-y-1.5 min-w-0 active:scale-95 transition snap-start" style="${chipStyle}">
+<div class="w-10 h-10 rounded-full border border-dashed border-gray-400/60 flex items-center justify-center text-gray-500"><i class="fas fa-plus text-xs"></i></div>
+<span class="text-[10px] font-bold text-gray-500 w-full truncate text-center">${tr('cat_add_short', 'New')}</span>
+</button>`;
+  el.dataset.mode = 'slider';
+  el.dataset.idPrefix = idPrefix;
+  el.dataset.kind = clickHandlerName;
+  el.style.columnGap = '10px';
+  el.style.flexWrap = 'nowrap';
+  el.innerHTML = chips + plus;
+  // Fresh default view always starts from the first chip (see selectQuickCategory)
   el.scrollLeft = 0;
+  bindCategoryReorder(el);
   applyStaticTranslations();
+}
+
+/* ---- Long-press + drag to reorder the category row ---- */
+function bindCategoryReorder(el) {
+  if (el._reorderBound) return;
+  el._reorderBound = true;
+  let timer = null, drag = null, startX = 0, startY = 0, lastX = 0, raf = 0;
+
+  const natural = (chip) => chip.getBoundingClientRect().left - (drag ? drag.tx : 0);
+  function place() {
+    if (!drag) return;
+    const r = drag.chip.getBoundingClientRect();
+    const naturalCenter = r.left + r.width / 2 - drag.tx;
+    drag.tx = lastX - naturalCenter;
+    drag.chip.style.transform = `translateX(${drag.tx}px) scale(1.12)`;
+  }
+  function trySwap() {
+    const chips = Array.from(el.querySelectorAll('[data-cat]'));
+    for (const c of chips) {
+      if (c === drag.chip) continue;
+      const r = c.getBoundingClientRect();
+      if (lastX >= r.left && lastX <= r.right) {
+        const before = !!(c.compareDocumentPosition(drag.chip) & Node.DOCUMENT_POSITION_FOLLOWING);
+        // c is before drag.chip in DOM -> move drag.chip in front of c; else after c
+        if (before) el.insertBefore(drag.chip, c); else el.insertBefore(drag.chip, c.nextSibling);
+        break;
+      }
+    }
+  }
+  function loop() {
+    if (!drag) return;
+    const cr = el.getBoundingClientRect();
+    if (lastX < cr.left + 36) el.scrollLeft -= 7;
+    else if (lastX > cr.right - 36) el.scrollLeft += 7;
+    trySwap();
+    place();
+    raf = requestAnimationFrame(loop);
+  }
+  function start(chip) {
+    drag = { chip, tx: 0 };
+    window._catDragBlock = true;
+    el.style.scrollSnapType = 'none';
+    chip.style.transition = 'none';
+    chip.style.position = 'relative';
+    chip.style.zIndex = '5';
+    chip.style.opacity = '0.95';
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+    raf = requestAnimationFrame(loop);
+  }
+  function finish() {
+    clearTimeout(timer); timer = null;
+    if (!drag) return;
+    cancelAnimationFrame(raf);
+    const chip = drag.chip;
+    chip.style.transition = 'transform .15s ease';
+    chip.style.transform = '';
+    setTimeout(() => { chip.style.transition = ''; chip.style.position = ''; chip.style.zIndex = ''; chip.style.opacity = ''; }, 170);
+    el.style.scrollSnapType = '';
+    drag = null;
+    const names = Array.from(el.querySelectorAll('[data-cat]')).map(c => c.dataset.cat);
+    if (names.length) {
+      appState.categoryOrder = names;
+      saveState();
+      syncCustomCategories();
+    }
+    setTimeout(() => { window._catDragBlock = false; }, 60);
+  }
+
+  el.addEventListener('pointerdown', e => {
+    if (el.dataset.mode !== 'slider') return;
+    const chip = e.target.closest('[data-cat]');
+    if (!chip) return;
+    startX = lastX = e.clientX; startY = e.clientY;
+    clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; start(chip); }, 380);
+  });
+  el.addEventListener('pointermove', e => {
+    if (drag) { lastX = e.clientX; e.preventDefault(); return; }
+    if (timer && (Math.abs(e.clientX - startX) > 8 || Math.abs(e.clientY - startY) > 8)) { clearTimeout(timer); timer = null; }
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, () => { if (timer) { clearTimeout(timer); timer = null; } if (drag && t !== 'pointerleave') finish(); }));
+  // Once the drag has started, stop the browser from scrolling the row / page with the finger
+  el.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+  el.addEventListener('contextmenu', e => { if (e.target.closest('[data-cat]')) e.preventDefault(); });
 }
 
 
@@ -10749,17 +10837,21 @@ function findCustomCategory(label) {
   return getCustomCategories().find(c => c.name.toLowerCase() === n) || null;
 }
 
-// Keeps QUICK_CATEGORIES / EDIT_TX_QUICK_CATEGORIES in step with the user's
-// own categories: removes old custom names, then re-inserts them (newest
-// first) right after the 4 main categories so they show on slider page 1.
+// Keeps QUICK_CATEGORIES / EDIT_TX_QUICK_CATEGORIES in step with the saved
+// order (appState.categoryOrder): the person's own categories come first
+// (newest in front), the 5 defaults follow, and any order they set by
+// long-press + drag is remembered.
 function syncCustomCategories() {
-  const names = getCustomCategories().map(c => c.name).reverse();
+  const customNames = getCustomCategories().map(c => c.name);
+  const valid = new Set(DEFAULT_QUICK_CATEGORIES.concat(customNames));
+  let order = (appState && Array.isArray(appState.categoryOrder)) ? appState.categoryOrder.filter((n, i, a) => valid.has(n) && a.indexOf(n) === i) : [];
+  const missingCustom = customNames.filter(n => !order.includes(n)).reverse();   // newest first
+  const missingDefault = DEFAULT_QUICK_CATEGORIES.filter(n => !order.includes(n));
+  order = missingCustom.concat(order, missingDefault);
+  if (appState) appState.categoryOrder = order;
   [QUICK_CATEGORIES, (typeof EDIT_TX_QUICK_CATEGORIES !== 'undefined' ? EDIT_TX_QUICK_CATEGORIES : null)].forEach(arr => {
     if (!arr) return;
-    for (let i = arr.length - 1; i >= 0; i--) {
-      if (!CATEGORY_I18N_KEYS[arr[i]]) arr.splice(i, 1);
-    }
-    arr.splice(4, 0, ...names);
+    arr.splice(0, arr.length, ...order);
   });
 }
 
@@ -10828,9 +10920,13 @@ function saveCustomCategory() {
   const name = cleanCategoryName(input.value);
   if (!name) return showErr(tr('cat_err_name', 'Enter a category name.'));
   const reserved = ['add money', 'debt collection', 'debt repayment', 'debt lent', 'debt borrowed', 'fund transfer'];
-  if (resolveCanonicalCategory(name) || reserved.includes(name.toLowerCase())) return showErr(tr('cat_err_exists', 'A category with this name already exists.'));
+  const _hit = resolveCanonicalCategory(name);
+  if ((_hit && (QUICK_CATEGORIES.includes(_hit) || _hit === 'Other')) || reserved.includes(name.toLowerCase())) return showErr(tr('cat_err_exists', 'A category with this name already exists.'));
   if (!Array.isArray(appState.customCategories)) appState.customCategories = [];
   appState.customCategories.push({ name, icon: _addCategoryIcon || CUSTOM_CATEGORY_ICONS[0] });
+  if (!Array.isArray(appState.categoryOrder)) appState.categoryOrder = [];
+  appState.categoryOrder = appState.categoryOrder.filter(n => n !== name);
+  appState.categoryOrder.unshift(name);
   saveState();
   syncCustomCategories();
   hidePopup('popup-add-category');
@@ -10842,6 +10938,7 @@ async function deleteCustomCategory(name) {
   const ok = await customConfirm(tr('cat_delete_confirm', 'Delete this category? Past transactions stay; only the icon changes.'), { icon: 'fa-trash-alt' });
   if (!ok) return;
   appState.customCategories = getCustomCategories().filter(c => c.name !== name);
+  if (Array.isArray(appState.categoryOrder)) appState.categoryOrder = appState.categoryOrder.filter(n => n !== name);
   saveState();
   syncCustomCategories();
   const keep = (document.getElementById('new-cat-name-input') || {}).value || '';
@@ -10860,7 +10957,7 @@ async function deleteCustomCategory(name) {
 // highlightLen > 0 the data-i18n attributes are deliberately omitted so
 // a later applyStaticTranslations() pass doesn't stomp the colored
 // span back to plain translated text.
-function buildCategoryChipHtml(name, idPrefix, clickHandlerName, highlightLen) {
+function buildCategoryChipHtml(name, idPrefix, clickHandlerName, highlightLen, extraStyle) {
   const slug = categoryIdSlug(name);
   const key = CATEGORY_I18N_KEYS[name] || '';
   const safeName = name.replace(/'/g, "\\'");
@@ -10875,7 +10972,8 @@ function buildCategoryChipHtml(name, idPrefix, clickHandlerName, highlightLen) {
     labelHtml = escapeHtml(display);
     i18nAttrs = key ? ` data-i18n="${key}" data-i18n-en="${name}"` : '';
   }
-  return `<button type="button" onclick="${clickHandlerName}('${safeName}')" id="${idPrefix}${slug}" class="flex flex-col items-center space-y-1.5 min-w-0">
+  const styleAttr = extraStyle ? ` style="${extraStyle}-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;"` : '';
+  return `<button type="button" onclick="if(window._catDragBlock)return;${clickHandlerName}('${safeName}')" id="${idPrefix}${slug}" data-cat="${escapeHtml(name)}"${styleAttr} class="flex flex-col items-center space-y-1.5 min-w-0">
 <div class="qc-icon-circle w-10 h-10 rounded-full bg-gray-200/70 flex items-center justify-center text-gray-500">
 ${categoryIconHTML(name, 'text-xs')}
 </div>
@@ -10894,6 +10992,8 @@ ${categoryIconHTML(name, 'text-xs')}
 function renderFilteredCategoryChips(containerId, idPrefix, clickHandlerName, categories, typed) {
   const el = document.getElementById(containerId);
   if (!el) return;
+  el.dataset.mode = 'filter';
+  el.style.columnGap = '';
   const lower = typed.toLowerCase();
   const matches = categories.filter(name => categoryDisplayName(name).toLowerCase().startsWith(lower));
   if (matches.length === 0) {
@@ -11778,7 +11878,7 @@ async function deleteTransferEntry(txId) {
 /* ---------- Edit Transaction (Logs / Account Details) ---------- */
 
 let editingTxId = null;
-const EDIT_TX_QUICK_CATEGORIES = ['Food', 'Shopping', 'Bills', 'Transport'].concat(QUICK_CATEGORIES_MORE);
+const EDIT_TX_QUICK_CATEGORIES = DEFAULT_QUICK_CATEGORIES.slice();
 
 // After 1 full day from creation, a transaction's amount becomes
 // permanently locked (fund, description, category stay editable). Uses
@@ -14244,7 +14344,7 @@ function openAllCatMonthPicker() {
   pop.className = 'fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4';
   pop.style.zIndex = '10000';
   pop.innerHTML = `
-  <div class="glass-card rounded-[28px] w-full max-w-sm p-6 space-y-4 shadow-2xl">
+  <div class="glass-card rounded-[28px] w-full max-w-sm p-6 space-y-3 shadow-2xl">
     <div class="flex items-center space-x-2 text-gray-900">
       <div class="w-8 h-8 rounded-xl bg-gray-200/50 flex items-center justify-center text-[var(--brand-red)]"><i class="far fa-calendar-alt text-xs"></i></div>
       <h3 class="font-extrabold text-lg tracking-tight">${tr('fund_history_select_month', 'Select a Month')}</h3>
@@ -14262,7 +14362,8 @@ function openAllCatMonthPicker() {
         </div>
       </div>
     </div>
-    <div class="flex space-x-2 pt-2">
+    <button type="button" onclick="resetAllCatMonthPicker()" class="w-full bg-white hover:bg-white/80 text-[var(--brand-red)] modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"><i class="fas fa-rotate-left"></i><span>${tr('filter_reset_btn', 'Reset Filter')}</span></button>
+    <div class="flex space-x-2">
       <button type="button" onclick="closeAllCatMonthPicker()" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('common_cancel', 'Cancel')}</button>
       <button type="button" onclick="confirmAllCatMonthPicker()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">${tr('modal_set_btn', 'Set')}</button>
     </div>
@@ -14286,6 +14387,15 @@ function openAllCatMonthPicker() {
 function closeAllCatMonthPicker() {
   const p = document.getElementById('allcat-month-picker');
   if (p) p.remove();
+}
+
+// Reset: drop the month chosen in this picker and go back to the default
+// scope (Logs Time filter month, else the current month).
+function resetAllCatMonthPicker() {
+  closeAllCatMonthPicker();
+  statsMonthOverride = null;
+  renderAnalyticsList();
+  updateStatsMonthButton();
 }
 
 function confirmAllCatMonthPicker() {
