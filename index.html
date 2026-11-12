@@ -383,15 +383,6 @@ html:not(.dark-theme) #boot-splash .boot-splash-title {
   will-change: transform, opacity;
   animation: bs-pop 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
 }
-#boot-splash .boot-splash-icon-wrap::before {
-  content: '';
-  position: absolute;
-  inset: -34px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, rgba(59, 91, 219, 0.14) 45%, rgba(0, 0, 0, 0) 70%);
-  opacity: 0;
-  animation: bs-glow 3.2s ease-in-out 1.2s infinite;
-}
 #boot-splash .boot-splash-icon-wrap img {
   position: relative;
   width: 104px;
@@ -426,15 +417,10 @@ html:not(.dark-theme) #boot-splash .boot-splash-tagline {
   from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.82); }
   to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
-@keyframes bs-glow {
-  0%, 100% { opacity: 0.35; transform: scale(0.96); }
-  50%      { opacity: 1;    transform: scale(1.06); }
-}
 @media (prefers-reduced-motion: reduce) {
   #boot-splash .boot-splash-title,
   #boot-splash .boot-splash-icon-wrap,
   #boot-splash .boot-splash-tagline { animation: bs-fade 0.4s ease both; }
-  #boot-splash .boot-splash-icon-wrap::before { animation: none; }
   @keyframes bs-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
@@ -1634,7 +1620,8 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <button onclick="setHomeChartRange('month')" id="home-range-month" class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase transition" data-i18n="home_month" data-i18n-en="Month">Month</button>
 </div>
 </div>
-<div class="h-24 w-full mb-4">
+<div id="home-chart-summary" class="flex items-center justify-between text-[10px] text-zinc-400 font-bold mb-2 hidden"></div>
+<div class="h-32 w-full mb-4">
 <canvas id="spendChart"></canvas>
 </div>
 <div class="relative">
@@ -2013,7 +2000,7 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<div class="flex items-center justify-center" style="width:calc((100% - 2.5rem)/5);height:16px;"><button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:28px;height:28px;background:none;color:#fff;"><i class="fas fa-plus text-sm"></i></button></div>
+<div class="flex items-center justify-end" style="height:16px;"><button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:26px;height:26px;margin-right:2px;background:none;color:#fff;"><i class="fas fa-plus text-[10px]"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="modal-quick-categories"></div>
 </div>
@@ -2067,7 +2054,7 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<div class="flex items-center justify-center" style="width:calc((100% - 2.5rem)/5);height:16px;"><button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:28px;height:28px;background:none;color:#fff;"><i class="fas fa-plus text-sm"></i></button></div>
+<div class="flex items-center justify-end" style="height:16px;"><button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:26px;height:26px;margin-right:4px;background:none;color:#fff;"><i class="fas fa-plus text-[10px]"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="edit-tx-quick-categories"></div>
 </div>
@@ -3337,6 +3324,10 @@ const I18N = {
     stats_top_category: 'সর্বোচ্চ খরচের ক্যাটাগরি',
     stats_pct_of_total: 'মোট খরচের {pct}%',
     stats_see_all: 'সব দেখুন',
+    home_last7: 'শেষ ৭ দিন',
+    home_chart_daily: 'দৈনিক খরচ',
+    home_chart_total: 'মোট',
+    home_chart_avg: 'দৈনিক গড়',
     cat_new_title: 'নতুন ক্যাটাগরি',
     cat_new_name_placeholder: 'ক্যাটাগরির নাম',
     cat_choose_icon: 'আইকন বেছে নিন',
@@ -15180,7 +15171,13 @@ function updateChart() {
   // as the Logs "Week" filter (see renderLogsList) - not a rolling "last
   // 7 days" window, which used to spill into the previous week/month for
   // the first few days of a new week.
-  const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+  // 7-Days view = the last 7 days ending today (today at the right edge),
+  // BUT never going back past the 1st of the current month - the app
+  // resets every month, so last month's spending must not appear here.
+  // On the 1st it shows 1 day, on the 3rd 3 days, from the 7th onward a full 7.
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const rolling7Start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+  const weekStart = rolling7Start < monthStart ? monthStart : rolling7Start;
   const rangeFiltered = currentFundTransactions.filter(t => {
     const txDate = new Date(t.date);
     txDate.setHours(0, 0, 0, 0);
@@ -15199,47 +15196,122 @@ function updateChart() {
 
   const groups = groupByCategory(rangeFiltered);
   const totalSpent = groups.reduce((s, g) => s + g.total, 0);
-  const top = groups.slice(0, 3);
-  // The 2nd color here is pure white, which reads fine against this
-  // card's black background in dark theme - but in light/day mode the
-  // card itself now flips to a light card (see .daymode-flip-card),
-  // so a white bar on a light card became invisible. Swap it for a
-  // dark gray in light mode only; dark mode keeps the original white.
+  // ---- Daily spending chart ----
+  // Week  = 7 bars (Sun..Sat of the current week)
+  // Month = one bar per day of the current month (28-31)
+  // Each bar is the TOTAL spent on that day, so the shape of the graph
+  // answers "which days did I spend the most?" at a glance.
   const isDarkTheme = document.documentElement.classList.contains('dark-theme');
-  const barColors = isDarkTheme
-    ? ['#FF0000', '#FFFFFF', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500']
-    : ['#FF0000', '#3f3f46', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500'];
-  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
+  const brandRed = (getComputedStyle(document.documentElement).getPropertyValue('--brand-red') || '').trim() || '#b91c1c';
+  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  const tickColor = isDarkTheme ? '#a1a1aa' : '#52525b';
+  const BN_SHORT_WD = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'];
+
+  const isWeek = homeChartRange === 'week';
+  const dayDates = [];
+  if (isWeek) {
+    const weekDayCount = Math.round((today - weekStart) / 86400000) + 1;
+    for (let i = 0; i < weekDayCount; i++) dayDates.push(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i));
+  } else {
+    const dim = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    for (let d = 1; d <= dim; d++) dayDates.push(new Date(today.getFullYear(), today.getMonth(), d));
+  }
+  const dayKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const perDay = {};
+  rangeFiltered.forEach(t => { const k = dayKey(new Date(t.date)); perDay[k] = (perDay[k] || 0) + t.amount; });
+  const dayTotals = dayDates.map(d => perDay[dayKey(d)] || 0);
+  const elapsedDays = isWeek ? dayDates.length : today.getDate();
+  const dailyAvg = totalSpent / Math.max(1, elapsedDays);
+
+  const fmtDayTitle = d => getLang() === 'bn'
+    ? `${BN_WEEKDAYS[d.getDay()]}, ${fmtDate(d)}`
+    : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  const xLabel = (d, idx) => {
+    if (isWeek) return getLang() === 'bn' ? BN_SHORT_WD[d.getDay()] : d.toLocaleDateString([], { weekday: 'short' });
+    const day = idx + 1;
+    return (day === 1 || day % 5 === 0 || day === dayDates.length) ? localizeDigits(String(day)) : '';
+  };
+
+  // Draws the amount above bars: every bar in Week view, only the tallest
+  // day in Month view (30 labels would overlap).
+  const valueLabelPlugin = {
+    id: 'dailyValueLabels',
+    afterDatasetsDraw(chart) {
+      const c = chart.ctx;
+      const data = chart.data.datasets[0].data;
+      const meta = chart.getDatasetMeta(0);
+      const peakIdx = data.indexOf(Math.max(...data));
+      c.save();
+      c.font = 'bold 9px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+      c.fillStyle = isDarkTheme ? '#ffffff' : '#18181b';
+      c.textAlign = 'center';
+      c.textBaseline = 'bottom';
+      meta.data.forEach((bar, i) => {
+        const v = data[i];
+        if (!v) return;
+        if (!isWeek && i !== peakIdx) return;
+        c.fillText(localizeDigits(String(Math.round(v))), bar.x, bar.y - 3);
+      });
+      c.restore();
+    }
+  };
 
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-  if (top.length === 0) {
+  const summaryEl = document.getElementById('home-chart-summary');
+  if (totalSpent <= 0) {
     canvas.style.display = 'none';
+    if (summaryEl) summaryEl.classList.add('hidden');
   } else {
     canvas.style.display = 'block';
+    if (summaryEl) {
+      summaryEl.classList.remove('hidden');
+      summaryEl.innerHTML = `<span>${tr('home_chart_daily', 'Daily spending')}${isWeek ? ' · ' + tr('home_last7', 'Last 7 days') : ''}</span>
+        <span>${tr('home_chart_total', 'Total')} <b class="text-white">৳${fmtMoney(Math.round(totalSpent), 0)}</b> · ${tr('home_chart_avg', 'Avg/day')} <b class="text-white">৳${fmtMoney(Math.round(dailyAvg), 0)}</b></span>`;
+    }
     chartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: top.map(g => g.label),
+        labels: dayDates.map((d, i) => xLabel(d, i)),
         datasets: [{
-          data: top.map(g => g.total),
-          backgroundColor: top.map((g, i) => barColors[i] || '#800080'),
-          borderRadius: 8,
-          maxBarThickness: 34
+          data: dayTotals,
+          backgroundColor: brandRed,
+          borderRadius: isWeek ? 6 : 3,
+          maxBarThickness: isWeek ? 26 : 12,
+          barPercentage: isWeek ? 0.6 : 0.75,
+          categoryPercentage: 1
         }]
       },
+      plugins: [valueLabelPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        layout: { padding: { top: 14 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            displayColors: false,
+            callbacks: {
+              title: items => fmtDayTitle(dayDates[items[0].dataIndex]),
+              label: item => '৳' + fmtMoney(Math.round(item.parsed.y), 0)
+            }
+          }
+        },
         scales: {
-          x: { display: false },
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: tickColor, autoSkip: false, maxRotation: 0, font: { size: 9, weight: 'bold' } }
+          },
           y: {
-            display: true,
             beginAtZero: true,
             grid: { color: gridColor, drawTicks: false },
             border: { display: false },
-            ticks: { display: false }
+            ticks: {
+              color: tickColor, maxTicksLimit: 3, font: { size: 8 },
+              callback: v => v === 0 ? '' : localizeDigits(String(Math.round(v)))
+            }
           }
         }
       }
