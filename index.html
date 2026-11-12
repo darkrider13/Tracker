@@ -1632,8 +1632,7 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <button onclick="setHomeChartRange('month')" id="home-range-month" class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase transition" data-i18n="home_month" data-i18n-en="Month">Month</button>
 </div>
 </div>
-<div id="home-chart-summary" class="flex items-center justify-between text-[10px] text-zinc-400 font-bold mb-2 hidden"></div>
-<div class="h-32 w-full mb-4">
+<div class="h-44 w-full mb-4">
 <canvas id="spendChart"></canvas>
 </div>
 <div class="relative">
@@ -3340,8 +3339,6 @@ const I18N = {
     stats_see_all: 'সব দেখুন',
     home_last7: 'শেষ ৭ দিন',
     home_chart_daily: 'দৈনিক খরচ',
-    home_chart_total: 'মোট',
-    home_chart_avg: 'দৈনিক গড়',
     cat_new_title: 'নতুন ক্যাটাগরি',
     cat_add_short: 'নতুন',
     cat_new_name_placeholder: 'ক্যাটাগরির নাম',
@@ -3351,11 +3348,6 @@ const I18N = {
     cat_err_exists: 'এই নামে ক্যাটাগরি আগে থেকেই আছে।',
     cat_delete_confirm: 'এই ক্যাটাগরি মুছবেন? আগের লেনদেনগুলো থেকে যাবে, শুধু আইকনটা বদলে যাবে।',
     stats_all_categories: 'সব ক্যাটাগরির সামারি',
-    stats_suggestions: 'সাজেশন',
-    stats_sugg_increase: 'গত মাসের চেয়ে খরচ {pct}% বেড়েছে। এটা আবার কমিয়ে আনার চেষ্টা করুন।',
-    stats_sugg_high_share: 'আপনার মোট খরচের {pct}% শুধু এই খাতে যাচ্ছে। একটু কমালেই বড় সাশ্রয় হবে।',
-    stats_sugg_save: '১০% কমালে ৳{amt} বাঁচবে',
-    stats_sugg_none: 'আপনার খরচ ভারসাম্যপূর্ণ আছে - এখন কোনো ক্যাটাগরি কমানোর দরকার নেই।',
     stats_insights_title: 'খরচ সম্পর্কে বিশ্লেষণ',
     stats_biggest_expense: 'সবচেয়ে বড় খরচ',
     stats_most_active_day: 'সবচেয়ে সক্রিয় দিন',
@@ -14220,30 +14212,6 @@ function onTopCatSliderScroll(el) {
   });
 }
 
-// Essential categories are not suggested for cutting.
-function isEssentialCategory(label) {
-  return /rent|bill|electric|gas|water|internet|medic|health|doctor|education|tuition|school|loan|emi|ভাড়া|বিল|বিদ্যুৎ|পানি|ইন্টারনেট|ঔষধ|চিকিৎসা|স্বাস্থ্য|শিক্ষা|টিউশন|স্কুল|কিস্তি/i.test(label || '');
-}
-
-function buildCategorySuggestions(groups, prevGroups, totalSpent) {
-  const prevMap = {};
-  (prevGroups || []).forEach(g => { prevMap[g.label] = g.total; });
-  const out = [];
-  groups.forEach(g => {
-    if (isEssentialCategory(g.label)) return;
-    const pct = totalSpent > 0 ? g.total / totalSpent * 100 : 0;
-    const prev = prevMap[g.label];
-    const up = prev > 0 ? ((g.total - prev) / prev * 100) : null;
-    const save = Math.round(g.total * 0.1);
-    if (up !== null && up >= 20 && g.total - prev >= 50) {
-      out.push({ label: g.label, text: trf('stats_sugg_increase', `Spending rose ${Math.round(up)}% vs last month. Try to bring it back down.`, { pct: localizeDigits(Math.round(up)) }), save });
-    } else if (pct >= 30 && groups.length > 1) {
-      out.push({ label: g.label, text: trf('stats_sugg_high_share', `This is ${pct.toFixed(0)}% of all your spending. Cutting it a little makes a big difference.`, { pct: localizeDigits(pct.toFixed(0)) }), save });
-    }
-  });
-  return out.slice(0, 4);
-}
-
 // Category totals for any month of the active fund (used by the month picker
 // inside the All Categories sheet - it does NOT touch the Logs time filter).
 function computeCategoryMonthData(year, monthIdx) {
@@ -14272,7 +14240,6 @@ function openAllCategoriesSummary(monthOverride) {
   closeAllCategoriesSummary();
   window._allCatScope = { year: scope.year, monthIdx: scope.monthIdx };
   const { groups, totalSpent, prevGroups } = data;
-  const sugg = buildCategorySuggestions(groups, prevGroups, totalSpent);
 
   const rows = groups.map((g, i) => {
     const pct = totalSpent > 0 ? g.total / totalSpent * 100 : 0;
@@ -14294,17 +14261,6 @@ function openAllCategoriesSummary(monthOverride) {
       </div>`;
   }).join('');
 
-  const suggHTML = sugg.length ? sugg.map(x => `
-      <div class="bg-white/70 rounded-2xl p-3 flex items-start space-x-3">
-        <div class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-triangle-exclamation text-[var(--brand-red)] text-xs"></i></div>
-        <div>
-          <p class="text-xs font-bold text-gray-900">${escapeHtml(x.label)}</p>
-          <p class="text-[11px] text-gray-500 font-bold mt-0.5">${x.text}</p>
-          <p class="text-[10px] text-[var(--brand-red)] font-black mt-1">${trf('stats_sugg_save', `Cut 10% and save ৳${x.save}`, { amt: fmtMoney(x.save, 0) })}</p>
-        </div>
-      </div>`).join('') : `
-      <div class="bg-white/70 rounded-2xl p-3 text-[11px] text-gray-500 font-bold">${tr('stats_sugg_none', 'Your spending looks balanced - no category needs cutting right now.')}</div>`;
-
   const overlay = document.createElement('div');
   overlay.id = 'all-categories-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;';
@@ -14320,11 +14276,6 @@ function openAllCategoriesSummary(monthOverride) {
         <button type="button" onclick="closeAllCategoriesSummary()" class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"><i class="fas fa-xmark text-gray-500 text-sm"></i></button>
       </div>
       <div id="all-cat-list" class="no-scrollbar" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">${groups.length ? rows : `<div class="bg-white/70 rounded-2xl p-4 text-center text-[11px] text-gray-500 font-bold">${tr('stats_no_spending_data', 'No spending statistics available for this asset.')}</div>`}</div>
-      ${groups.length ? `<div class="flex items-center space-x-2 mt-5 mb-2">
-        <i class="fas fa-lightbulb text-[var(--brand-red)] text-xs"></i>
-        <h4 class="text-sm font-bold text-gray-900">${tr('stats_suggestions', 'Suggestions')}</h4>
-      </div>
-      <div class="space-y-2">${suggHTML}</div>` : ''}
     </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
@@ -14467,10 +14418,12 @@ function renderAnalyticsList() {
 
   const totalSpent = filtered.reduce((s, t) => s + t.amount, 0);
   const txCount = filtered.length;
-  const zeroedDates = filtered.map(t => { const d = new Date(t.date); d.setHours(0, 0, 0, 0); return d; });
-  const minDate = new Date(Math.min(...zeroedDates));
-  const maxDate = new Date(Math.max(...zeroedDates));
-  const daySpan = Math.max(1, Math.round((maxDate - minDate) / 86400000) + 1);
+  // Daily average = total spent / days of the selected month that have passed:
+  // current month -> 1st up to today; any other month -> the whole month.
+  const nowDate = new Date();
+  const daysInStatsMonth = new Date(statsYear, statsMonthIdx + 1, 0).getDate();
+  const isCurrentStatsMonth = nowDate.getFullYear() === statsYear && nowDate.getMonth() === statsMonthIdx;
+  const daySpan = Math.max(1, isCurrentStatsMonth ? nowDate.getDate() : daysInStatsMonth);
   const dailyAvg = totalSpent / daySpan;
 
   const groups = groupByCategory(filtered);
@@ -15490,8 +15443,6 @@ function updateChart() {
     if (found) { yStep = found; break; }
   }
   const yNiceMax = Math.ceil(yMaxData / yStep) * yStep;
-  const elapsedDays = isWeek ? dayDates.length : today.getDate();
-  const dailyAvg = totalSpent / Math.max(1, elapsedDays);
 
   const fmtDayTitle = d => getLang() === 'bn'
     ? `${BN_WEEKDAYS[d.getDay()]}, ${fmtDate(d)}`
@@ -15519,7 +15470,7 @@ function updateChart() {
       const meta = chart.getDatasetMeta(0);
       const peakIdx = data.indexOf(Math.max(...data));
       c.save();
-      c.font = 'bold 9px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+      c.font = 'bold 11px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
       c.fillStyle = isDarkTheme ? '#ffffff' : '#18181b';
       c.textAlign = 'center';
       c.textBaseline = 'bottom';
@@ -15581,15 +15532,9 @@ function updateChart() {
 
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-  const summaryEl = document.getElementById('home-chart-summary');
   {
     // Always draw the chart (even with no spending) so the x/y axes stay visible
     canvas.style.display = 'block';
-    if (summaryEl) {
-      summaryEl.classList.remove('hidden');
-      summaryEl.innerHTML = `<span>${tr('home_chart_total', 'Total')} <b class="text-white">৳${fmtMoney(Math.round(totalSpent), 0)}</b></span>
-        <span>${tr('home_chart_avg', 'Avg/day')} <b class="text-white">৳${fmtMoney(Math.round(dailyAvg), 0)}</b></span>`;
-    }
     chartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -15597,8 +15542,8 @@ function updateChart() {
         datasets: [{
           data: dayTotals,
           backgroundColor: brandRed,
-          borderRadius: isWeek ? 6 : 3,
-          maxBarThickness: isWeek ? 26 : 12,
+          borderRadius: isWeek ? 8 : 4,
+          maxBarThickness: isWeek ? 30 : 12,
           barPercentage: isWeek ? 0.6 : (dayDates.length >= 31 ? 0.68 : 0.75),
           categoryPercentage: 1
         }]
@@ -15608,7 +15553,7 @@ function updateChart() {
         responsive: true,
         maintainAspectRatio: false,
         devicePixelRatio: Math.max((window.devicePixelRatio || 1) * 2, 6),
-        layout: { padding: { top: 14 } },
+        layout: { padding: { top: 18 } },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -15636,16 +15581,16 @@ function updateChart() {
             ticks: {
               color: ctx => isWeek ? tickColor : 'rgba(0,0,0,0)',
               autoSkip: false, maxRotation: 0, minRotation: 0, padding: 4,
-              font: { size: 9, weight: 'bold' }
+              font: { size: 10, weight: 'bold' }
             }
           },
           y: {
             beginAtZero: true,
             max: yNiceMax,
-            grid: { color: gridColor, drawTicks: false },
+            grid: { color: gridColor, drawTicks: false, borderDash: [3, 4] },
             border: { display: false },
             ticks: {
-              color: tickColor, stepSize: yStep, maxTicksLimit: 8, font: { size: 8 },
+              color: tickColor, stepSize: yStep, maxTicksLimit: 8, font: { size: 9 },
               callback: v => v === 0 ? '' : localizeDigits(String(Math.round(v)))
             }
           }
