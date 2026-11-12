@@ -14338,6 +14338,9 @@ function openAllCategoriesSummary(monthOverride) {
 // Stats screen's Top Spending Category card.
 function openHomeCategoryDetails() {
   window._statsCatData = null;          // never show another fund's/month's stale data
+  // The Home graph is always the current month, so jumping in from it must show the
+  // current month too - drop any month previously picked with the Stats calendar button.
+  statsMonthOverride = null;
   switchTab('stats');
   switchStatsSubtab('spending');
   if (window._statsCatData) openAllCategoriesSummary();
