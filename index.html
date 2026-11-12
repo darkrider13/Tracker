@@ -1486,6 +1486,13 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 #onboard-name-input.onboard-name-error { border-color: #ef4444 !important; }
 #onboard-name-input.onboard-name-error::placeholder { color: #ef4444 !important; }
 html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
+
+/* Diagonal debt arrows. The bundled Font Awesome has no arrow-up-right /
+   arrow-down-left glyphs (they rendered as empty boxes), so build them from
+   the plain up/down arrows rotated 45deg. Works the same on any FA version. */
+.fas.fa-arrow-up-right::before   { content: "\f062"; }
+.fas.fa-arrow-down-left::before  { content: "\f063"; }
+.fas.fa-arrow-up-right, .fas.fa-arrow-down-left { display: inline-block; transform: rotate(45deg); }
 </style>
 </head>
 <body class="font-sans antialiased text-gray-900 pb-32">
