@@ -10759,6 +10759,7 @@ function openAddCategoryModal(handlerName) {
   _addCategoryIcon = CUSTOM_CATEGORY_ICONS[0];
   renderAddCategoryModal('');
   showPopup('popup-add-category');
+  fitListToVisibleCount(document.getElementById('my-categories-list'), 2, 6, true);
 }
 
 function renderAddCategoryModal(keepName) {
@@ -10785,12 +10786,14 @@ function renderAddCategoryModal(keepName) {
     <p id="new-cat-error" class="hidden text-[10px] font-bold text-[var(--brand-red)] px-1"></p>
     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${tr('cat_choose_icon', 'Choose Icon')}</p>
     <div id="new-cat-icon-grid" class="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto no-scrollbar justify-items-center">${iconBtns}</div>
-    ${mine.length ? `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-1">${tr('cat_my_categories', 'My Categories')}</p><div class="space-y-1.5">${myRows}</div>` : ''}
+    ${mine.length ? `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-1">${tr('cat_my_categories', 'My Categories')}</p><div id="my-categories-list" class="space-y-1.5 no-scrollbar">${myRows}</div>` : ''}
     <div class="flex space-x-3 pt-2">
       <button type="button" onclick="hidePopup('popup-add-category')" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('common_cancel', 'Cancel')}</button>
       <button type="button" onclick="saveCustomCategory()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">${tr('common_save', 'Save')}</button>
     </div>
   </div>`;
+  // show only the top 2 of "my categories"; the rest slide (snap-scroll) one at a time
+  fitListToVisibleCount(document.getElementById('my-categories-list'), 2, 6, true);
 }
 
 function pickCustomCategoryIcon(ic) {
