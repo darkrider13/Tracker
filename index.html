@@ -353,6 +353,11 @@ html.app-boot-pending #bottom-nav-bar { opacity: 0; visibility: hidden; pointer-
 html:not(.dark-theme) #boot-splash {
   background: #ffffff;
 }
+/* While booting, paint the page itself the same colour as the splash so there
+   is never a differently-coloured frame before/after the splash (native
+   splash -> WebView -> #boot-splash all share one background). */
+html.app-boot-pending { background: #05070a; }
+html.app-boot-pending:not(.dark-theme) { background: #ffffff; }
 /* Boot splash layout (top to bottom): 1) app name, 2) icon, 3) tagline.
    Visual priority is name > icon > tagline, with generous vertical spacing
    (especially between name and icon). Entrance is a staggered, GPU-friendly
@@ -4899,7 +4904,7 @@ function customAlert(message, opts = {}) {
   });
 }
 
-let homeChartRange = 'month';
+let homeChartRange = 'week';
 let activeFilterType = '';
 let currentDetailsFund = null;
 // Set when Logs > Debts/Receivables is opened FROM a Fund Details screen (red/green
