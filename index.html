@@ -1620,7 +1620,7 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <button onclick="setHomeChartRange('month')" id="home-range-month" class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase transition" data-i18n="home_month" data-i18n-en="Month">Month</button>
 </div>
 </div>
-<div id="home-chart-summary" class="flex items-center gap-4 text-[10px] text-zinc-400 font-bold mb-2 hidden"></div>
+<div id="home-chart-summary" class="flex items-center justify-between text-[10px] text-zinc-400 font-bold mb-2 hidden"></div>
 <div class="h-32 w-full mb-4">
 <canvas id="spendChart"></canvas>
 </div>
@@ -15268,6 +15268,13 @@ function updateChart() {
 
   // Month view: the in-between days are drawn as bold dots exactly at the
   // vertical middle of the date digits (1, 5, 10 …), evenly spaced.
+  if (Chart.Tooltip && Chart.Tooltip.positioners) {
+    Chart.Tooltip.positioners.barMiddle = function (items) {
+      if (!items.length) return false;
+      const el = items[0].element;
+      return { x: el.x, y: (el.y + el.base) / 2 };
+    };
+  }
   const dayDotsPlugin = {
     id: 'dayDots',
     afterDraw(chart) {
@@ -15275,10 +15282,20 @@ function updateChart() {
       const xs = chart.scales.x;
       const items = xs._labelItems || [];
       const ref = items.find(it => it && it.label) ;
-      const midY = ref && ref.options && ref.options.translation
+      const c = chart.ctx;
+      let midY = ref && ref.options && ref.options.translation
         ? ref.options.translation[1]
         : xs.top + 3 + 5.5;
-      const c = chart.ctx;
+      if (ref && ref.font && ref.font.string) {
+        // label is drawn with textBaseline 'middle'; use the glyphs' real
+        // ink box so the dots sit in the visual middle of the digits.
+        c.save();
+        c.font = ref.font.string;
+        c.textBaseline = ref.options.textBaseline || 'middle';
+        const m = c.measureText(ref.label);
+        if (m.actualBoundingBoxAscent != null) midY -= (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+        c.restore();
+      }
       c.save();
       c.fillStyle = tickColor;
       dayDates.forEach((d, i) => {
@@ -15310,7 +15327,7 @@ function updateChart() {
         labels: dayDates.map((d, i) => xLabel(d, i)),
         datasets: [{
           data: dayTotals,
-          backgroundColor: dayTotals.map(v => (v > 0 && v === yMaxData) ? '#ff0000' : brandRed),
+          backgroundColor: brandRed,
           borderRadius: isWeek ? 6 : 3,
           maxBarThickness: isWeek ? 26 : 12,
           barPercentage: isWeek ? 0.6 : 0.75,
@@ -15321,19 +15338,22 @@ function updateChart() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 3),
+        devicePixelRatio: Math.max((window.devicePixelRatio || 1) * 2, 6),
         layout: { padding: { top: 14 } },
         plugins: {
           legend: { display: false },
           tooltip: {
             enabled: true,
             displayColors: false,
-            padding: { x: 6, y: 4 },
-            caretSize: 4,
-            cornerRadius: 6,
-            titleFont: { size: 9, weight: 'bold' },
-            bodyFont: { size: 9 },
-            titleMarginBottom: 2,
+            position: 'barMiddle',
+            yAlign: 'center',
+            padding: { x: 5, y: 3 },
+            caretSize: 3,
+            caretPadding: 4,
+            cornerRadius: 5,
+            titleFont: { size: 8, weight: 'bold' },
+            bodyFont: { size: 8 },
+            titleMarginBottom: 1,
             callbacks: {
               title: items => fmtDayTitle(dayDates[items[0].dataIndex]),
               label: item => '৳' + fmtMoney(Math.round(item.parsed.y), 0)
@@ -15358,6 +15378,23 @@ function updateChart() {
           }
         }
       }
+    });
+  }
+
+  // Pinch-zoom: re-draw the chart at a higher resolution so it stays crisp.
+  if (window.visualViewport && !window._chartZoomHooked) {
+    window._chartZoomHooked = true;
+    let zt;
+    window.visualViewport.addEventListener('resize', () => {
+      clearTimeout(zt);
+      zt = setTimeout(() => {
+        if (!chartInstance) return;
+        const r = Math.min(10, Math.max(6, (window.devicePixelRatio || 1) * 2 * (window.visualViewport.scale || 1)));
+        if (chartInstance.options.devicePixelRatio !== r) {
+          chartInstance.options.devicePixelRatio = r;
+          chartInstance.resize();
+        }
+      }, 200);
     });
   }
 
