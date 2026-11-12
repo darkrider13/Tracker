@@ -1840,6 +1840,10 @@ html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 <h1 id="stats-title" class="text-2xl font-bold tracking-tight text-gray-900">Spending Analytics</h1>
 <p id="stats-subtitle" class="text-xs text-gray-500 mt-0.5">Deep insights into your spending patterns.</p>
 </div>
+<button type="button" id="stats-month-btn" onclick="openAllCatMonthPicker()" class="flex-shrink-0 flex items-center space-x-1.5 bg-gray-200/60 rounded-full pl-2.5 pr-3 py-1.5 active:scale-95 transition">
+<i class="far fa-calendar-alt text-[var(--brand-red)] text-xs"></i>
+<span id="stats-month-btn-label" class="text-[10px] font-extrabold text-gray-700 whitespace-nowrap"></span>
+</button>
 </div>
 
 <div class="grid grid-cols-2 gap-1.5 bg-gray-200/60 p-1 rounded-2xl">
@@ -8992,6 +8996,7 @@ function switchStatsSubtab(name) {
 
   if (name === 'spending') renderAnalyticsList();
   if (name === 'debts') renderLiabilityAnalytics();
+  updateStatsMonthButton();
 }
 
 function openStatsDebtsShortcut() {
@@ -14027,7 +14032,12 @@ function categoryIconHTML(rawCategory, extraClasses, extraStyle) {
    Clearing the Transactions filter (back to 'month') therefore
    automatically snaps Spending Analytics back to the current month too -
    no separate "reset" step needed here. */
+// Month picked with the calendar button on the Stats screen. Independent of the
+// Logs Time filter; lives in memory only, so it resets on a fresh app launch.
+let statsMonthOverride = null;
+
 function getStatsSpendMonthScope() {
+  if (statsMonthOverride) return { year: statsMonthOverride.year, monthIdx: statsMonthOverride.monthIdx };
   const now = new Date();
   const f = appState.filters;
   if (f && f.time === 'custommonth' && f.customMonth) {
@@ -14118,10 +14128,33 @@ function buildCategorySuggestions(groups, prevGroups, totalSpent) {
   return out.slice(0, 4);
 }
 
-function openAllCategoriesSummary() {
-  const data = window._statsCatData;
+// Category totals for any month of the active fund (used by the month picker
+// inside the All Categories sheet - it does NOT touch the Logs time filter).
+function computeCategoryMonthData(year, monthIdx) {
+  const inMonth = (t, y, m) => { const d = new Date(t.date); return d.getFullYear() === y && d.getMonth() === m; };
+  const spend = appState.transactions.filter(t => t.fund === appState.activeFund && isSpendTx(t));
+  const cur = spend.filter(t => inMonth(t, year, monthIdx));
+  const prevDate = new Date(year, monthIdx - 1, 1);
+  const prev = spend.filter(t => inMonth(t, prevDate.getFullYear(), prevDate.getMonth()));
+  return {
+    groups: cur.length ? groupByCategory(cur) : [],
+    totalSpent: cur.reduce((sum, t) => sum + t.amount, 0),
+    prevGroups: prev.length ? groupByCategory(prev) : []
+  };
+}
+
+function allCatMonthLabel(scope) {
+  return getLang() === 'bn'
+    ? `${BN_MONTHS[scope.monthIdx]} ${localizeDigits(String(scope.year))}`
+    : new Date(scope.year, scope.monthIdx, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
+}
+
+function openAllCategoriesSummary(monthOverride) {
+  const scope = monthOverride || getStatsSpendMonthScope();
+  const data = monthOverride ? computeCategoryMonthData(scope.year, scope.monthIdx) : window._statsCatData;
   if (!data) return;
   closeAllCategoriesSummary();
+  window._allCatScope = { year: scope.year, monthIdx: scope.monthIdx };
   const { groups, totalSpent, prevGroups } = data;
   const sugg = buildCategorySuggestions(groups, prevGroups, totalSpent);
 
@@ -14166,15 +14199,16 @@ function openAllCategoriesSummary() {
         <div>
           <h3 class="text-base font-extrabold text-gray-900">${tr('stats_all_categories', 'All Categories Summary')}</h3>
           <p class="text-[10px] text-gray-400 font-bold">${tr('stats_total_spent', 'Total Spent')}: ৳${fmtMoney(Math.round(totalSpent), 0)} · ${localizeDigits(groups.length)} ${tr('stats_categories_used', 'Categories Used')}</p>
+          <p class="text-[10px] font-extrabold text-[var(--brand-red)] mt-0.5">${allCatMonthLabel(scope)}</p>
         </div>
         <button type="button" onclick="closeAllCategoriesSummary()" class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"><i class="fas fa-xmark text-gray-500 text-sm"></i></button>
       </div>
-      <div id="all-cat-list" class="no-scrollbar" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">${rows}</div>
-      <div class="flex items-center space-x-2 mt-5 mb-2">
+      <div id="all-cat-list" class="no-scrollbar" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">${groups.length ? rows : `<div class="bg-white/70 rounded-2xl p-4 text-center text-[11px] text-gray-500 font-bold">${tr('stats_no_spending_data', 'No spending statistics available for this asset.')}</div>`}</div>
+      ${groups.length ? `<div class="flex items-center space-x-2 mt-5 mb-2">
         <i class="fas fa-lightbulb text-[var(--brand-red)] text-xs"></i>
         <h4 class="text-sm font-bold text-gray-900">${tr('stats_suggestions', 'Suggestions')}</h4>
       </div>
-      <div class="space-y-2">${suggHTML}</div>
+      <div class="space-y-2">${suggHTML}</div>` : ''}
     </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
@@ -14198,7 +14232,82 @@ function openHomeCategoryDetails() {
   if (window._statsCatData) openAllCategoriesSummary();
 }
 
+// Calendar icon in the sheet: pick any month/year. Only this sheet's data
+// changes - the Logs Time filter and the Stats screen stay as they were.
+let _allCatPick = null;
+function openAllCatMonthPicker() {
+  closeAllCatMonthPicker();
+  const cur = getStatsSpendMonthScope();
+  _allCatPick = { month: cur.monthIdx + 1, year: cur.year };
+  const pop = document.createElement('div');
+  pop.id = 'allcat-month-picker';
+  pop.className = 'fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4';
+  pop.style.zIndex = '10000';
+  pop.innerHTML = `
+  <div class="glass-card rounded-[28px] w-full max-w-sm p-6 space-y-4 shadow-2xl">
+    <div class="flex items-center space-x-2 text-gray-900">
+      <div class="w-8 h-8 rounded-xl bg-gray-200/50 flex items-center justify-center text-[var(--brand-red)]"><i class="far fa-calendar-alt text-xs"></i></div>
+      <h3 class="font-extrabold text-lg tracking-tight">${tr('fund_history_select_month', 'Select a Month')}</h3>
+    </div>
+    <div>
+      <div class="flex items-stretch justify-center mb-0.5">
+        <span class="fund-month-wheel-col flex items-center justify-center text-center text-xs font-bold text-gray-400 uppercase">${tr('fund_history_month_label', 'Month')}</span>
+        <span class="fund-year-wheel-col flex items-center justify-center text-center text-xs font-bold text-gray-400 uppercase ml-1">${tr('fund_history_year_label', 'Year')}</span>
+      </div>
+      <div class="relative py-2">
+        <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-11 rounded-2xl bg-[#991b1b]/10 border border-[#991b1b]/30 pointer-events-none"></div>
+        <div class="flex items-stretch justify-center">
+          <div id="allcat-month-wheel" class="time-wheel fund-month-wheel-col"></div>
+          <div id="allcat-year-wheel" class="time-wheel fund-year-wheel-col ml-1"></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex space-x-2 pt-2">
+      <button type="button" onclick="closeAllCatMonthPicker()" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('common_cancel', 'Cancel')}</button>
+      <button type="button" onclick="confirmAllCatMonthPicker()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">${tr('modal_set_btn', 'Set')}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(pop);
+
+  const now = new Date();
+  const monthItems = Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: getLang() === 'bn' ? BN_MONTHS[i] : FUND_HISTORY_MONTH_NAMES_SHORT[i]
+  }));
+  const startYear = Math.min(getPickerMinYear('transactions'), cur.year);
+  const yearItems = Array.from({ length: Math.max(now.getFullYear(), cur.year) - startYear + 1 }, (_, i) => {
+    const y = startYear + i;
+    return { value: y, label: localizeDigits(String(y)) };
+  });
+  initGenericWheel(document.getElementById('allcat-month-wheel'), monthItems, _allCatPick.month, true, v => { _allCatPick.month = Number(v); });
+  initGenericWheel(document.getElementById('allcat-year-wheel'), yearItems, _allCatPick.year, false, v => { _allCatPick.year = Number(v); });
+}
+
+function closeAllCatMonthPicker() {
+  const p = document.getElementById('allcat-month-picker');
+  if (p) p.remove();
+}
+
+function confirmAllCatMonthPicker() {
+  if (!_allCatPick) return closeAllCatMonthPicker();
+  const { month, year } = _allCatPick;
+  closeAllCatMonthPicker();
+  statsMonthOverride = { year, monthIdx: month - 1 };
+  renderAnalyticsList();
+  updateStatsMonthButton();
+}
+
+// Label on the Stats header calendar button (hidden on the Debts & Receivables tab)
+function updateStatsMonthButton() {
+  const btn = document.getElementById('stats-month-btn');
+  if (!btn) return;
+  btn.classList.toggle('hidden', statsSubtab !== 'spending');
+  const lbl = document.getElementById('stats-month-btn-label');
+  if (lbl) lbl.textContent = allCatMonthLabel(getStatsSpendMonthScope());
+}
+
 function closeAllCategoriesSummary() {
+  closeAllCatMonthPicker();
   const o = document.getElementById('all-categories-overlay');
   if (o) o.remove();
   document.body.style.overflow = '';
