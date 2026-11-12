@@ -14302,7 +14302,7 @@ function openAllCategoriesSummary(monthOverride) {
 
   const overlay = document.createElement('div');
   overlay.id = 'all-categories-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;';
   overlay.onclick = e => { if (e.target === overlay) closeAllCategoriesSummary(); };
   overlay.innerHTML = `
     <div style="width:100%;max-width:520px;max-height:88vh;overflow-y:auto;border-radius:28px 28px 0 0;background:${document.documentElement.classList.contains('dark-theme') ? '#131315' : '#f3f4f6'};padding:20px 16px 28px;">
@@ -14373,7 +14373,7 @@ function openAllCatMonthPicker() {
         </div>
       </div>
     </div>
-    <button type="button" onclick="resetAllCatMonthPicker()" class="w-full bg-white hover:bg-white/80 text-[var(--brand-red)] modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"><i class="fas fa-rotate-left"></i><span>${tr('filter_reset_btn', 'Reset Filter')}</span></button>
+    ${statsMonthOverride ? `<button type="button" onclick="resetAllCatMonthPicker()" class="w-full bg-white hover:bg-white/80 text-[var(--brand-red)] modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('filter_reset_btn', 'Reset Filter')}</button>` : ''}
     <div class="flex space-x-2">
       <button type="button" onclick="closeAllCatMonthPicker()" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('common_cancel', 'Cancel')}</button>
       <button type="button" onclick="confirmAllCatMonthPicker()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">${tr('modal_set_btn', 'Set')}</button>
