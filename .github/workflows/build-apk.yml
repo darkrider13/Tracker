@@ -81,7 +81,6 @@ jobs:
               this.bridge.getWebView().getSettings().setMinimumFontSize(1);
               this.bridge.getWebView().getSettings().setMinimumLogicalFontSize(1);
               this.bridge.getWebView().clearCache(true);
-              this.bridge.getWebView().setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, com.myapp.app.R.color.app_splash_bg));
             }
           '''
               idx = content.rfind('}')
