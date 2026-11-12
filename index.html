@@ -15460,30 +15460,6 @@ function updateChart() {
     return isLabeledMonthDay(idx) ? localizeDigits(String(idx + 1)) : '';
   };
 
-  // Draws the amount above bars: every bar in Week view, only the tallest
-  // day in Month view (30 labels would overlap).
-  const valueLabelPlugin = {
-    id: 'dailyValueLabels',
-    afterDatasetsDraw(chart) {
-      const c = chart.ctx;
-      const data = chart.data.datasets[0].data;
-      const meta = chart.getDatasetMeta(0);
-      const peakIdx = data.indexOf(Math.max(...data));
-      c.save();
-      c.font = 'bold 11px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
-      c.fillStyle = isDarkTheme ? '#ffffff' : '#18181b';
-      c.textAlign = 'center';
-      c.textBaseline = 'bottom';
-      meta.data.forEach((bar, i) => {
-        const v = data[i];
-        if (!v) return;
-        if (!isWeek && i !== peakIdx) return;
-        c.fillText(localizeDigits(String(Math.round(v))), bar.x, bar.y - 3);
-      });
-      c.restore();
-    }
-  };
-
   // Month view: the in-between days are drawn as bold dots exactly at the
   // vertical middle of the date digits (1, 5, 10 …), evenly spaced.
   if (Chart.Tooltip && Chart.Tooltip.positioners) {
@@ -15548,16 +15524,21 @@ function updateChart() {
           categoryPercentage: 1
         }]
       },
-      plugins: [valueLabelPlugin, dayDotsPlugin],
+      plugins: [dayDotsPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         devicePixelRatio: Math.max((window.devicePixelRatio || 1) * 2, 6),
-        layout: { padding: { top: 18 } },
+        layout: { padding: { top: 8 } },
+        // Tap/click anywhere in a day's column (not only on the bar itself)
+        // selects that day; the tooltip is still drawn at the bar's middle.
+        interaction: { mode: 'index', axis: 'x', intersect: false },
+        events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
         plugins: {
           legend: { display: false },
           tooltip: {
             enabled: true,
+            filter: item => item.parsed.y > 0,
             displayColors: false,
             position: 'barMiddle',
             yAlign: 'center',
