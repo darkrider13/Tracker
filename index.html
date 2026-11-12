@@ -15239,7 +15239,7 @@ function updateChart() {
     if (isWeek) return getLang() === 'bn' ? BN_SHORT_WD[d.getDay()] : d.toLocaleDateString([], { weekday: 'short' });
     // Month view: only some dates are written (no room for 30 numbers);
     // every other day gets a small dot so each bar still maps to one day.
-    return isLabeledMonthDay(idx) ? localizeDigits(String(idx + 1)) : '';
+    return localizeDigits(String(idx + 1));
   };
 
   // Draws the amount above bars: every bar in Week view, only the tallest
@@ -15334,7 +15334,7 @@ function updateChart() {
           categoryPercentage: 1
         }]
       },
-      plugins: [valueLabelPlugin, dayDotsPlugin],
+      plugins: [valueLabelPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -15364,7 +15364,12 @@ function updateChart() {
           x: {
             grid: { display: false },
             border: { display: false },
-            ticks: { color: tickColor, autoSkip: false, maxRotation: 0, font: ctx => ({ size: (!isWeek && !isLabeledMonthDay(ctx.index)) ? 6 : 9, weight: 'bold' }) }
+            ticks: {
+              color: ctx => (!isWeek && !isLabeledMonthDay(ctx.index)) ? (isDarkTheme ? '#71717a' : '#8b8b94') : tickColor,
+              autoSkip: false, maxRotation: 0, minRotation: 0, padding: 4,
+              font: ctx => isWeek ? { size: 9, weight: 'bold' }
+                : (isLabeledMonthDay(ctx.index) ? { size: 7, weight: 'bold' } : { size: 6, weight: 'normal' })
+            }
           },
           y: {
             beginAtZero: true,
