@@ -15220,16 +15220,26 @@ function updateChart() {
   const perDay = {};
   rangeFiltered.forEach(t => { const k = dayKey(new Date(t.date)); perDay[k] = (perDay[k] || 0) + t.amount; });
   const dayTotals = dayDates.map(d => perDay[dayKey(d)] || 0);
+  // Y-axis: neat step (1/2/5 × 10^n) so labels read 10-20-30… instead of 50-100
+  const yMaxData = Math.max(1, ...dayTotals);
+  let yStep = 1;
+  for (const p of [1, 10, 100, 1000, 10000, 100000, 1000000]) {
+    const found = [1, 2, 5].map(m => m * p).find(s => yMaxData / s <= 6);
+    if (found) { yStep = found; break; }
+  }
+  const yNiceMax = Math.ceil(yMaxData / yStep) * yStep;
   const elapsedDays = isWeek ? dayDates.length : today.getDate();
   const dailyAvg = totalSpent / Math.max(1, elapsedDays);
 
   const fmtDayTitle = d => getLang() === 'bn'
     ? `${BN_WEEKDAYS[d.getDay()]}, ${fmtDate(d)}`
     : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  const isLabeledMonthDay = idx => { const day = idx + 1; return day === 1 || day % 5 === 0 || day === dayDates.length; };
   const xLabel = (d, idx) => {
     if (isWeek) return getLang() === 'bn' ? BN_SHORT_WD[d.getDay()] : d.toLocaleDateString([], { weekday: 'short' });
-    const day = idx + 1;
-    return (day === 1 || day % 5 === 0 || day === dayDates.length) ? localizeDigits(String(day)) : '';
+    // Month view: only some dates are written (no room for 30 numbers);
+    // every other day gets a small dot so each bar still maps to one day.
+    return isLabeledMonthDay(idx) ? localizeDigits(String(idx + 1)) : '•';
   };
 
   // Draws the amount above bars: every bar in Week view, only the tallest
@@ -15275,7 +15285,7 @@ function updateChart() {
         labels: dayDates.map((d, i) => xLabel(d, i)),
         datasets: [{
           data: dayTotals,
-          backgroundColor: brandRed,
+          backgroundColor: dayTotals.map(v => (v > 0 && v === yMaxData) ? '#f59e0b' : brandRed),
           borderRadius: isWeek ? 6 : 3,
           maxBarThickness: isWeek ? 26 : 12,
           barPercentage: isWeek ? 0.6 : 0.75,
@@ -15302,14 +15312,15 @@ function updateChart() {
           x: {
             grid: { display: false },
             border: { display: false },
-            ticks: { color: tickColor, autoSkip: false, maxRotation: 0, font: { size: 9, weight: 'bold' } }
+            ticks: { color: tickColor, autoSkip: false, maxRotation: 0, font: ctx => ({ size: (!isWeek && !isLabeledMonthDay(ctx.index)) ? 6 : 9, weight: 'bold' }) }
           },
           y: {
             beginAtZero: true,
+            max: yNiceMax,
             grid: { color: gridColor, drawTicks: false },
             border: { display: false },
             ticks: {
-              color: tickColor, maxTicksLimit: 3, font: { size: 8 },
+              color: tickColor, stepSize: yStep, maxTicksLimit: 8, font: { size: 8 },
               callback: v => v === 0 ? '' : localizeDigits(String(Math.round(v)))
             }
           }
