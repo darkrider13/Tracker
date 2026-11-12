@@ -1499,6 +1499,7 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 .onboard-name-shake { animation: onboardNameShake 0.5s ease-in-out; }
 #onboard-name-input.onboard-name-error { border-color: #ef4444 !important; }
 #onboard-name-input.onboard-name-error::placeholder { color: #ef4444 !important; }
+html:not(.dark-theme) .add-cat-plus { color: #374151 !important; }
 </style>
 </head>
 <body class="font-sans antialiased text-gray-900 pb-32">
@@ -2012,7 +2013,7 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="w-6 h-6 rounded-full bg-gray-200/70 text-[var(--brand-red)] flex items-center justify-center active:scale-90 transition"><i class="fas fa-plus text-[10px]"></i></button>
+<div class="flex items-center justify-center" style="width:calc((100% - 2.5rem)/5);height:16px;"><button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:28px;height:28px;background:none;color:#fff;"><i class="fas fa-plus text-sm"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="modal-quick-categories"></div>
 </div>
@@ -2066,7 +2067,7 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
-<button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="w-6 h-6 rounded-full bg-gray-200/70 text-[var(--brand-red)] flex items-center justify-center active:scale-90 transition"><i class="fas fa-plus text-[10px]"></i></button>
+<div class="flex items-center justify-center" style="width:calc((100% - 2.5rem)/5);height:16px;"><button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="add-cat-plus flex items-center justify-center active:scale-90 transition" style="width:28px;height:28px;background:none;color:#fff;"><i class="fas fa-plus text-sm"></i></button></div>
 </div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="edit-tx-quick-categories"></div>
 </div>
@@ -14047,7 +14048,7 @@ function buildTopCategoriesSliderHTML(groups, totalSpent) {
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">${categoryIconHTML(g.label, 'text-[var(--brand-red)]')}</div>
             <div>
-              <p class="text-sm font-bold text-[var(--brand-red)]">#${localizeDigits(i + 1)} ${escapeHtml(g.label)}</p>
+              <p class="text-sm font-bold text-[var(--brand-red)]">${escapeHtml(g.label)}</p>
               <p class="text-[10px] text-[#991b1b]/70 font-bold">${trf('stats_pct_of_total', `${pct.toFixed(1)}% of total spending`, { pct: localizeDigits(pct.toFixed(1)) })} · ${trf('stats_tx_count_suffix', `${g.count} transactions`, { count: localizeDigits(g.count) })}</p>
             </div>
           </div>
@@ -14123,7 +14124,7 @@ function openAllCategoriesSummary() {
   const rows = groups.map((g, i) => {
     const pct = totalSpent > 0 ? g.total / totalSpent * 100 : 0;
     return `
-      <div class="bg-white/70 rounded-2xl p-3">
+      <div class="all-cat-row bg-white/70 rounded-2xl p-3" style="flex-shrink:0;scroll-snap-align:start;scroll-snap-stop:always;">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3">
             <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">${categoryIconHTML(g.label, 'text-[var(--brand-red)]')}</div>
@@ -14164,7 +14165,7 @@ function openAllCategoriesSummary() {
         </div>
         <button type="button" onclick="closeAllCategoriesSummary()" class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"><i class="fas fa-xmark text-gray-500 text-sm"></i></button>
       </div>
-      <div class="space-y-2">${rows}</div>
+      <div id="all-cat-list" class="no-scrollbar" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">${rows}</div>
       <div class="flex items-center space-x-2 mt-5 mb-2">
         <i class="fas fa-lightbulb text-[var(--brand-red)] text-xs"></i>
         <h4 class="text-sm font-bold text-gray-900">${tr('stats_suggestions', 'Suggestions')}</h4>
@@ -14173,6 +14174,14 @@ function openAllCategoriesSummary() {
     </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
+  // Show exactly 3 categories; the 4th onward are reached by swiping, one
+  // category per swipe (scroll-snap, same idea as the other sliders).
+  const list = document.getElementById('all-cat-list');
+  const rowEls = list ? list.querySelectorAll('.all-cat-row') : [];
+  if (list && rowEls.length > 3) {
+    const h = rowEls[0].offsetHeight;
+    list.style.height = (h * 3 + 8 * 2) + 'px';
+  }
 }
 
 function closeAllCategoriesSummary() {
