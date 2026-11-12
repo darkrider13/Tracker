@@ -2010,7 +2010,10 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 <input type="text" id="modal-category-input" oninput="stripLeadingDigitsInput(this); handleCategoryTyped()" placeholder="Enter Category" data-i18n-placeholder="modal_enter_category_placeholder" data-i18n-placeholder-en="Enter Category" autocomplete="off" class="w-full p-3 bg-white/80 rounded-xl text-sm font-bold focus:outline-none border border-gray-200 focus:border-[var(--brand-red)]">
 
 <div class="space-y-2">
+<div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
+<button type="button" onclick="openAddCategoryModal('selectQuickCategory')" class="w-6 h-6 rounded-full bg-gray-200/70 text-[var(--brand-red)] flex items-center justify-center active:scale-90 transition"><i class="fas fa-plus text-[10px]"></i></button>
+</div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="modal-quick-categories"></div>
 </div>
 
@@ -2037,6 +2040,8 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 </div>
 </div>
 
+<div id="popup-add-category" class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[90] hidden"></div>
+
 <div id="popup-edit-transaction" class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[75] hidden">
 <div class="glass-card rounded-[28px] w-full max-w-sm p-6 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar">
 <div class="flex items-center space-x-2 text-gray-900">
@@ -2059,7 +2064,10 @@ html.dark-theme .debt-sub-strong { color: #f2f2f6 !important; }
 <input type="text" id="edit-tx-category-input" oninput="stripLeadingDigitsInput(this); handleEditTxCategoryTyped()" placeholder="Enter Category" data-i18n-placeholder="modal_enter_category_placeholder" data-i18n-placeholder-en="Enter Category" autocomplete="off" class="w-full p-3 bg-white/80 rounded-xl text-sm font-bold focus:outline-none border border-gray-200 focus:border-[var(--brand-red)]">
 
 <div class="space-y-2">
+<div class="flex items-center justify-between">
 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" data-i18n="modal_select_category" data-i18n-en="Select Category">Select Category</p>
+<button type="button" onclick="openAddCategoryModal('selectEditTxQuickCategory')" class="w-6 h-6 rounded-full bg-gray-200/70 text-[var(--brand-red)] flex items-center justify-center active:scale-90 transition"><i class="fas fa-plus text-[10px]"></i></button>
+</div>
 <div class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" id="edit-tx-quick-categories"></div>
 </div>
 
@@ -3327,6 +3335,20 @@ const I18N = {
     stats_daily_avg: 'দৈনিক গড়',
     stats_top_category: 'সর্বোচ্চ খরচের ক্যাটাগরি',
     stats_pct_of_total: 'মোট খরচের {pct}%',
+    stats_see_all: 'সব দেখুন',
+    cat_new_title: 'নতুন ক্যাটাগরি',
+    cat_new_name_placeholder: 'ক্যাটাগরির নাম',
+    cat_choose_icon: 'আইকন বেছে নিন',
+    cat_my_categories: 'আমার বানানো ক্যাটাগরি',
+    cat_err_name: 'ক্যাটাগরির নাম লিখুন।',
+    cat_err_exists: 'এই নামে ক্যাটাগরি আগে থেকেই আছে।',
+    cat_delete_confirm: 'এই ক্যাটাগরি মুছবেন? আগের লেনদেনগুলো থেকে যাবে, শুধু আইকনটা বদলে যাবে।',
+    stats_all_categories: 'সব ক্যাটাগরির সামারি',
+    stats_suggestions: 'সাজেশন',
+    stats_sugg_increase: 'গত মাসের চেয়ে খরচ {pct}% বেড়েছে। এটা আবার কমিয়ে আনার চেষ্টা করুন।',
+    stats_sugg_high_share: 'আপনার মোট খরচের {pct}% শুধু এই খাতে যাচ্ছে। একটু কমালেই বড় সাশ্রয় হবে।',
+    stats_sugg_save: '১০% কমালে ৳{amt} বাঁচবে',
+    stats_sugg_none: 'আপনার খরচ ভারসাম্যপূর্ণ আছে - এখন কোনো ক্যাটাগরি কমানোর দরকার নেই।',
     stats_insights_title: 'খরচ সম্পর্কে বিশ্লেষণ',
     stats_biggest_expense: 'সবচেয়ে বড় খরচ',
     stats_most_active_day: 'সবচেয়ে সক্রিয় দিন',
@@ -10682,6 +10704,7 @@ function categoryIdSlug(name) {
 function renderCategorySlider(containerId, idPrefix, clickHandlerName, categories) {
   const el = document.getElementById(containerId);
   if (!el) return;
+  syncCustomCategories();
   const pageSize = 5;
   let html = '';
   for (let i = 0; i < categories.length; i += pageSize) {
@@ -10704,6 +10727,122 @@ function renderCategorySlider(containerId, idPrefix, clickHandlerName, categorie
   applyStaticTranslations();
 }
 
+
+/* ---------- User-made categories (name + icon) ---------- */
+const CUSTOM_CATEGORY_ICONS = ['fa-utensils','fa-burger','fa-pizza-slice','fa-mug-hot','fa-ice-cream','fa-cookie-bite','fa-wine-glass','fa-bowl-food','fa-carrot','fa-apple-whole','fa-bag-shopping','fa-basket-shopping','fa-shirt','fa-shoe-prints','fa-glasses','fa-ring','fa-gift','fa-cake-candles','fa-house','fa-couch','fa-broom','fa-soap','fa-bolt','fa-wifi','fa-mobile-screen','fa-sim-card','fa-laptop','fa-tv','fa-headphones','fa-camera','fa-film','fa-gamepad','fa-music','fa-guitar','fa-futbol','fa-basketball','fa-dumbbell','fa-spa','fa-scissors','fa-palette','fa-book','fa-book-open','fa-graduation-cap','fa-pen-ruler','fa-briefcase','fa-wrench','fa-screwdriver-wrench','fa-car','fa-bus','fa-taxi','fa-train','fa-motorcycle','fa-bicycle','fa-gas-pump','fa-plane','fa-ship','fa-umbrella-beach','fa-tree','fa-seedling','fa-paw','fa-baby','fa-heart','fa-pills','fa-stethoscope','fa-syringe','fa-hospital','fa-tooth','fa-church','fa-shield-halved','fa-landmark','fa-coins','fa-sack-dollar'];
+
+function getCustomCategories() {
+  return (appState && Array.isArray(appState.customCategories)) ? appState.customCategories : [];
+}
+
+function cleanCategoryName(raw) {
+  return (raw || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/["<>\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
+}
+
+function findCustomCategory(label) {
+  const n = cleanCategoryName(label).toLowerCase();
+  if (!n) return null;
+  return getCustomCategories().find(c => c.name.toLowerCase() === n) || null;
+}
+
+// Keeps QUICK_CATEGORIES / EDIT_TX_QUICK_CATEGORIES in step with the user's
+// own categories: removes old custom names, then re-inserts them (newest
+// first) right after the 4 main categories so they show on slider page 1.
+function syncCustomCategories() {
+  const names = getCustomCategories().map(c => c.name).reverse();
+  [QUICK_CATEGORIES, (typeof EDIT_TX_QUICK_CATEGORIES !== 'undefined' ? EDIT_TX_QUICK_CATEGORIES : null)].forEach(arr => {
+    if (!arr) return;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (!CATEGORY_I18N_KEYS[arr[i]]) arr.splice(i, 1);
+    }
+    arr.splice(4, 0, ...names);
+  });
+}
+
+let _addCategoryIcon = null;
+let _addCategoryHandler = null;
+
+function openAddCategoryModal(handlerName) {
+  _addCategoryHandler = handlerName;
+  _addCategoryIcon = CUSTOM_CATEGORY_ICONS[0];
+  renderAddCategoryModal('');
+  showPopup('popup-add-category');
+}
+
+function renderAddCategoryModal(keepName) {
+  const el = document.getElementById('popup-add-category');
+  if (!el) return;
+  const mine = getCustomCategories();
+  const iconBtns = CUSTOM_CATEGORY_ICONS.map(ic => `
+    <button type="button" onclick="pickCustomCategoryIcon('${ic}')" data-ic="${ic}" class="w-10 h-10 rounded-full flex items-center justify-center ${ic === _addCategoryIcon ? 'bg-[var(--brand-red)] text-white' : 'bg-gray-200/70 text-gray-500'}"><i class="fas ${ic} text-xs"></i></button>`).join('');
+  const myRows = mine.map(c => `
+    <div class="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2">
+      <div class="flex items-center space-x-2 min-w-0">
+        <i class="fas ${c.icon} text-[var(--brand-red)] text-xs"></i>
+        <span class="text-xs font-bold text-gray-800 truncate">${escapeHtml(c.name)}</span>
+      </div>
+      <button type="button" onclick="deleteCustomCategory(decodeURIComponent('${encodeURIComponent(c.name)}'))" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400"><i class="fas fa-trash-alt text-[10px]"></i></button>
+    </div>`).join('');
+  el.innerHTML = `
+  <div class="glass-card rounded-[24px] w-full max-w-sm p-5 space-y-3 shadow-2xl max-h-[88vh] overflow-y-auto no-scrollbar">
+    <h3 class="font-extrabold text-lg tracking-tight text-gray-900">${tr('cat_new_title', 'New Category')}</h3>
+    <div class="flex items-center space-x-3">
+      <div id="new-cat-preview" class="w-11 h-11 rounded-full bg-[var(--brand-red)] text-white flex items-center justify-center flex-shrink-0"><i class="fas ${_addCategoryIcon} text-sm"></i></div>
+      <input type="text" id="new-cat-name-input" maxlength="20" value="${escapeHtml(keepName)}" placeholder="${tr('cat_new_name_placeholder', 'Category name')}" autocomplete="off" class="w-full p-3 bg-white/80 rounded-xl text-sm font-bold focus:outline-none border border-gray-200 focus:border-[var(--brand-red)]">
+    </div>
+    <p id="new-cat-error" class="hidden text-[10px] font-bold text-[var(--brand-red)] px-1"></p>
+    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${tr('cat_choose_icon', 'Choose Icon')}</p>
+    <div id="new-cat-icon-grid" class="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto no-scrollbar justify-items-center">${iconBtns}</div>
+    ${mine.length ? `<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-1">${tr('cat_my_categories', 'My Categories')}</p><div class="space-y-1.5">${myRows}</div>` : ''}
+    <div class="flex space-x-3 pt-2">
+      <button type="button" onclick="hidePopup('popup-add-category')" class="w-1/2 bg-white hover:bg-white/80 text-gray-700 modal-secondary-btn py-2.5 rounded-xl text-xs font-bold transition">${tr('common_cancel', 'Cancel')}</button>
+      <button type="button" onclick="saveCustomCategory()" class="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">${tr('common_save', 'Save')}</button>
+    </div>
+  </div>`;
+}
+
+function pickCustomCategoryIcon(ic) {
+  _addCategoryIcon = ic;
+  document.querySelectorAll('#new-cat-icon-grid [data-ic]').forEach(b => {
+    const on = b.dataset.ic === ic;
+    b.className = 'w-10 h-10 rounded-full flex items-center justify-center ' + (on ? 'bg-[var(--brand-red)] text-white' : 'bg-gray-200/70 text-gray-500');
+  });
+  const pv = document.querySelector('#new-cat-preview i');
+  if (pv) pv.className = 'fas ' + ic + ' text-sm';
+}
+
+function saveCustomCategory() {
+  const input = document.getElementById('new-cat-name-input');
+  const errEl = document.getElementById('new-cat-error');
+  const showErr = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); };
+  const name = cleanCategoryName(input.value);
+  if (!name) return showErr(tr('cat_err_name', 'Enter a category name.'));
+  const reserved = ['add money', 'debt collection', 'debt repayment', 'debt lent', 'debt borrowed', 'fund transfer'];
+  if (resolveCanonicalCategory(name) || reserved.includes(name.toLowerCase())) return showErr(tr('cat_err_exists', 'A category with this name already exists.'));
+  if (!Array.isArray(appState.customCategories)) appState.customCategories = [];
+  appState.customCategories.push({ name, icon: _addCategoryIcon || CUSTOM_CATEGORY_ICONS[0] });
+  saveState();
+  syncCustomCategories();
+  hidePopup('popup-add-category');
+  // select the new category in whichever modal opened this popup
+  if (_addCategoryHandler && typeof window[_addCategoryHandler] === 'function') window[_addCategoryHandler](name);
+}
+
+async function deleteCustomCategory(name) {
+  const ok = await customConfirm(tr('cat_delete_confirm', 'Delete this category? Past transactions stay; only the icon changes.'), { icon: 'fa-trash-alt' });
+  if (!ok) return;
+  appState.customCategories = getCustomCategories().filter(c => c.name !== name);
+  saveState();
+  syncCustomCategories();
+  const keep = (document.getElementById('new-cat-name-input') || {}).value || '';
+  renderAddCategoryModal(keep);
+  ['modal-quick-categories', 'edit-tx-quick-categories'].forEach(id => {
+    if (!document.getElementById(id)) return;
+    if (id === 'modal-quick-categories') renderCategorySlider(id, 'qc-', 'selectQuickCategory', QUICK_CATEGORIES);
+    else renderCategorySlider(id, 'edit-qc-', 'selectEditTxQuickCategory', EDIT_TX_QUICK_CATEGORIES);
+  });
+}
+
 // Builds a single category chip's markup. highlightLen (0 when not
 // searching) colors the first N characters of the label red to mirror
 // how far the typed text in the category input currently matches this
@@ -10724,7 +10863,7 @@ function buildCategoryChipHtml(name, idPrefix, clickHandlerName, highlightLen) {
     i18nAttrs = '';
   } else {
     labelHtml = escapeHtml(display);
-    i18nAttrs = ` data-i18n="${key}" data-i18n-en="${name}"`;
+    i18nAttrs = key ? ` data-i18n="${key}" data-i18n-en="${name}"` : '';
   }
   return `<button type="button" onclick="${clickHandlerName}('${safeName}')" id="${idPrefix}${slug}" class="flex flex-col items-center space-y-1.5 min-w-0">
 <div class="qc-icon-circle w-10 h-10 rounded-full bg-gray-200/70 flex items-center justify-center text-gray-500">
@@ -13804,6 +13943,9 @@ function groupByCategory(transactions) {
 
 function getCategoryFAIcon(label) {
   const c = (label || '').toLowerCase();
+  // User-made categories win over the keyword guesses below (exact name match)
+  const customHit = findCustomCategory(label);
+  if (customHit) return customHit.icon;
   if (c.includes('transfer') || c.includes('ট্রান্সফার')) return 'fa-right-left';
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
@@ -13894,6 +14036,151 @@ function getStatsSpendMonthScope() {
   return { year: now.getFullYear(), monthIdx: now.getMonth() };
 }
 
+/* ---------- Top Spending Categories: slider (top 3) + "see all" summary ---------- */
+function buildTopCategoriesSliderHTML(groups, totalSpent) {
+  const top = groups.slice(0, 3);
+  const slides = top.map((g, i) => {
+    const pct = totalSpent > 0 ? (g.total / totalSpent * 100) : 0;
+    return `
+      <div style="flex:0 0 100%;scroll-snap-align:center;">
+        <div class="flex items-center justify-between bg-white/70 rounded-2xl p-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">${categoryIconHTML(g.label, 'text-[var(--brand-red)]')}</div>
+            <div>
+              <p class="text-sm font-bold text-[var(--brand-red)]">#${localizeDigits(i + 1)} ${escapeHtml(g.label)}</p>
+              <p class="text-[10px] text-[#991b1b]/70 font-bold">${trf('stats_pct_of_total', `${pct.toFixed(1)}% of total spending`, { pct: localizeDigits(pct.toFixed(1)) })} · ${trf('stats_tx_count_suffix', `${g.count} transactions`, { count: localizeDigits(g.count) })}</p>
+            </div>
+          </div>
+          <p class="text-base font-extrabold text-[var(--brand-red)]">৳${fmtMoney(Math.round(g.total), 0)}</p>
+        </div>
+        <div class="w-full h-2 bg-gray-300/60 rounded-full overflow-hidden mt-3">
+          <div class="h-full bg-[var(--brand-red)] rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+  const dots = top.length > 1 ? `
+    <div id="top-cat-dots" class="flex justify-center space-x-1.5 pt-1">
+      ${top.map((_, i) => `<span data-dot="${i}" style="width:${i === 0 ? 16 : 6}px;height:6px;border-radius:9999px;background:${i === 0 ? 'var(--brand-red)' : 'rgba(156,163,175,.6)'};transition:all .2s;"></span>`).join('')}
+    </div>` : '';
+  return `
+  <div class="bg-gray-200/50 rounded-3xl p-5 space-y-3">
+    <div class="flex items-center justify-between -mt-2">
+      <div class="flex items-center space-x-2">
+        <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"><i class="fas fa-arrow-trend-up text-[var(--brand-red)] text-xs"></i></div>
+        <h3 class="text-sm font-bold text-gray-900">${tr('stats_top_category', 'Top Spending Category')}</h3>
+      </div>
+      <button type="button" onclick="openAllCategoriesSummary()" class="flex items-center space-x-1 bg-white/80 rounded-full px-3 py-1.5 text-[10px] font-black text-[var(--brand-red)] active:scale-95 transition">
+        <span>${tr('stats_see_all', 'See all')}</span><i class="fas fa-chevron-right text-[8px]"></i>
+      </button>
+    </div>
+    <div id="top-cat-slider" onscroll="onTopCatSliderScroll(this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+      ${slides}
+    </div>
+    ${dots}
+  </div>`;
+}
+
+function onTopCatSliderScroll(el) {
+  const idx = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+  const dots = document.querySelectorAll('#top-cat-dots [data-dot]');
+  dots.forEach((d, i) => {
+    d.style.width = (i === idx ? 16 : 6) + 'px';
+    d.style.background = i === idx ? 'var(--brand-red)' : 'rgba(156,163,175,.6)';
+  });
+}
+
+// Essential categories are not suggested for cutting.
+function isEssentialCategory(label) {
+  return /rent|bill|electric|gas|water|internet|medic|health|doctor|education|tuition|school|loan|emi|ভাড়া|বিল|বিদ্যুৎ|পানি|ইন্টারনেট|ঔষধ|চিকিৎসা|স্বাস্থ্য|শিক্ষা|টিউশন|স্কুল|কিস্তি/i.test(label || '');
+}
+
+function buildCategorySuggestions(groups, prevGroups, totalSpent) {
+  const prevMap = {};
+  (prevGroups || []).forEach(g => { prevMap[g.label] = g.total; });
+  const out = [];
+  groups.forEach(g => {
+    if (isEssentialCategory(g.label)) return;
+    const pct = totalSpent > 0 ? g.total / totalSpent * 100 : 0;
+    const prev = prevMap[g.label];
+    const up = prev > 0 ? ((g.total - prev) / prev * 100) : null;
+    const save = Math.round(g.total * 0.1);
+    if (up !== null && up >= 20 && g.total - prev >= 50) {
+      out.push({ label: g.label, text: trf('stats_sugg_increase', `Spending rose ${Math.round(up)}% vs last month. Try to bring it back down.`, { pct: localizeDigits(Math.round(up)) }), save });
+    } else if (pct >= 30 && groups.length > 1) {
+      out.push({ label: g.label, text: trf('stats_sugg_high_share', `This is ${pct.toFixed(0)}% of all your spending. Cutting it a little makes a big difference.`, { pct: localizeDigits(pct.toFixed(0)) }), save });
+    }
+  });
+  return out.slice(0, 4);
+}
+
+function openAllCategoriesSummary() {
+  const data = window._statsCatData;
+  if (!data) return;
+  closeAllCategoriesSummary();
+  const { groups, totalSpent, prevGroups } = data;
+  const sugg = buildCategorySuggestions(groups, prevGroups, totalSpent);
+
+  const rows = groups.map((g, i) => {
+    const pct = totalSpent > 0 ? g.total / totalSpent * 100 : 0;
+    return `
+      <div class="bg-white/70 rounded-2xl p-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">${categoryIconHTML(g.label, 'text-[var(--brand-red)]')}</div>
+            <div>
+              <p class="text-xs font-bold text-gray-900">${escapeHtml(g.label)}</p>
+              <p class="text-[10px] text-gray-400 font-bold">${trf('stats_tx_count_suffix', `${g.count} transactions`, { count: localizeDigits(g.count) })} · ${localizeDigits(pct.toFixed(1))}%</p>
+            </div>
+          </div>
+          <p class="text-sm font-extrabold ${i === 0 ? 'text-[var(--brand-red)]' : 'text-gray-900'}">৳${fmtMoney(Math.round(g.total), 0)}</p>
+        </div>
+        <div class="w-full h-1.5 bg-gray-300/60 rounded-full overflow-hidden mt-2">
+          <div class="h-full bg-[var(--brand-red)] rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const suggHTML = sugg.length ? sugg.map(x => `
+      <div class="bg-white/70 rounded-2xl p-3 flex items-start space-x-3">
+        <div class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-triangle-exclamation text-[var(--brand-red)] text-xs"></i></div>
+        <div>
+          <p class="text-xs font-bold text-gray-900">${escapeHtml(x.label)}</p>
+          <p class="text-[11px] text-gray-500 font-bold mt-0.5">${x.text}</p>
+          <p class="text-[10px] text-[var(--brand-red)] font-black mt-1">${trf('stats_sugg_save', `Cut 10% and save ৳${x.save}`, { amt: fmtMoney(x.save, 0) })}</p>
+        </div>
+      </div>`).join('') : `
+      <div class="bg-white/70 rounded-2xl p-3 text-[11px] text-gray-500 font-bold">${tr('stats_sugg_none', 'Your spending looks balanced - no category needs cutting right now.')}</div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'all-categories-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) closeAllCategoriesSummary(); };
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:520px;max-height:88vh;overflow-y:auto;border-radius:28px 28px 0 0;background:${document.documentElement.classList.contains('dark-theme') ? '#131315' : '#f3f4f6'};padding:20px 16px 28px;">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-gray-900">${tr('stats_all_categories', 'All Categories Summary')}</h3>
+          <p class="text-[10px] text-gray-400 font-bold">${tr('stats_total_spent', 'Total Spent')}: ৳${fmtMoney(Math.round(totalSpent), 0)} · ${localizeDigits(groups.length)} ${tr('stats_categories_used', 'Categories Used')}</p>
+        </div>
+        <button type="button" onclick="closeAllCategoriesSummary()" class="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"><i class="fas fa-xmark text-gray-500 text-sm"></i></button>
+      </div>
+      <div class="space-y-2">${rows}</div>
+      <div class="flex items-center space-x-2 mt-5 mb-2">
+        <i class="fas fa-lightbulb text-[var(--brand-red)] text-xs"></i>
+        <h4 class="text-sm font-bold text-gray-900">${tr('stats_suggestions', 'Suggestions')}</h4>
+      </div>
+      <div class="space-y-2">${suggHTML}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAllCategoriesSummary() {
+  const o = document.getElementById('all-categories-overlay');
+  if (o) o.remove();
+  document.body.style.overflow = '';
+}
+
 function renderAnalyticsList() {
   const container = document.getElementById('analytics-container');
   if (!container) return;
@@ -13929,6 +14216,19 @@ function renderAnalyticsList() {
   const topCategory = groups[0];
   const topPct = totalSpent > 0 ? (topCategory.total / totalSpent * 100) : 0;
 
+  // Previous month's category totals (for the "spending went up" suggestion)
+  const prevDate = new Date(statsYear, statsMonthIdx - 1, 1);
+  const prevFiltered = appState.transactions.filter(t => {
+    if (t.fund !== appState.activeFund || !isSpendTx(t)) return false;
+    const d = new Date(t.date);
+    return d.getFullYear() === prevDate.getFullYear() && d.getMonth() === prevDate.getMonth();
+  });
+  window._statsCatData = {
+    groups, totalSpent,
+    prevGroups: prevFiltered.length ? groupByCategory(prevFiltered) : [],
+    monthLabel: new Date(statsYear, statsMonthIdx, 1)
+  };
+
   let html = `
   <div class="bg-gray-200/50 rounded-3xl p-5 space-y-4">
     <div class="flex items-center space-x-2 -mt-2">
@@ -13951,26 +14251,7 @@ function renderAnalyticsList() {
     </div>
   </div>
 
-  <div class="bg-gray-200/50 rounded-3xl p-5 space-y-3">
-    <div class="flex items-center space-x-2 -mt-2">
-      <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"><i class="fas fa-arrow-trend-up text-[var(--brand-red)] text-xs"></i></div>
-      <h3 class="text-sm font-bold text-gray-900">${tr('stats_top_category', 'Top Spending Category')}</h3>
-    </div>
-    <div class="flex items-center justify-between bg-white/70 rounded-2xl p-3">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">${categoryIconHTML(topCategory.label, 'text-[var(--brand-red)]')}</div>
-        <div>
-          <p class="text-sm font-bold text-[var(--brand-red)]">${escapeHtml(topCategory.label)}</p>
-          <p class="text-[10px] text-[#991b1b]/70 font-bold">${trf('stats_pct_of_total', `${topPct.toFixed(1)}% of total spending`, { pct: localizeDigits(topPct.toFixed(1)) })}</p>
-        </div>
-      </div>
-      <p class="text-base font-extrabold text-[var(--brand-red)]">৳${fmtMoney(Math.round(topCategory.total), 0)}</p>
-    </div>
-    <div class="w-full h-2 bg-gray-300/60 rounded-full overflow-hidden">
-      <div class="h-full bg-[var(--brand-red)] rounded-full" style="width:${topPct}%"></div>
-    </div>
-  </div>
-
+  ${buildTopCategoriesSliderHTML(groups, totalSpent)}
   `;
 
   const biggest = filtered.slice().sort((a, b) => b.amount - a.amount)[0];
