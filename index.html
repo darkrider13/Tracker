@@ -14068,10 +14068,12 @@ function getCategoryFAIcon(label) {
   if (c.includes('add money') || c.includes('টাকা যোগ')) return 'fa-circle-dollar-to-slot';
   if (c.includes('debt collect') || c.includes('পাওনা আদায়')) return 'fa-hand-holding-dollar';
   if (c.includes('debt repay') || c.includes('ধার পরিশোধ')) return 'fa-hand-holding-dollar';
-  // Debt / Money Borrowed (ধার নেওয়া - has to be paid back) -> up-right arrow;
-  // Receivable / Money Lent (ধার দেওয়া - money to receive back) -> down-left arrow.
-  if (c.includes('debt borrowed') || c.includes('money borrowed') || c.includes('ধার নেওয়া')) return 'fa-arrow-up-right';
-  if (c.includes('debt lent') || c.includes('money lent') || c.includes('ধার দেওয়া')) return 'fa-arrow-down-left';
+  // These are transaction-log icons, so they show the cash movement AT THE TIME:
+  // Money Lent (ধার দেওয়া - cash leaves the fund) -> up-right arrow (out);
+  // Money Borrowed (ধার নেওয়া - cash enters the fund) -> down-left arrow (in).
+  // (Debts/Receivables tabs and the fund badge keep their own future-direction arrows.)
+  if (c.includes('debt borrowed') || c.includes('money borrowed') || c.includes('ধার নেওয়া')) return 'fa-arrow-down-left';
+  if (c.includes('debt lent') || c.includes('money lent') || c.includes('ধার দেওয়া')) return 'fa-arrow-up-right';
   if (c.includes('grocery') || c.includes('মুদি')) return 'fa-cart-shopping';
   if (c.includes('medic') || c.includes('ওষুধ')) return 'fa-briefcase-medical';
   if (c.includes('event') || c.includes('অনুষ্ঠান')) return 'fa-calendar-days';
