@@ -1,1 +1,5 @@
-
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same colours as the in-app boot splash: white in day, #05070a at night -->
+    <color name="app_splash_bg">#FFFFFF</color>
+</resources>
