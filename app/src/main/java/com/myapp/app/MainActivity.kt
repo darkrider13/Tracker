@@ -1,1 +1,46 @@
+package com.myapp.app
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.myapp.app.data.AppSession
+import com.myapp.app.data.AppStore
+import com.myapp.app.ui.TrackerRoot
+import com.myapp.app.ui.popup.installPopupHooks
+import com.myapp.app.ui.theme.SystemBars
+import com.myapp.app.util.I18n
+import com.myapp.app.util.syncCustomCategories
+
+class MainActivity : ComponentActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Must run before super.onCreate. The native splash is only the plain background colour;
+        // the animated splash is drawn by the app itself (BootSplash).
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+
+        AppSession.init(applicationContext)
+        I18n.init(applicationContext)       // Bangla translation table
+        AppStore.init(applicationContext)   // loads saved data (or creates the defaults on first launch)
+        syncCustomCategories()              // category chip order (custom ones first)
+        installPopupHooks()                 // + button, Transfer, Add Fund open their popups
+        SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+
+        setContent {
+            TrackerRoot(activity = this)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Back in the foreground: status bar tracks the app theme again.
+        SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // In the background the status bar is always dark so it never leaves a light bar behind.
+        SystemBars.forceDark(this)
+    }
+}
