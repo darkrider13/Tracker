@@ -26,6 +26,7 @@ import com.myapp.app.ui.components.BottomNavBar
 import com.myapp.app.ui.screens.BootSplash
 import com.myapp.app.ui.screens.FundDetailsScreen
 import com.myapp.app.ui.screens.HomeScreen
+import com.myapp.app.ui.screens.StatsScreen
 import com.myapp.app.ui.screens.LogsScreen
 import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.SystemBars
@@ -78,7 +79,7 @@ fun TrackerRoot(activity: Activity) {
                 when (AppUi.tab) {
                     Tab.Home -> HomeScreen()
                     Tab.Logs -> LogsScreen()
-                    Tab.Stats -> Unit
+                    Tab.Stats -> StatsScreen()
                     Tab.Profile -> Unit
                 }
                 BottomNavBar(Modifier.align(Alignment.BottomCenter))
