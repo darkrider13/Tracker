@@ -59,13 +59,15 @@ object Popups {
     var debtHistory by mutableStateOf(false)
     var editFund by mutableStateOf(false)
     var deleteFundConfirm by mutableStateOf(false)
+    var allCategories by mutableStateOf(false)
+    var allCatMonthPicker by mutableStateOf(false)
     var alert by mutableStateOf<AlertRequest?>(null)
     var confirm by mutableStateOf<ConfirmRequest?>(null)
 
     /** Any popup up -> the screen behind gets the frosted blur (old backdrop-filter). */
     val anyVisible: Boolean
         get() = addExpense || addCategory || addMoney || transferFund || editTransaction ||
-            editTransfer || addFund || filterPicker || timeCalendar || unifiedDatePicker || timePicker || dueDateCalendar || addDebt || debtPayment || debtHistory || editFund || deleteFundConfirm || alert != null || confirm != null
+            editTransfer || addFund || filterPicker || timeCalendar || unifiedDatePicker || timePicker || dueDateCalendar || addDebt || debtPayment || debtHistory || editFund || deleteFundConfirm || allCategories || allCatMonthPicker || alert != null || confirm != null
 }
 
 /** Animation progress of the popup that is currently drawing (0 = closed, 1 = fully open). */
