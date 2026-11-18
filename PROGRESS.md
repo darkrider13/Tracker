@@ -8,12 +8,12 @@
 | 4 | Home screen, fund list, chart                                     | 14% | DONE |
 | 5 | Add/edit transaction, transfer, categories                        | 14% | DONE |
 | 6 | Logs screen, filters, search, calendar & wheel pickers            | 14% | DONE in code, NOT yet compiled (Debts/Receivables panes + section note come in 7 / 9) |
-| 7 | Debts / receivables, payments, history                            | 10% | todo |
-| 8 | Stats, analytics charts                                           | 8%  | todo |
+| 7 | Debts / receivables, payments, history, Fund Details, Edit Fund   | 10% | DONE in code, NOT yet compiled |
+| 8 | Stats, analytics, Category Details (All Categories sheet)         | 8%  | DONE in code, NOT yet compiled |
 | 9 | Profile, locks (biometric/PIN/pattern), reminders, onboarding     | 8%  | todo |
 | 10| Final cross-check and cleanup                                     | 2%  | todo |
 
-Done: 58%   Remaining: 42%
+Written: 82% (Steps 1-8)   Remaining: 18% (Steps 9-10)   -   Steps 6-8 are NOT compiled yet
 
 ## Notes
 - appId `com.myapp.app` and the same keystore secrets (KEYSTORE_BASE64 / KEYSTORE_PASSWORD) => installs over the old app.
@@ -118,3 +118,12 @@ Done in code:
 - Fund-history calendar dots wired (`DatePickerSources.fundHistoryDates`).
 Hooks still empty: `AppActions.openFundNote` (fund note modal) and `AppActions.openSectionNote` -> Step 9 notes work.
 Not ported: the "scroll to the highlighted card" after a chip jump (debtJumpHighlightIds only scrolled; no visual highlight exists in the old card)
+
+## Step 8 notes (written, NOT yet compiled)
+- `ui/screens/StatsScreen.kt` : header with the month button (Spending tab only), Spending | Debts & Receivables switch.
+  Spending: empty state, Overview (total / daily average / count, daily average uses days elapsed for the current month), Top Spending Category pager (top 3, dots, "See all"), Spending Insights (biggest expense, most active day, average per transaction, categories used).
+  Debts & Receivables: Net Position, Settlement Progress, Top Partners (2 rows per page, snapping).
+  The month follows the Logs time filter (custom month / the month of a picked date) unless a month was picked with the Stats calendar button.
+- `ui/popup/StatsPopups.kt` : "All Categories Summary" bottom sheet (3 rows per page) = the old Category Details, reached from "See all" and from Home > Category Breakdown; month picker (Month + Year wheels, Reset Filter).
+- The old bar chart (`categoryBarChart`) has no canvas in the HTML, so it never drew - not ported on purpose.
+- `Modifier.pullUp(dp)` reproduces CSS negative top margins.
