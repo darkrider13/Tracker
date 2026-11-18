@@ -1,0 +1,127 @@
+package com.myapp.app.ui.components
+
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+
+/**
+ * Measures a list so it always shows exactly [visible] full cards (never a half card) and
+ * settles on a whole card after every scroll (the old fitListToVisibleCount with snap).
+ */
+class PagedState(val scroll: ScrollState, val visible: Int, val gapPx: Int, val snapStep: Int = 1) {
+    /** Measured height (px) of every item, by index. */
+    val heights = mutableStateMapOf<Int, Int>()
+
+    private fun allMeasured(count: Int): Boolean {
+        for (i in 0 until count) if (heights[i] == null) return false
+        return true
+    }
+
+    /** Height of [n] items starting at [from], gaps included. */
+    private fun span(from: Int, n: Int): Int {
+        var sum = 0
+        for (i in from until from + n) sum += (heights[i] ?: 0)
+        return sum + gapPx * (n - 1)
+    }
+
+    /**
+     * Viewport height (px), or null while nothing needs clamping / not measured yet.
+     * Every item is a snap point, so EVERY window of [visible] consecutive items must fit:
+     * the height of the tallest window is used (same as the old fitListToVisibleCount with snap).
+     */
+    fun viewportMax(count: Int): Int? {
+        if (count <= visible) return null
+        if (!allMeasured(count)) return null
+        var best = 0
+        var start = 0
+        while (start + visible <= count) {
+            best = maxOf(best, span(start, visible))
+            start += 1
+        }
+        return if (best > 0) best else null
+    }
+
+    /** Scroll offset (px) where page-start item [index] sits at the top. */
+    fun offsetOf(index: Int): Int {
+        var sum = 0
+        for (i in 0 until index) sum += (heights[i] ?: 0) + gapPx
+        return sum
+    }
+
+    /** Scroll offset of the page that contains item [index]. */
+    fun pageOffsetOfItem(index: Int): Int {
+        val groupStart = if (index > 0) (index / visible) * visible else 0
+        return offsetOf(groupStart)
+    }
+
+    /** Nearest item start (every item is a snap point). */
+    fun nearestPageOffset(count: Int): Int {
+        var best = 0
+        var bestDist = Int.MAX_VALUE
+        for (i in 0 until count) {
+            if (i % snapStep != 0) continue
+            val off = offsetOf(i)
+            val d = abs(off - scroll.value)
+            if (d < bestDist) {
+                bestDist = d
+                best = off
+            }
+        }
+        return minOf(best, scroll.maxValue)
+    }
+}
+
+@Composable
+fun rememberPagedState(visible: Int, gap: Dp, snapStep: Int = 1): PagedState {
+    val scroll = rememberScrollState()
+    val gapPx = with(LocalDensity.current) { gap.roundToPx() }
+    return remember(visible, gapPx, snapStep) { PagedState(scroll, visible, gapPx, snapStep) }
+}
+
+/** Gives an item its size report so [PagedState] can measure it. */
+fun Modifier.pagedItem(state: PagedState, index: Int): Modifier =
+    this.onSizeChanged { state.heights[index] = it.height }
+
+/**
+ * Scrollable viewport clamped to full pages. Put the items in [content] and mark each one with
+ * `Modifier.pagedItem(state, index)`. [snap] = settle on a whole page after every scroll.
+ */
+@Composable
+fun PagedViewport(
+    state: PagedState,
+    count: Int,
+    modifier: Modifier = Modifier,
+    snap: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val maxPx = state.viewportMax(count)
+    val clamp = if (maxPx != null) Modifier.heightIn(max = with(density) { maxPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
+
+    LaunchedEffect(state, count, snap) {
+        snapshotFlow { state.scroll.isScrollInProgress }.collect { moving ->
+            if (!moving && snap && count > state.visible && state.viewportMax(count) != null) {
+                val target = state.nearestPageOffset(count)
+                if (abs(target - state.scroll.value) > 1) state.scroll.animateScrollTo(target)
+            }
+        }
+    }
+
+    Box(modifier.then(clamp).verticalScroll(state.scroll)) {
+        content()
+    }
+}
