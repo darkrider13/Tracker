@@ -127,3 +127,10 @@ Not ported: the "scroll to the highlighted card" after a chip jump (debtJumpHigh
 - `ui/popup/StatsPopups.kt` : "All Categories Summary" bottom sheet (3 rows per page) = the old Category Details, reached from "See all" and from Home > Category Breakdown; month picker (Month + Year wheels, Reset Filter).
 - The old bar chart (`categoryBarChart`) has no canvas in the HTML, so it never drew - not ported on purpose.
 - `Modifier.pullUp(dp)` reproduces CSS negative top margins.
+
+## Step 9 notes (part 1 - written, NOT yet compiled)
+Done in code:
+- `ui/screens/ProfileScreen.kt` : Profile tab - title, name box (scattered faint icons, avatar button, editable name with width-fitting underline, saved on Done / focus loss), Day Mode switch (live theme), Language switch (En <-> Bangla), Screen Lock Type row (icon + label of the current lock), Backup & Restore buttons, developer credit with the 4 social links, copyright line.
+- `ui/popup/BackupUi.kt` : Export (confirm "Save File / Share", Documents via MediaStore or share sheet via FileProvider, human-readable file name in English / Bangla, size check, the same alerts) and Import (file picker -> reading / checking busy cards -> every error message of the old app -> restore summary confirm -> all-or-nothing restore through `Backup.applyFull`, older transactions-only files too); busy card (`BusyOverlay`); Avatar picker popup (18 avatars, 4 per row, 3 rows per page).
+- `util/Avatars.kt`, FileProvider (manifest + `res/xml/file_paths.xml`), `BackupUi.attach(activity)` in MainActivity.
+Still to do in Step 9: lock type chooser + PIN / pattern / fingerprint setup + the lock screen (`AppActions.openLockTypeChooser` is empty), reminder settings + notifications / alarms (debt due, daily), welcome / onboarding, fund note + section note modals (`openFundNote`, `openSectionNote`).
