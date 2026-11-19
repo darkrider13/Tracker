@@ -122,4 +122,7 @@ object AppActions {
 
     /** openFundNoteModal() - the note of the open Fund Details screen (notes work, Step 9). */
     var openFundNote: () -> Unit = {}
+
+    /** The Profile > Screen Lock Type row (lock work, Step 9 part 2). */
+    var openLockTypeChooser: () -> Unit = {}
 }

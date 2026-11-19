@@ -26,6 +26,7 @@ import com.myapp.app.ui.components.BottomNavBar
 import com.myapp.app.ui.screens.BootSplash
 import com.myapp.app.ui.screens.FundDetailsScreen
 import com.myapp.app.ui.screens.HomeScreen
+import com.myapp.app.ui.screens.ProfileScreen
 import com.myapp.app.ui.screens.StatsScreen
 import com.myapp.app.ui.screens.LogsScreen
 import com.myapp.app.ui.theme.AppTheme
@@ -80,13 +81,14 @@ fun TrackerRoot(activity: Activity) {
                     Tab.Home -> HomeScreen()
                     Tab.Logs -> LogsScreen()
                     Tab.Stats -> StatsScreen()
-                    Tab.Profile -> Unit
+                    Tab.Profile -> ProfileScreen()
                 }
                 BottomNavBar(Modifier.align(Alignment.BottomCenter))
                 FundDetailsScreen()
             }
 
             AllPopups()
+            com.myapp.app.ui.popup.BusyOverlay()
 
             BootSplash(
                 isLight = isLight,
