@@ -134,3 +134,13 @@ Done in code:
 - `ui/popup/BackupUi.kt` : Export (confirm "Save File / Share", Documents via MediaStore or share sheet via FileProvider, human-readable file name in English / Bangla, size check, the same alerts) and Import (file picker -> reading / checking busy cards -> every error message of the old app -> restore summary confirm -> all-or-nothing restore through `Backup.applyFull`, older transactions-only files too); busy card (`BusyOverlay`); Avatar picker popup (18 avatars, 4 per row, 3 rows per page).
 - `util/Avatars.kt`, FileProvider (manifest + `res/xml/file_paths.xml`), `BackupUi.attach(activity)` in MainActivity.
 Still to do in Step 9: lock type chooser + PIN / pattern / fingerprint setup + the lock screen (`AppActions.openLockTypeChooser` is empty), reminder settings + notifications / alarms (debt due, daily), welcome / onboarding, fund note + section note modals (`openFundNote`, `openSectionNote`).
+
+## Step 9 notes (part 2 - lock system, written, NOT yet compiled)
+- `ui/popup/LockUi.kt` : `LockState` (PIN pad, pattern pad, biometric lock screen, startup lock, `verifyCurrentLock`, `chooseLockType` = handleLockTypeChoice), `BiometricHelper` (androidx BiometricPrompt, weak+strong biometrics, negative button "Cancel"), the three screens (`PinPadScreen`, `PatternPadScreen`, `BiometricLockScreen`, drawn by `LockHost` above everything), and the Screen Lock Type chooser popup (Off / Fingerprint / PIN / Pattern).
+  PIN: 4 digits, set -> confirm (mismatch = red dots + shake, restart), verify (wrong = red dots + shake 450 ms). Pattern: 3x3 dots, >= 4 dots, drag with live line, set -> confirm -> verify, shake on error, touch blocked during the shake. Both stored only as SHA-256 (PIN "1234", pattern "0-1-2-5").
+  Changing / turning off a lock first asks for the current lock; turning fingerprint ON first proves a scan works.
+  The old app locks only on a fresh launch (not on every return from background) - same here.
+- `ui/components/LockDecor.kt` : the 13 scattered finance icons (shared with the future Welcome screen); lock screens use a pure-black background in dark mode, a grey -> light-red gradient in day mode; the status bar goes pure black while a lock is up.
+- build: `androidx.biometric` + `fragment-ktx` added, `MainActivity` now extends `FragmentActivity` (needed by BiometricPrompt).
+- NOTE: the startup lock is shown only when `onboardingComplete` is true. The Welcome / onboarding screen (which sets it) is still to be written (Step 9 part 3), so until then a lock set in Profile will not appear at the next launch.
+Still to do in Step 9: reminders (settings + notifications / alarms), Welcome / onboarding, fund note + section note modals.
