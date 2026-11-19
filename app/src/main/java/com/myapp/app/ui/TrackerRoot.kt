@@ -44,7 +44,8 @@ fun TrackerRoot(activity: Activity) {
     val isBangla = AppSession.isBangla
     val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
         com.myapp.app.ui.popup.LockState.biometricVisible
-    val pureBlack = AppSession.pureBlackScreen || lockUp
+    val onboarding = !AppStore.observe().onboardingComplete
+    val pureBlack = AppSession.pureBlackScreen || lockUp || onboarding
 
     // Status bar follows the theme (and goes pure black on Welcome/Lock screens in dark mode).
     LaunchedEffect(isLight, pureBlack) {
@@ -59,6 +60,20 @@ fun TrackerRoot(activity: Activity) {
             bootPending = false
             // The lock appears together with the splash going away (a finished profile only).
             if (AppStore.state.onboardingComplete) com.myapp.app.ui.popup.LockState.showStartupLock()
+        }
+
+        // initReminders(): every launch asks for the notification permission (the system only shows the
+        // dialog while it is still allowed to) and registers the alarms again with the current wording.
+        val appContext = activity.applicationContext
+        LaunchedEffect(Unit) {
+            com.myapp.app.ui.popup.ReminderPanel.requestAtLaunch()
+            com.myapp.app.reminder.Reminders.scheduleAll(appContext)
+        }
+        // A new / edited / settled / deleted debt changes its reminder: re-register shortly after the change.
+        val revision = com.myapp.app.data.AppStore.revision
+        LaunchedEffect(revision) {
+            delay(800)
+            com.myapp.app.reminder.Reminders.scheduleDebts(appContext)
         }
 
         Box(
@@ -90,6 +105,7 @@ fun TrackerRoot(activity: Activity) {
                 }
                 BottomNavBar(Modifier.align(Alignment.BottomCenter))
                 FundDetailsScreen()
+                com.myapp.app.ui.popup.OnboardingScreen()
             }
 
             AllPopups()
