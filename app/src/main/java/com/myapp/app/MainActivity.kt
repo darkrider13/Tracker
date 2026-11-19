@@ -1,7 +1,7 @@
 package com.myapp.app
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.myapp.app.data.AppSession
@@ -12,7 +12,7 @@ import com.myapp.app.ui.theme.SystemBars
 import com.myapp.app.util.I18n
 import com.myapp.app.util.syncCustomCategories
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must run before super.onCreate. The native splash is only the plain background colour;
@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
         syncCustomCategories()              // category chip order (custom ones first)
         installPopupHooks()                 // + button, Transfer, Add Fund open their popups
         com.myapp.app.ui.popup.BackupUi.attach(this)   // file picker for Import
+        com.myapp.app.ui.popup.BiometricHelper.activity = this   // fingerprint prompt host
         SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
 
         setContent {
