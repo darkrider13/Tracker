@@ -11,6 +11,7 @@ fun installPopupHooks() {
     installDebtHistoryHooks()
     installEditFundHooks()
     installStatsHooks()
+    installLockHooks()
     AppActions.openCustomSpend = { AddExpense.open(null) }
     AppActions.openTransferFund = { TransferFund.open(null) }
     AppActions.openAddFund = { AddFund.open() }
@@ -36,6 +37,7 @@ fun AllPopups() {
     AllCategoriesSheetOverlay()
     AllCatMonthPickerPopup()
     AvatarPickerPopup()
+    LockTypeChooserPopup()
     DueDateCalendarPopup()
     TimePickerPopup()
     DialogsHost()
