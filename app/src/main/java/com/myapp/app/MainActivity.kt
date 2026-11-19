@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         AppStore.init(applicationContext)   // loads saved data (or creates the defaults on first launch)
         syncCustomCategories()              // category chip order (custom ones first)
         installPopupHooks()                 // + button, Transfer, Add Fund open their popups
+        com.myapp.app.ui.popup.BackupUi.attach(this)   // file picker for Import
         SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
 
         setContent {
