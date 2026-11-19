@@ -27,6 +27,7 @@ class MainActivity : FragmentActivity() {
         installPopupHooks()                 // + button, Transfer, Add Fund open their popups
         com.myapp.app.ui.popup.BackupUi.attach(this)   // file picker for Import
         com.myapp.app.ui.popup.BiometricHelper.activity = this   // fingerprint prompt host
+        com.myapp.app.ui.popup.ReminderPanel.attach(this)         // notification permission launcher
         SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
 
         setContent {
