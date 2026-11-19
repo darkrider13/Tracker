@@ -269,7 +269,10 @@ private fun SearchRow(state: AppState) {
             FaIcon("fa-search", 14.dp, Brand.red)
         }
         // section note
-        SquareIconButton(onClick = { AppActions.openSectionNote("transactions") }, dot = false) {
+        SquareIconButton(
+            onClick = { AppActions.openSectionNote("transactions") },
+            dot = AppStore.state.logSectionNotes["transactions"]?.isNotBlank() == true,
+        ) {
             NoteGlyph(18.dp, Brand.red)
         }
     }

@@ -204,7 +204,10 @@ private fun DebtSearchRow(category: String, cs: DebtCategoryState) {
         SmallSquareButton(onClick = { openSearchFieldPicker(category) }, dot = cs.searchField != "person") {
             FaIcon("fa-search", 14.dp, Brand.red)
         }
-        SmallSquareButton(onClick = { AppActions.openSectionNote(category) }, dot = false) {
+        SmallSquareButton(
+            onClick = { AppActions.openSectionNote(category) },
+            dot = AppStore.state.logSectionNotes[category]?.isNotBlank() == true,
+        ) {
             NoteGlyph(14.dp, Brand.red)
         }
     }
