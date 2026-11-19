@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -41,7 +42,15 @@ fun FaIcon(
     modifier: Modifier = Modifier,
     style: FaStyle = FaStyle.Solid,
 ) {
-    val codepoint = FaGlyphs.codepoint(name)
+    // The bundled font has no arrow-up-right / arrow-down-left glyph. The old app built them from the
+    // plain up / down arrows turned 45 degrees, so they do the same here.
+    val bare = name.removePrefix("fa-")
+    val diagonal = bare == "arrow-up-right" || bare == "arrow-down-left"
+    val codepoint = when (bare) {
+        "arrow-up-right" -> FaGlyphs.codepoint("arrow-up")
+        "arrow-down-left" -> FaGlyphs.codepoint("arrow-down")
+        else -> FaGlyphs.codepoint(name)
+    }
     val family = when (style) {
         FaStyle.Solid -> SolidFamily
         FaStyle.Regular -> RegularFamily
@@ -57,7 +66,9 @@ fun FaIcon(
         if (codepoint != null) {
             BasicText(
                 text = Character.toChars(codepoint).concatToString(),
-                modifier = Modifier.wrapContentSize(Alignment.Center, unbounded = true),
+                modifier = Modifier
+                    .wrapContentSize(Alignment.Center, unbounded = true)
+                    .then(if (diagonal) Modifier.rotate(45f) else Modifier),
                 style = TextStyle(
                     fontFamily = family,
                     fontWeight = FontWeight.Normal,

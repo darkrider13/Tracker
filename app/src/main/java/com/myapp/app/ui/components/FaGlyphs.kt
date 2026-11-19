@@ -2,8 +2,8 @@ package com.myapp.app.ui.components
 
 /**
 * Font Awesome 7 Free code points for every icon name the old web app used.
-* (arrow-up-right / arrow-down-left do not exist in the bundled font - the old app showed
-* an empty box for them, so they are intentionally absent here and render the same way.)
+* (arrow-up-right / arrow-down-left do not exist in the bundled font - FaIcon draws them as the
+* plain arrow-up / arrow-down turned 45 degrees, exactly like the old app's CSS fallback.)
 */
 object FaGlyphs {
     private val map: Map<String, Int> = mapOf(
