@@ -21,6 +21,7 @@ import androidx.compose.animation.core.tween
 import com.myapp.app.ui.popup.AllPopups
 import com.myapp.app.ui.popup.Popups
 import com.myapp.app.data.AppSession
+import com.myapp.app.data.AppStore
 import com.myapp.app.ui.components.AppBackdrop
 import com.myapp.app.ui.components.BottomNavBar
 import com.myapp.app.ui.screens.BootSplash
@@ -41,7 +42,9 @@ private const val MIN_SPLASH_MS = 2200L
 fun TrackerRoot(activity: Activity) {
     val isLight = AppSession.isLight
     val isBangla = AppSession.isBangla
-    val pureBlack = AppSession.pureBlackScreen
+    val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
+        com.myapp.app.ui.popup.LockState.biometricVisible
+    val pureBlack = AppSession.pureBlackScreen || lockUp
 
     // Status bar follows the theme (and goes pure black on Welcome/Lock screens in dark mode).
     LaunchedEffect(isLight, pureBlack) {
@@ -54,6 +57,8 @@ fun TrackerRoot(activity: Activity) {
             val elapsed = SystemClock.elapsedRealtime() - AppSession.bootStartMs
             delay((MIN_SPLASH_MS - elapsed).coerceAtLeast(0L))
             bootPending = false
+            // The lock appears together with the splash going away (a finished profile only).
+            if (AppStore.state.onboardingComplete) com.myapp.app.ui.popup.LockState.showStartupLock()
         }
 
         Box(
@@ -89,6 +94,7 @@ fun TrackerRoot(activity: Activity) {
 
             AllPopups()
             com.myapp.app.ui.popup.BusyOverlay()
+            com.myapp.app.ui.popup.LockHost()
 
             BootSplash(
                 isLight = isLight,
