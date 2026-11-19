@@ -144,3 +144,21 @@ Still to do in Step 9: lock type chooser + PIN / pattern / fingerprint setup + t
 - build: `androidx.biometric` + `fragment-ktx` added, `MainActivity` now extends `FragmentActivity` (needed by BiometricPrompt).
 - NOTE: the startup lock is shown only when `onboardingComplete` is true. The Welcome / onboarding screen (which sets it) is still to be written (Step 9 part 3), so until then a lock set in Profile will not appear at the next launch.
 Still to do in Step 9: reminders (settings + notifications / alarms), Welcome / onboarding, fund note + section note modals.
+
+## Step 9 notes (part 3 - Welcome screen + notes, written, NOT yet compiled)
+- `ui/popup/OnboardingAndNotes.kt` :
+  Welcome / "Get Started" screen (shown while `onboardingComplete` is false = first launch): big title block, "Your Profile" card with the name field (red underline on focus), name is REQUIRED - an empty name shakes the row (500 ms), turns the underline + placeholder red and gives a short haptic buzz; "Get Started" saves the name and enters the app. Same finance-icon backdrop as the lock screens, pure-black status bar.
+  Note popup for Fund Details notes and the Logs / Debts / Receivables section notes: label "<name> related", named placeholder, box exactly 6 lines tall, scroll settles on a whole line with a top/bottom fade while scrolling, eraser button (with confirm) only for an existing note, Cancel / Save. The small red dot on the note buttons now shows when a note exists.
+- Correction: the diagonal debt arrows (arrow-up-right / arrow-down-left) are NOT blank in the old app - its CSS draws the plain up / down arrow turned 45 degrees. `FaIcon` now does the same (this also fixes the Logs cards for debts and the Fund Details chips).
+- Since the Welcome screen now exists, the startup lock (Step 9 part 2) works from the second launch on.
+Still to do in Step 9: reminders (settings popup + notifications / alarms: debt due + daily), then Step 10.
+
+## Step 9 notes (part 4 - reminders, written, NOT yet compiled)
+- `reminder/Reminders.kt` : notification channel + `notifyNow`, alarms through AlarmManager (exact + allow-while-idle when the device allows, else inexact), two schedules:
+  * four daily expense reminders (Morning 10:00 / Afternoon 14:00 / Evening 20:00 / Night 23:30 by default, ids 9101-9104) - each alarm re-books itself for the next day when it fires;
+  * one reminder per pending debt / receivable with a due date + time (id 40000 + id % 500000): "pay / collect from <person>" at that moment. A moment that passed less than a day ago is announced right away, once (never repeated); older ones are skipped, a changed due date gets a fresh chance.
+  `ReminderReceiver` posts the notification, `BootReceiver` re-registers everything after a reboot / app update. Both are registered in the manifest.
+- `ui/popup/ReminderPopup.kt` : the bell panel "Expense Reminders" (opened by the Home bell): red "Allow notifications" banner, amber "Enable exact alarms" banner (opens the system screen; re-checked when you come back), one row per reminder with a 12-hour time button (opens the shared time picker "Select <Morning> Time") and a switch, Close / Save (Save stores + re-registers the alarms).
+- Alarms are registered at every launch (the notification permission is asked then too, like the old app), after Save, and ~0.8 s after any data change (so a new / edited / settled / deleted debt updates its reminder).
+- Not ported on purpose: the old browser-only `Notification` API fallback and the 20-second foreground polling - the native alarms replace them.
+Step 9 is complete in code. Next: Step 10 (final checklist, remaining gaps, build notes).
