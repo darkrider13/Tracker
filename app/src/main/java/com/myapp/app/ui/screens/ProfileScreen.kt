@@ -71,8 +71,8 @@ import com.myapp.app.util.tr
 /** updateLockTypeRow(): icon + label of the current screen lock. */
 private fun lockTypeIcon(type: String) = when (type) {
     "biometric" -> "fa-fingerprint"
-    "pin" -> "fa-keyboard"
-    "pattern" -> "fa-braille"
+    "pin" -> "fa-hashtag"
+    "pattern" -> "fa-draw-polygon"
     else -> "fa-lock-open"
 }
 
