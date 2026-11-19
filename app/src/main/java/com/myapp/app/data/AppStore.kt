@@ -148,6 +148,11 @@ object AppStore {
         refresh()
     }
 
+    /** Save without redrawing (background bookkeeping such as the "reminder already sent" flag). */
+    fun commitQuietly() {
+        saveState()
+    }
+
     /** Swap in a whole new state (used by backup import) and redraw. Caller already wrote it to disk. */
     internal fun replaceStateInMemory(newState: AppState) {
         state = newState
