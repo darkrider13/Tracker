@@ -35,6 +35,7 @@ fun AllPopups() {
     EditFundPopup()
     AllCategoriesSheetOverlay()
     AllCatMonthPickerPopup()
+    AvatarPickerPopup()
     DueDateCalendarPopup()
     TimePickerPopup()
     DialogsHost()
