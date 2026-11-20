@@ -7,13 +7,13 @@
 | 3 | Utilities (money format, Bangla digits, dates, translations)      | 10% | DONE |
 | 4 | Home screen, fund list, chart                                     | 14% | DONE |
 | 5 | Add/edit transaction, transfer, categories                        | 14% | DONE |
-| 6 | Logs screen, filters, search, calendar & wheel pickers            | 14% | DONE in code, NOT yet compiled (Debts/Receivables panes + section note come in 7 / 9) |
+| 6 | Logs screen, filters, search, calendar & wheel pickers            | 14% | DONE in code, NOT yet compiled |
 | 7 | Debts / receivables, payments, history, Fund Details, Edit Fund   | 10% | DONE in code, NOT yet compiled |
 | 8 | Stats, analytics, Category Details (All Categories sheet)         | 8%  | DONE in code, NOT yet compiled |
-| 9 | Profile, locks (biometric/PIN/pattern), reminders, onboarding     | 8%  | todo |
-| 10| Final cross-check and cleanup                                     | 2%  | todo |
+| 9 | Profile, locks (biometric/PIN/pattern), reminders, onboarding, notes, backup UI | 8%  | DONE in code, NOT yet compiled |
+| 10| Final cross-check and cleanup                                     | 2%  | DONE (static checks; compile = your GitHub build) |
 
-Written: 82% (Steps 1-8)   Remaining: 18% (Steps 9-10)   -   Steps 6-8 are NOT compiled yet
+ALL 10 steps are written (100% of the code). NOTHING from Step 6 onward has been compiled yet - the first GitHub build is the first real compile.
 
 ## Notes
 - appId `com.myapp.app` and the same keystore secrets (KEYSTORE_BASE64 / KEYSTORE_PASSWORD) => installs over the old app.
@@ -162,3 +162,45 @@ Still to do in Step 9: reminders (settings popup + notifications / alarms: debt 
 - Alarms are registered at every launch (the notification permission is asked then too, like the old app), after Save, and ~0.8 s after any data change (so a new / edited / settled / deleted debt updates its reminder).
 - Not ported on purpose: the old browser-only `Notification` API fallback and the 20-second foreground polling - the native alarms replace them.
 Step 9 is complete in code. Next: Step 10 (final checklist, remaining gaps, build notes).
+
+---
+## STEP 10 - final cross-check (read this before the first build)
+
+### What was checked without a compiler
+`tools/static-audit/` holds small Python scripts (run from the project root: `python3 tools/static-audit/audit.py`, `audit3.py` ... `audit7.py`; known harmless findings: the `R` import, `isBangla` / `tween` / `authenticate` name look-alikes, dynamic translation keys such as `fund_type_`, `avatar_`). They check all 75 Kotlin files for:
+- every `import com.myapp...` points at something that exists; duplicate top-level names; brace / bracket balance
+- every `tr()/trf()` translation key exists in `i18n_bn.json`; every `fa-...` icon exists in the glyph map
+- every `Popups.xxx` flag and `AppActions.xxx` hook exists and every hook is assigned somewhere
+- named arguments exist on the called function; required arguments are not missing; no trailing lambda on a non-function last parameter; argument counts
+- members used on `AppState / Debt / Transaction / DebtPayment`; `return@label` targets
+- missing androidx / compose imports for ~100 commonly used symbols
+Real bugs found and fixed by these checks: WheelPicker's trailing lambda (parameter order), `.align()` outside a Box scope on the lock screens, a missing `arrow-trend-down` icon, wrong lock-type icons, URL strings eating a brace in the checker itself (false alarm).
+What this CANNOT catch: type mismatches, wrong overloads, nullability / smart-cast errors, Compose-scope mistakes. Expect a handful of compile errors on the first build - paste the Gradle log and they get fixed one by one.
+
+### Where compile errors are most likely (newest / riskiest code)
+1. `ui/popup/LockUi.kt` (BiometricPrompt, pointer input), `reminder/Reminders.kt` (alarm APIs), `ui/popup/BackupUi.kt` (MediaStore / FileProvider), `ui/components/WheelPicker.kt` (custom drag + inertia), `ui/screens/FundDetailsScreen.kt` (FitRow layout), `ui/screens/StatsScreen.kt` (pager).
+2. Dependencies added in Step 9: `androidx.biometric:biometric:1.1.0`, `androidx.fragment:fragment-ktx:1.8.3`. `MainActivity` is now a `FragmentActivity`.
+3. `LocalLifecycleOwner` is imported from `androidx.compose.ui.platform` (Compose BOM 2024.09). If a newer BOM is ever used it moves to `androidx.lifecycle.compose`.
+
+### Every screen / popup of the old app and where it lives now
+Screens: Home (HomeScreen) - Logs (LogsScreen + DebtsPane) - Stats (StatsScreen) - Profile (ProfileScreen) - Fund Details (FundDetailsScreen) - Welcome (OnboardingScreen) - PIN / Pattern / Fingerprint lock (LockUi).
+Popups: add expense / add money / transfer / edit transaction / edit transfer / add fund / edit fund (+ delete confirm) / add category (Step 5 + EditFundPopup) - filter picker, time calendar, wheel date picker (LogsState, FilterPickerPopup, DatePickers) - add/edit debt, payment, history, due-date calendar, time picker (AddDebtPopup, DebtPaymentPopup, DebtHistoryPopup, TimeAndDuePickers) - avatar picker, lock type, fund / section note, reminders panel, all-categories sheet + month picker, custom alert / confirm, busy card.
+Not ported because they can never be opened in the old app (no code ever shows them): `popup-logs-history-menu`, `popup-fund-history-menu` (+ their month wheels) and `popup-date-range`.
+
+### Known small differences from the old app (all minor)
+- Scroll-fade at the bottom of the card lists is a fixed 40 dp (the old code measured it from the last card).
+- In fund-locked forms the fund button keeps its chevron (old: lock icon).
+- After a Fund Details chip jump the Debts list does not auto-scroll to the card (the old app only scrolled, it had no highlight).
+- Debts tab: the old "clear history" bin and time pill sit in a `hidden` div - never visible - so they are not drawn.
+- Reminders: the browser-only `Notification` fallback and the 20 s polling are replaced by native alarms.
+- Export / Import use Android's own file picker / Documents folder / share sheet instead of the Capacitor plugins.
+
+### Manual test script for the first working build (about 15 minutes)
+1. First launch -> Welcome screen: empty name shakes; type a name -> Get Started.
+2. Home: add a fund, add money, add an expense, transfer between funds; open Fund Details (back button), edit fund (rename -> history keeps), delete a fund.
+3. Logs > Transactions: search (category / note / amount), sort / time / price filters, calendar (grid and month-year wheel), clear history.
+4. Logs > Debts and Receivables: add with and without a fund, with own-fund deal, due date + time; partial payment; settle; Settled tab + calendar; key star; edit (amount locked after 7 days); delete.
+5. Stats: Spending (month button, See all sheet, pager), Debts & Receivables tab.
+6. Profile: avatar, name, day mode, language, export -> import the same file, lock PIN / pattern / fingerprint (close app, reopen -> lock shows).
+7. Bell: set a reminder two minutes ahead -> notification arrives (also with the app closed); a debt due today with a time.
+8. Notes: fund note, Logs / Debts / Receivables section notes (dot appears).
