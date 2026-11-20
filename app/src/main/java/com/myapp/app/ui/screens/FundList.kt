@@ -1,5 +1,6 @@
 package com.myapp.app.ui.screens
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -254,8 +256,14 @@ fun FundList(state: AppState) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                for ((index, name) in order.withIndex()) {
+                for ((index, name) in order.withIndex()) key(name) {
                     val isDragged = dragging == name
+                    // staggered entrance: each card rises, fades in and settles, one after the other
+                    val enter = remember { Animatable(0f) }
+                    LaunchedEffect(Unit) {
+                        delay(60L + index.coerceAtMost(6) * 70L)
+                        enter.animateTo(1f, tween(460, easing = EnterEase))
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -263,9 +271,15 @@ fun FundList(state: AppState) {
                             .onSizeChanged { heightsByName[name] = it.height }
                             .zIndex(if (isDragged) 50f else 0f)
                             .graphicsLayer {
+                                val p = enter.value
+                                alpha = p
+                                translationY = (1f - p) * 18.dp.toPx()
+                                val sc = 0.94f + 0.06f * p
+                                scaleX = sc
+                                scaleY = sc
                                 if (isDragged) {
-                                    translationY = desiredTop() - naturalTop(order.indexOf(name))
-                                    alpha = 0.95f
+                                    translationY += desiredTop() - naturalTop(order.indexOf(name))
+                                    alpha = 0.95f * p
                                 }
                             },
                     ) {
@@ -281,6 +295,7 @@ fun FundList(state: AppState) {
     }
 }
 
+private val EnterEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val PulseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
 
 @Composable

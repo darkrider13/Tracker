@@ -426,10 +426,10 @@ private fun NameBox() {
                         .offset(x = 3.dp, y = 3.dp)
                         .size(20.dp)
                         .clip(CircleShape)
-                        .background(Brand.red.copy(alpha = 0.22f), CircleShape)
+                        .background(avatar.color.copy(alpha = 0.22f), CircleShape)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
                     contentAlignment = Alignment.Center,
-                ) { FaIcon("fa-pen", 9.dp, Brand.red) }
+                ) { FaIcon("fa-pen", 9.dp, avatar.color) }
             }
 
             Column(Modifier.weight(1f)) {
@@ -465,13 +465,14 @@ private fun NameBox() {
                     )
                     Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
                 }
-                // two small chips: how many entries and funds the profile holds
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val txN = localizeDigits(state.transactions.size.toString())
-                    val fundN = localizeDigits(state.funds.size.toString())
-                    ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red)
-                    ProfileChip(trf("profile_chip_funds", "${state.funds.size} funds", "count" to fundN), Brand.green)
-                }
+            }
+
+            // two small chips stacked on the right: they grow towards the left as the numbers get bigger
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val txN = localizeDigits(state.transactions.size.toString())
+                val fundN = localizeDigits(state.funds.size.toString())
+                ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red)
+                ProfileChip(trf("profile_chip_funds", "${state.funds.size} funds", "count" to fundN), Brand.green)
             }
         }
     }
@@ -485,7 +486,7 @@ private fun ProfileChip(text: String, color: Color) {
             .background(color.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 10.dp, vertical = 2.dp),
     ) {
-        AppText(text = text, size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = color, noWrap = true)
+        AppText(text = text, size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = color, noWrap = true)
     }
 }
 

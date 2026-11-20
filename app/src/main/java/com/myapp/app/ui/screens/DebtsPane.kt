@@ -19,6 +19,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -533,10 +545,7 @@ private fun DebtCard(d: Debt, query: String, category: String, accent: Color) {
                             toggleDebtKeyPerson(d.id)
                         }.padding(4.dp),
                     ) {
-                        FaIcon(
-                            "fa-star", 16.dp, if (d.isKey) Yellow500 else c.textGray300,
-                            style = if (d.isKey) FaStyle.Solid else FaStyle.Regular,
-                        )
+                        KeyStar(on = d.isKey, offColor = c.textGray300)
                     }
                 }
             } else if (d.isKey) {
@@ -625,5 +634,45 @@ private fun RichLine(
         softWrap = !ellipsis,
         maxLines = if (ellipsis) 1 else 2,
         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+    )
+}
+
+
+/** Key-person star: when switched on it spins in, pops with a springy bounce and settles filled yellow. */
+@Composable
+private fun KeyStar(on: Boolean, offColor: Color) {
+    val scale = remember { Animatable(1f) }
+    val rot = remember { Animatable(0f) }
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(on) {
+        if (first) {
+            first = false
+            return@LaunchedEffect
+        }
+        if (on) {
+            coroutineScope {
+                launch {
+                    rot.snapTo(-70f)
+                    rot.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessLow))
+                }
+                launch {
+                    scale.snapTo(0.2f)
+                    scale.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessMediumLow))
+                }
+            }
+        } else {
+            scale.animateTo(0.7f, tween(90))
+            scale.animateTo(1f, tween(160))
+        }
+    }
+    val tint by animateColorAsState(if (on) Yellow500 else offColor, tween(240), label = "keyStarTint")
+    FaIcon(
+        "fa-star", 16.dp, tint,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale.value
+            scaleY = scale.value
+            rotationZ = rot.value
+        },
+        style = if (on) FaStyle.Solid else FaStyle.Regular,
     )
 }
