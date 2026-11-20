@@ -19,6 +19,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -60,8 +65,14 @@ private fun navStyle(sizeSp: Float, weight: FontWeight, lineHeightSp: Float) = T
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 
+/**
+ * One tab. Every tab sits in its own slot of the bar; the active slot grows (a weight that eases from 1 to
+ * 2.2) while the others shrink by the same amount, so the bar's total width never changes and nothing
+ * jumps. The label's text is measured once at its natural width; only its visible width and opacity are
+ * animated, so no text is re-laid-out on every frame.
+ */
 @Composable
-private fun NavPill(
+private fun RowScope.NavPill(
     icon: String,
     label: String,
     active: Boolean,
@@ -69,54 +80,47 @@ private fun NavPill(
 ) {
     val shape = CircleShape
     val interaction = remember { MutableInteractionSource() }
+    val spec = tween<Float>(durationMillis = 240, easing = NavEase)
 
-    // soft spring for the pill growing / shrinking, plain fades for colour
-    val bgAlpha by animateFloatAsState(
-        targetValue = if (active) 0.12f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = NavEase),
-        label = "navPillBg",
-    )
-    val padH by animateDpAsState(
-        targetValue = if (active) 12.dp else 10.dp,
-        animationSpec = tween(durationMillis = 220, easing = NavEase),
-        label = "navPillPad",
-    )
-    val iconScale by animateFloatAsState(
-        targetValue = if (active) 1.12f else 1f,
-        animationSpec = tween(durationMillis = 220, easing = NavEase),
-        label = "navIconScale",
-    )
+    val slotWeight by animateFloatAsState(if (active) 2.2f else 1f, spec, label = "navSlotWeight")
+    val bgAlpha by animateFloatAsState(if (active) 0.12f else 0f, spec, label = "navPillBg")
+    val labelFrac by animateFloatAsState(if (active) 1f else 0f, spec, label = "navLabelFrac")
+    val iconScale by animateFloatAsState(if (active) 1.08f else 1f, spec, label = "navIconScale")
 
-    Row(
+    Box(
         modifier = Modifier
+            .weight(slotWeight)
+            .height(34.dp)
             .clip(shape)
             .background(Color.White.copy(alpha = bgAlpha), shape)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = padH, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) {
-            FaIcon(name = icon, size = 16.dp, color = Color.White)
-        }
-        AnimatedVisibility(
-            visible = active,
-            enter = expandHorizontally(
-                animationSpec = tween(durationMillis = 220, easing = NavEase),
-                expandFrom = Alignment.Start,
-            ) + fadeIn(tween(durationMillis = 180, delayMillis = 40)),
-            exit = shrinkHorizontally(
-                animationSpec = tween(durationMillis = 220, easing = NavEase),
-                shrinkTowards = Alignment.Start,
-            ) + fadeOut(tween(durationMillis = 100)),
+        Row(
+            modifier = Modifier.wrapContentWidth(unbounded = true),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row {
-                Spacer(Modifier.width(4.dp))
-                BasicText(
-                    text = label,
-                    style = navStyle(11f, FontWeight.Bold, 16f),
-                    softWrap = false,
-                    maxLines = 1,
-                )
+            Box(Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) {
+                FaIcon(name = icon, size = 16.dp, color = Color.White)
+            }
+            Box(
+                Modifier
+                    .layout { measurable, _ ->
+                        val p = measurable.measure(Constraints())
+                        val w = (p.width * labelFrac).roundToInt()
+                        layout(w, p.height) { p.place(0, 0) }
+                    }
+                    .graphicsLayer { alpha = labelFrac },
+            ) {
+                Row {
+                    Spacer(Modifier.width(4.dp))
+                    BasicText(
+                        text = label,
+                        style = navStyle(11f, FontWeight.Bold, 16f),
+                        softWrap = false,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
