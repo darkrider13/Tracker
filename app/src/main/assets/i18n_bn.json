@@ -479,7 +479,15 @@
 "update_download": "ডাউনলোড",
 "update_later": "পরে",
 "update_latest_title": "আপনি সর্বশেষ ভার্সনে আছেন",
-"update_latest_msg": "আপনার অ্যাপ আপ-টু-ডেট আছে।",
+"update_latest_msg": "আপনি বর্তমানে ভার্সন %s ব্যবহার করছেন।",
 "update_failed_title": "আপডেট চেক করা যায়নি",
-"update_failed_msg": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
+"update_failed_msg": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+"update_current_label": "বর্তমান ভার্সন",
+"update_new_label": "নতুন ভার্সন",
+"update_downloading_title": "আপডেট ডাউনলোড হচ্ছে",
+"update_downloading_hint": "ডাউনলোড শেষ হলে নিজে থেকেই ইনস্টল শুরু হবে।",
+"update_permission_title": "ইনস্টলের অনুমতি দিন",
+"update_permission_msg": "আপডেট ইনস্টল করতে এই অ্যাপকে অনুমতি দিতে হবে। সেটিংসে গিয়ে অনুমতি চালু করে আবার আপডেট চাপুন।",
+"update_open_settings": "সেটিংস",
+"update_download_failed_title": "আপডেট ডাউনলোড করা যায়নি"
 }
