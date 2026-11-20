@@ -186,7 +186,11 @@ fun StatsScreen() {
     val spending = AppUi.statsSubtab != "debts"
     val scope = statsSpendMonthScope(state)
 
-    val pageScrollState = androidx.compose.foundation.rememberScrollState()
+    // One scroll state per subtab: switching tabs must not drag the other tab's scroll position along
+    // (that made the bottom card slide / shake while the page animated back to the top).
+    val spendScrollState = androidx.compose.foundation.rememberScrollState()
+    val debtScrollState = androidx.compose.foundation.rememberScrollState()
+    val pageScrollState = if (spending) spendScrollState else debtScrollState
     // Debts & Receivables analytics is a fixed one-screen page: no scrolling at all
     Box(Modifier.fillMaxSize().pageScroll(pageScrollState, forceLock = !spending), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -628,7 +632,11 @@ private fun PartnerList(entries: List<Pair<String, Double>>, color: Color, empty
         return
     }
     val paged = rememberPagedState(visible = 2, gap = 2.dp)
-    PagedViewport(state = paged, count = entries.size, modifier = Modifier.fillMaxWidth().pullUp(2.dp)) {
+    // animateSize = false: the rows are tiny, a size glide only makes the card edge wobble when the tab opens
+    PagedViewport(
+        state = paged, count = entries.size, modifier = Modifier.fillMaxWidth().pullUp(2.dp),
+        animateSize = false, defaultItemDp = 19.dp,
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
             entries.forEachIndexed { i, (person, amt) ->
                 Row(
