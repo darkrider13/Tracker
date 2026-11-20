@@ -1,9 +1,14 @@
 package com.myapp.app.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.myapp.app.ui.theme.AppFont
 import com.myapp.app.ui.theme.Brand
 import com.myapp.app.util.localizeDigits
+import kotlinx.coroutines.delay
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -94,7 +100,21 @@ fun DailySpendChart(
     data: DailySpendChartData,
     isDark: Boolean,
     modifier: Modifier = Modifier,
+    /** true while the chart is on screen (Home tab open, no lock screen): each time it turns true the bars grow up again */
+    play: Boolean = true,
 ) {
+    // Grow-up animation: the bars rise from the baseline one after another (left to right).
+    // It replays every time [play] turns true (coming back to Home) and when the week/month data changes.
+    val grow = remember { Animatable(0f) }
+    val contentKey = remember(data) { data.totals to data.isWeek }   // compared by content, not by object
+    LaunchedEffect(play, contentKey) {
+        grow.snapTo(0f)
+        if (play) {
+            delay(80)
+            grow.animateTo(1f, tween(durationMillis = 800, easing = LinearEasing))
+        }
+    }
+    val growT = grow.value
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     var selected by remember(data) { mutableStateOf<Int?>(null) }
@@ -189,7 +209,12 @@ fun DailySpendChart(
             val v = data.totals[i]
             if (v <= 0) continue
             val cx = left + slot * (i + 0.5f)
-            val barH = max((v / yScale.max).toFloat() * plotH, minBar)
+            val fullH = max((v / yScale.max).toFloat() * plotH, minBar)
+            // each bar starts a little after the previous one and eases out (fast start, soft landing)
+            val startAt = if (n > 1) 0.30f * i / (n - 1) else 0f
+            val local = FastOutSlowInEasing.transform(((growT - startAt) / 0.70f).coerceIn(0f, 1f))
+            val barH = fullH * local
+            if (barH < 0.5f) continue
             val r = min(radius, min(barW / 2f, barH / 2f))
             val path = Path()
             path.addRoundRect(
