@@ -76,6 +76,7 @@ object AppUi {
         fundsPanelOpen = !fundsPanelOpen
     }
 
+    @JvmName("applyHomeChartRange")
     fun setHomeChartRange(mode: String) {
         homeChartRange = if (mode == "month") "month" else "week"
     }
