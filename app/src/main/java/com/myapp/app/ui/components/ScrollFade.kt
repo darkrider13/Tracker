@@ -30,6 +30,8 @@ fun ScrollFadePaged(
     state: PagedState,
     count: Int,
     modifier: Modifier = Modifier,
+    fade: Boolean = true,
+    smoothSnap: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val c = AppTheme.colors
@@ -39,7 +41,7 @@ fun ScrollFadePaged(
     // The fade shows only while the list is moving (and there is more below). The moment the
     // scrolling stops it is gone at once (no fade-out animation); it eases in softly when scrolling starts.
     val moving = scroll.isScrollInProgress
-    val show = more && moving
+    val show = fade && more && moving
     val alpha by animateFloatAsState(
         targetValue = if (show) 1f else 0f,
         animationSpec = if (show) tween(140, easing = FastOutSlowInEasing) else snap(),
@@ -47,8 +49,8 @@ fun ScrollFadePaged(
     )
 
     Box(modifier) {
-        PagedViewport(state = state, count = count, content = content)
-        Box(
+        PagedViewport(state = state, count = count, smoothSnap = smoothSnap, content = content)
+        if (fade) Box(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()

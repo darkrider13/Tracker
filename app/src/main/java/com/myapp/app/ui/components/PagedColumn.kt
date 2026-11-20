@@ -1,9 +1,19 @@
 package com.myapp.app.ui.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.DecayAnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -123,6 +134,7 @@ fun PagedViewport(
     modifier: Modifier = Modifier,
     snap: Boolean = true,
     animateSize: Boolean = true,
+    smoothSnap: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -130,7 +142,17 @@ fun PagedViewport(
     val shownPx = maxPx ?: if (count > state.visible) state.provisionalMax(with(density) { 76.dp.roundToPx() }) else null
     val clamp = if (shownPx != null) Modifier.heightIn(max = with(density) { shownPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
 
-    LaunchedEffect(state, count, snap) {
+    // smoothSnap: the fling itself glides onto the nearest card in ONE continuous motion
+    // (no separate "stop, then jump-animate" step after the list has already come to rest).
+    val decay = rememberSplineBasedDecay<Float>()
+    val fallbackFling = ScrollableDefaults.flingBehavior()
+    val currentCount by rememberUpdatedState(count)
+    val snapFling = remember(state, decay, fallbackFling) {
+        PagedSnapFling(state, { currentCount }, fallbackFling, decay)
+    }
+
+    LaunchedEffect(state, count, snap, smoothSnap) {
+        if (smoothSnap) return@LaunchedEffect
         snapshotFlow { state.scroll.isScrollInProgress }.collect { moving ->
             if (!moving && snap && count > state.visible && state.viewportMax(count) != null) {
                 val target = state.nearestPageOffset(count)
@@ -144,8 +166,57 @@ fun PagedViewport(
         modifier
             .then(if (animateSize) Modifier.animateContentSize(tween(180, easing = FastOutSlowInEasing)) else Modifier)
             .then(clamp)
-            .verticalScroll(state.scroll),
+            .then(
+                if (smoothSnap && snap) Modifier.verticalScroll(state.scroll, flingBehavior = snapFling)
+                else Modifier.verticalScroll(state.scroll),
+            ),
     ) {
         content()
+    }
+}
+
+/**
+ * Natural (decaying) fling that, once it has almost stopped, keeps its remaining velocity and eases
+ * into the nearest whole card with a critically damped spring. One smooth motion: no hard stop and
+ * no second "snap" animation, no overshoot.
+ */
+private class PagedSnapFling(
+    private val state: PagedState,
+    private val count: () -> Int,
+    private val fallback: FlingBehavior,
+    private val decay: DecayAnimationSpec<Float>,
+) : FlingBehavior {
+    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+        val n = count()
+        if (n <= state.visible || state.viewportMax(n) == null) {
+            return with(fallback) { performFling(initialVelocity) }
+        }
+        var carry = initialVelocity
+        if (abs(initialVelocity) > 300f) {
+            var last = 0f
+            AnimationState(initialValue = 0f, initialVelocity = initialVelocity).animateDecay(decay) {
+                val delta = value - last
+                last = value
+                val consumed = scrollBy(delta)
+                carry = this.velocity
+                // hit the top / bottom edge, or slow enough: hand over to the snap glide
+                if (abs(delta - consumed) > 0.5f || abs(this.velocity) < 220f) cancelAnimation()
+            }
+        }
+        val target = state.nearestPageOffset(n).toFloat()
+        val from = state.scroll.value.toFloat()
+        if (abs(target - from) > 0.5f) {
+            var last = from
+            animate(
+                initialValue = from,
+                targetValue = target,
+                initialVelocity = carry,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            ) { v, _ ->
+                scrollBy(v - last)
+                last = v
+            }
+        }
+        return 0f
     }
 }
