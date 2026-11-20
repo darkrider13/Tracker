@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -85,6 +87,8 @@ import com.myapp.app.util.translatedCategoryLabel
 
 /** The Transactions list shows 5 full cards at a time (fitListToVisibleCount(container, 5)). */
 private const val LOGS_VISIBLE_COUNT = 5
+private const val LOGS_FIRST_BATCH = 12
+private const val LOGS_NEXT_BATCH = 14
 private val FUND_HISTORY_MONTH_NAMES_SHORT =
     listOf("Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec.")
 
@@ -463,9 +467,21 @@ private fun TransactionList(list: List<Transaction>, query: String) {
         return
     }
     val paged = rememberPagedState(visible = LOGS_VISIBLE_COUNT, gap = 8.dp)
-    com.myapp.app.ui.components.ScrollFadePaged(state = paged, count = list.size, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+    // A long list (a whole month) is not built in one frame: the first cards appear at once and the rest
+    // follow in small batches over the next frames, so changing the filter never freezes the screen.
+    val f = AppStore.state.filters
+    val filterKey = "${f.sort}|${f.time}|${f.price}|${f.customDate}|${f.customMonth}|$query|${LogsState.searchField}|${AppStore.state.activeFund}"
+    var limit by remember(filterKey) { mutableStateOf(LOGS_FIRST_BATCH) }
+    LaunchedEffect(filterKey, list.size) {
+        while (limit < list.size) {
+            withFrameNanos { }
+            limit = minOf(list.size, limit + LOGS_NEXT_BATCH)
+        }
+    }
+    val shownList = if (limit >= list.size) list else list.take(limit)
+    com.myapp.app.ui.components.ScrollFadePaged(state = paged, count = shownList.size, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            list.forEachIndexed { index, t ->
+            shownList.forEachIndexed { index, t ->
                 key(t.id) {
                     Box(Modifier.pagedItem(paged, index)) { TxCard(t, query) }
                 }
