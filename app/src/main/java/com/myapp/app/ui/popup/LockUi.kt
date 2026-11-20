@@ -539,7 +539,7 @@ object LockState {
 
 /** The full-screen background of the lock screens: gradient in day mode, pure black in dark mode. */
 @Composable
-private fun LockBackground(content: @Composable () -> Unit) {
+private fun LockBackground(content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
     val c = AppTheme.colors
     val bg = if (c.isLight) Modifier.background(Brush.verticalGradient(listOf(Color(0xFFF9FAFB), Color(0xFFF9FAFB), Color(0xFFFEF2F2))))
     else Modifier.background(Color.Black)
