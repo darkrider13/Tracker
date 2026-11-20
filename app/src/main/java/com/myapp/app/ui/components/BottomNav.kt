@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,9 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +70,26 @@ private fun navStyle(sizeSp: Float, weight: FontWeight, lineHeightSp: Float) = T
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 
+
+/** Width (dp) the active pill needs: icon 18 + gap 5 + label + horizontal padding 2 x 15. */
+private const val PILL_EXTRA_DP = 53f
+/** Breathing room kept between the active pill and the bar's inner edge / neighbours (each side). */
+private const val PILL_EDGE_GAP_DP = 4f
+/** Inactive icon slots never get narrower than this. */
+private const val MIN_SLOT_DP = 34f
+
+/**
+ * Weight the active slot needs so its pill always fits inside the bar with a small gap on both sides,
+ * whatever the language / font scale / screen width. [innerDp] is the bar's usable width, 4 slots total.
+ */
+private fun activeSlotWeight(innerDp: Float, labelDp: Float): Float {
+    val base = innerDp * 1.75f / 4.75f
+    val needed = PILL_EXTRA_DP + labelDp + PILL_EDGE_GAP_DP * 2
+    val active = maxOf(base, needed).coerceAtMost(innerDp - 3 * MIN_SLOT_DP)
+    val inactive = (innerDp - active) / 3f
+    return (active / inactive).coerceAtLeast(1f)
+}
+
 /**
  * One tab. Every tab sits in its own slot of the bar; the active slot grows (a weight that eases from 1 to
  * 2.2) while the others shrink by the same amount, so the bar's total width never changes and nothing
@@ -77,13 +101,14 @@ private fun RowScope.NavPill(
     icon: String,
     label: String,
     active: Boolean,
+    activeWeight: Float,
     onClick: () -> Unit,
 ) {
     val shape = CircleShape
     val interaction = remember { MutableInteractionSource() }
     val spec = tween<Float>(durationMillis = 240, easing = NavEase)
 
-    val slotWeight by animateFloatAsState(if (active) 1.75f else 1f, spec, label = "navSlotWeight")
+    val slotWeight by animateFloatAsState(if (active) activeWeight else 1f, spec, label = "navSlotWeight")
     val bgAlpha by animateFloatAsState(if (active) 1f else 0f, spec, label = "navPillBg")
     val labelFrac by animateFloatAsState(if (active) 1f else 0f, spec, label = "navLabelFrac")
     val iconScale by animateFloatAsState(1f, spec, label = "navIconScale")
@@ -185,21 +210,43 @@ fun BottomNavBar(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // the pill bar
-                Row(
+                val labels = listOf(
+                    tr("nav_home", "Home"),
+                    tr("nav_logs", "Logs"),
+                    tr("nav_stats", "Stats"),
+                    tr("nav_profile", "Profile"),
+                )
+                val measurer = rememberTextMeasurer()
+                val density = LocalDensity.current
+                val labelDp = remember(labels, density.density, density.fontScale) {
+                    labels.map {
+                        val px = measurer.measure(
+                            AnnotatedString(it), navStyle(12f, FontWeight.Bold, 16f),
+                            softWrap = false, maxLines = 1,
+                        ).size.width
+                        px / density.density
+                    }
+                }
+                BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
                         .background(c.navBarBg, CircleShape)
                         .border(1.dp, c.navBarBorder, CircleShape)
                         .padding(horizontal = 3.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    val innerDp = maxWidth.value
                     val current = AppUi.tab
-                    NavPill("fa-home", tr("nav_home", "Home"), current == Tab.Home) { AppUi.switchTab(Tab.Home) }
-                    NavPill("fa-list", tr("nav_logs", "Logs"), current == Tab.Logs) { AppUi.switchTab(Tab.Logs) }
-                    NavPill("fa-chart-bar", tr("nav_stats", "Stats"), current == Tab.Stats) { AppUi.switchTab(Tab.Stats) }
-                    NavPill("fa-user", tr("nav_profile", "Profile"), current == Tab.Profile) { AppUi.switchTab(Tab.Profile) }
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NavPill("fa-home", labels[0], current == Tab.Home, activeSlotWeight(innerDp, labelDp[0])) { AppUi.switchTab(Tab.Home) }
+                        NavPill("fa-list", labels[1], current == Tab.Logs, activeSlotWeight(innerDp, labelDp[1])) { AppUi.switchTab(Tab.Logs) }
+                        NavPill("fa-chart-bar", labels[2], current == Tab.Stats, activeSlotWeight(innerDp, labelDp[2])) { AppUi.switchTab(Tab.Stats) }
+                        NavPill("fa-user", labels[3], current == Tab.Profile, activeSlotWeight(innerDp, labelDp[3])) { AppUi.switchTab(Tab.Profile) }
+                    }
                 }
 
                 Spacer(Modifier.width(gap))
