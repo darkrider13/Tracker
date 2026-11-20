@@ -134,7 +134,7 @@ fun PagedViewport(
     modifier: Modifier = Modifier,
     snap: Boolean = true,
     animateSize: Boolean = true,
-    smoothSnap: Boolean = false,
+    smoothSnap: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current

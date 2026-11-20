@@ -31,7 +31,7 @@ fun ScrollFadePaged(
     count: Int,
     modifier: Modifier = Modifier,
     fade: Boolean = true,
-    smoothSnap: Boolean = false,
+    smoothSnap: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val c = AppTheme.colors
