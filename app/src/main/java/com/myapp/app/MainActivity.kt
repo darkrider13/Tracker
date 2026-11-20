@@ -15,8 +15,8 @@ import com.myapp.app.util.syncCustomCategories
 class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Must run before super.onCreate. The native splash is only the plain background colour;
-        // the animated splash is drawn by the app itself (BootSplash).
+        // Must run before super.onCreate. No custom splash: the native one is just the plain
+        // background colour (transparent icon) and the app shows immediately.
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
