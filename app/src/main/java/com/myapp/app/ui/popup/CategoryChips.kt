@@ -181,8 +181,10 @@ private fun Chip(
 
 /** The dashed "+ New" chip that always ends the row. */
 @Composable
-private fun PlusChip(modifier: Modifier, onClick: () -> Unit) {
+private fun PlusChip(big: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = AppTheme.colors
+    // same circle size as the category chips (48 dp when they are enlarged, else 40 dp) so the row stays aligned
+    val circle = if (big) 48.dp else 40.dp
     val dash = Color(0xFF9CA3AF).copy(alpha = 0.6f)
     Column(
         modifier = modifier.clickable(
@@ -195,7 +197,7 @@ private fun PlusChip(modifier: Modifier, onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(circle)
                 .drawBehind {
                     drawCircle(
                         color = dash,
@@ -421,7 +423,7 @@ fun CategoryChips(
                             },
                     ) { onPick(name) }
                 }
-                PlusChip(modifier = Modifier.width(chipW)) { onAddNew() }
+                PlusChip(big = picker.allLarge, modifier = Modifier.width(chipW)) { onAddNew() }
             }
         }
     }
