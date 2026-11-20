@@ -359,10 +359,9 @@ private fun BackupButton(icon: String, label: String, modifier: Modifier, onClic
     val shape = RoundedCornerShape(12.dp)
     Row(
         modifier
-            .shadow(1.dp, shape)
             .clip(shape)
             .background(c.bgWhite, shape)
-            .border(1.dp, c.borderGray300, shape)
+            .border(1.dp, if (c.isLight) c.homeCardBorder else c.borderGray300, shape)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),

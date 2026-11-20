@@ -165,7 +165,7 @@ private fun CardHeader(icon: String, iconColor: Color, title: String, modifier: 
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(
-                Modifier.size(28.dp).shadow(1.dp, CircleShape).background(c.bgWhite, CircleShape),
+                Modifier.size(28.dp).background(c.bgWhite, CircleShape),
                 contentAlignment = Alignment.Center,
             ) { FaIcon(icon, 12.dp, iconColor) }
             AppText(text = title, size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = c.textGray900)

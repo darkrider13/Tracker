@@ -181,7 +181,7 @@ fun FundDetailsScreen() {
         contentAlignment = Alignment.TopCenter,
     ) {
         // exactly the same page background as the Home screen (black + soft glow / light tint)
-        AppBackdrop()
+        AppBackdrop(extend = true)
         Column(
             Modifier
                 .fillMaxSize()
