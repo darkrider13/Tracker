@@ -50,7 +50,7 @@ private val DECOR = listOf(
  * Dark theme: 20 % (16 % for the white ones). Day mode: 16 %, white ones turned grey.
  */
 @Composable
-fun FinanceDecor(modifier: Modifier = Modifier) {
+fun FinanceDecor(modifier: Modifier = Modifier, accent: Color = Brand.red) {
     val light = AppTheme.colors.isLight
     BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
         val w = maxWidth
@@ -59,7 +59,7 @@ fun FinanceDecor(modifier: Modifier = Modifier) {
             val color = when {
                 d.white && light -> Color(0xFF9CA3AF)
                 d.white -> Color.White
-                else -> Brand.red
+                else -> accent
             }
             val op = if (light) 0.16f else if (d.white) 0.16f else 0.20f
             val x = if (d.fromLeft) w * d.h else w * (1f - d.h) - d.size
