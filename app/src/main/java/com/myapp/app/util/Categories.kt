@@ -157,9 +157,10 @@ fun getCategoryFAIcon(label: String?): String {
     if (customHit != null) return customHit.icon
     if (c.contains("transfer") || c.contains("ট্রান্সফার")) return "fa-right-left"
     if (c.contains("add money") || c.contains("টাকা যোগ")) return "fa-circle-dollar-to-slot"
-    if (c.contains("debt collect") || c.contains("পাওনা আদায়")) return "fa-hand-holding-dollar"
-    if (c.contains("debt repay") || c.contains("ধার পরিশোধ")) return "fa-hand-holding-dollar"
-    // Transaction-log icons show the cash movement AT THE TIME: lent = out (up-right), borrowed = in (down-left).
+    // Transaction-log icons show the cash movement AT THE TIME: out = up-right, in = down-left.
+    // lent / repaid = money leaves; borrowed / collected = money comes in.
+    if (c.contains("debt collect") || c.contains("পাওনা আদায়")) return "fa-arrow-down-left"
+    if (c.contains("debt repay") || c.contains("ধার পরিশোধ")) return "fa-arrow-up-right"
     if (c.contains("debt borrowed") || c.contains("money borrowed") || c.contains("ধার নেওয়া")) return "fa-arrow-down-left"
     if (c.contains("debt lent") || c.contains("money lent") || c.contains("ধার দেওয়া")) return "fa-arrow-up-right"
     if (c.contains("grocery") || c.contains("মুদি")) return "fa-cart-shopping"
