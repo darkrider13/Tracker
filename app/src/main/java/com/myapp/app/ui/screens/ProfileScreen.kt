@@ -223,7 +223,7 @@ fun ProfileScreen() {
 
 // ------------------------------------------------------------------ pieces
 
-/** Small round "check for update" button in the page header (green dot = a newer version exists). */
+/** "Check for update" icon in the page header (green pulsing dot = a newer version exists). */
 @Composable
 private fun UpdateButton() {
     val c = AppTheme.colors
@@ -234,29 +234,33 @@ private fun UpdateButton() {
         initialValue = 0f, targetValue = 360f,
         animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)), label = "updateAngle",
     )
+    val pulse by spin.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "updatePulse",
+    )
     Box(
         Modifier
-            .padding(start = 12.dp, top = 2.dp)
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(c.bgGray200a60, CircleShape)
+            .padding(start = 12.dp)
+            .size(36.dp)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 if (UpdateChecker.checking) return@clickable
                 UpdateChecker.checking = true
                 scope.launch {
                     val result = UpdateChecker.check(context)
                     UpdateChecker.checking = false
+                    val current = UpdateChecker.installedName(context)
                     when (result) {
                         is UpdateChecker.Result.Available -> AppDialogs.confirm(
                             message = tr("update_found_msg", "A new version is available.") +
-                                (result.versionName?.let { "\n$it" } ?: ""),
+                                "\n" + tr("update_current_label", "Current version") + ": " + current +
+                                (result.versionName?.let { "\n" + tr("update_new_label", "New version") + ": " + it } ?: ""),
                             title = tr("update_found_title", "Update available"),
                             okLabel = tr("update_download", "Download"),
                             cancelLabel = tr("update_later", "Later"),
                             icon = "fa-circle-check",
-                        ) { ok -> if (ok == true) openExternalLink(context, result.url) }
+                        ) { ok -> if (ok == true) UpdateChecker.startUpdate(context, result.url) }
                         is UpdateChecker.Result.UpToDate -> AppDialogs.alert(
-                            message = tr("update_latest_msg", "Your app is up to date."),
+                            message = tr("update_latest_msg", "You are using version %s.").replace("%s", current),
                             title = tr("update_latest_title", "You have the latest version"),
                             icon = "fa-circle-check",
                         )
@@ -270,11 +274,18 @@ private fun UpdateButton() {
         contentAlignment = Alignment.Center,
     ) {
         FaIcon(
-            "fa-arrows-rotate", 14.dp, c.textGray900,
+            "fa-arrows-rotate", 20.dp, c.textGray900,
             modifier = if (UpdateChecker.checking) Modifier.rotate(angle) else Modifier,
         )
         if (UpdateChecker.updateAvailable) {
-            Box(Modifier.align(Alignment.TopEnd).size(9.dp).background(Tw.green500, CircleShape))
+            Canvas(Modifier.align(Alignment.TopEnd).padding(top = 1.dp, end = 1.dp).size(14.dp)) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val core = 4.dp.toPx()
+                // soft pulsing halo
+                drawCircle(Tw.green500.copy(alpha = 0.45f * (1f - pulse)), radius = core + (size.width / 2f - core) * pulse, center = center)
+                drawCircle(Tw.green500.copy(alpha = 0.25f), radius = core + 1.5.dp.toPx(), center = center)
+                drawCircle(Tw.green500, radius = core, center = center)
+            }
         }
     }
 }
