@@ -199,6 +199,7 @@ private fun RedDot(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SearchRow(state: AppState) {
+    AppStore.observe()
     val c = AppTheme.colors
     val fieldShape = RoundedCornerShape(16.dp)
     val placeholder = when (LogsState.searchField) {
@@ -299,6 +300,8 @@ private fun SquareIconButton(onClick: () -> Unit, dot: Boolean, icon: @Composabl
 
 @Composable
 private fun FilterChips(state: AppState) {
+    // Same AppState object is passed every time, so Compose would skip this row; reading the revision makes the chips redraw right after a filter change.
+    AppStore.observe()
     val f = state.filters
     val sortLabel = if (f.sort == "oldest") tr("logs_oldest", "Oldest") else tr("logs_newest", "Newest")
     val priceLabel = when (f.price) {

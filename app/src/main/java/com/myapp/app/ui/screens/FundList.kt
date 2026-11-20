@@ -88,6 +88,8 @@ private fun switchActiveFund(name: String) {
  */
 @Composable
 fun FundList(state: AppState) {
+    // Same AppState object is passed every time, so Compose would skip this list; reading the revision here makes it redraw right after a commit.
+    AppStore.observe()
     val names = state.funds.keys.toList()
     val density = LocalDensity.current
     val paged = rememberPagedState(visible = FUNDS_VISIBLE_COUNT, gap = 8.dp)
@@ -280,6 +282,7 @@ private val PulseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
 
 @Composable
 private fun FundCard(state: AppState, name: String, isActive: Boolean) {
+    AppStore.observe()
     val c = AppTheme.colors
     val meta = ensureFundMeta(name)
     val metaColor = parseCssColor(meta.color) ?: Brand.red
