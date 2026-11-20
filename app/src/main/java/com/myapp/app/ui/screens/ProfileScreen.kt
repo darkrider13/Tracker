@@ -198,23 +198,23 @@ fun ProfileScreen() {
 
             // ---- Developer credit
             Column(
-                Modifier.fillMaxWidth().clip(shape).background(c.bgGray200a60, shape).padding(20.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AppText(
-                    text = tr("profile_developed_by", "Developed by MD.INSANUL ISLAM ABIR"), size = 9f, lineHeight = 13.5f,
+                    text = tr("profile_developed_by", "Developed by MD.INSANUL ISLAM ABIR"), size = 11.5f, lineHeight = 17f,
                     weight = FontWeight.Bold, color = c.textGray400, align = TextAlign.Center,
                     modifier = Modifier.pullUp(8.dp),
                 )
-                Row(Modifier.pullUp(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SocialIcon("fa-facebook-f", FaStyle.Brands, 18.dp) { openExternalLink(context, "https://m.facebook.com/insanul.islam.abirr/") }
-                    SocialIcon("fa-whatsapp", FaStyle.Brands, 18.dp) { openExternalLink(context, "https://wa.me/8801516531459") }
-                    SocialIcon("fa-instagram", FaStyle.Brands, 18.dp) { openExternalLink(context, "https://instagram.com/insaanulislaamaabiir") }
-                    SocialIcon("fa-paper-plane", FaStyle.Solid, 16.dp) { openExternalLink(context, "https://t.me/insanul13") }
+                Row(Modifier.pullUp(8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SocialIcon("fa-facebook-f", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://m.facebook.com/insanul.islam.abirr/") }
+                    SocialIcon("fa-whatsapp", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://wa.me/8801516531459") }
+                    SocialIcon("fa-instagram", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://instagram.com/insaanulislaamaabiir") }
+                    SocialIcon("fa-paper-plane", FaStyle.Solid, 21.dp) { openExternalLink(context, "https://t.me/insanul13") }
                 }
                 AppText(
-                    text = tr("profile_copyright", "© Copyright MD.INSANUL ISLAM ABIR. All rights reserved."), size = 5f, lineHeight = 7.5f,
+                    text = tr("profile_copyright", "© Copyright MD.INSANUL ISLAM ABIR. All rights reserved."), size = 6.5f, lineHeight = 10f,
                     weight = FontWeight.Bold, color = c.textGray400, align = TextAlign.Center,
                     modifier = Modifier.pullUp(12.dp),
                 )
@@ -358,7 +358,7 @@ private fun BackupButton(icon: String, label: String, modifier: Modifier, onClic
 private fun SocialIcon(icon: String, style: FaStyle, size: Dp, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(32.dp)
+            .size(40.dp)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { FaIcon(icon, size, Brand.red, style = style) }
