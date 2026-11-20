@@ -157,9 +157,9 @@ fun darkAppColors() = AppColors(
 
 fun lightAppColors() = AppColors(
     isLight = true,
-    bodyBg = Color(0xFFF4F4F4),
-    screenBg = Color(0xFFF4F4F4),
-    statusBarBg = Color(0xFFF4F4F4),
+    bodyBg = Color(0xFFE6EEF5),
+    screenBg = Color(0xFFE6EEF5),
+    statusBarBg = Color(0xFFE6EEF5),
 
     bgWhite = Color.White.copy(alpha = 0.55f),
     bgWhite40 = Color.White.copy(alpha = 0.4f),
