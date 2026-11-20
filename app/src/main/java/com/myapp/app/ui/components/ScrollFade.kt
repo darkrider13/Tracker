@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myapp.app.ui.theme.AppTheme
 
@@ -32,6 +33,8 @@ fun ScrollFadePaged(
     modifier: Modifier = Modifier,
     fade: Boolean = true,
     smoothSnap: Boolean = true,
+    animateSize: Boolean = true,
+    defaultItemDp: Dp = 76.dp,
     content: @Composable () -> Unit,
 ) {
     val c = AppTheme.colors
@@ -49,7 +52,10 @@ fun ScrollFadePaged(
     )
 
     Box(modifier) {
-        PagedViewport(state = state, count = count, smoothSnap = smoothSnap, content = content)
+        PagedViewport(
+            state = state, count = count, smoothSnap = smoothSnap,
+            animateSize = animateSize, defaultItemDp = defaultItemDp, content = content,
+        )
         if (fade) Box(
             Modifier
                 .align(Alignment.BottomCenter)
