@@ -3,6 +3,11 @@ package com.myapp.app.ui.popup
 import androidx.activity.compose.BackHandler
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -580,7 +585,7 @@ private fun LockTitleColor(): Color = if (AppTheme.colors.isLight) Color(0xFF181
 private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, titleSize: Float, titleLine: Float, subtitle: String, subSize: Float, subLine: Float) {
     val c = AppTheme.colors
     Box(
-        Modifier.size(circle.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f), CircleShape),
+        Modifier.size(circle.dp).clip(CircleShape).background(if (AppTheme.colors.isLight) Color.Black.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.10f), CircleShape),
         contentAlignment = Alignment.Center,
     ) { FaIcon(icon, iconSize.dp, Brand.red) }
     AppText(
@@ -593,9 +598,32 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
     )
 }
 
+/**
+ * Unlock reveal: a lock screen no longer vanishes in one frame. It appears at once (nothing of the app
+ * is ever exposed), and when it closes it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06)
+ * over 380 ms, so the Home screen underneath is revealed smoothly.
+ */
 @Composable
-fun PinPadScreen() {
-    if (!LockState.pinVisible) return
+private fun LockExit(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = EnterTransition.None,
+        exit = fadeOut(tween(380, easing = FastOutSlowInEasing)) +
+            scaleOut(targetScale = 1.06f, animationSpec = tween(380, easing = FastOutSlowInEasing)),
+    ) { content() }
+}
+
+@Composable
+fun PinPadScreen() = LockExit(LockState.pinVisible) { PinPadContent() }
+
+@Composable
+fun PatternPadScreen() = LockExit(LockState.patternVisible) { PatternPadContent() }
+
+@Composable
+fun BiometricLockScreen() = LockExit(LockState.biometricVisible) { BiometricLockContent() }
+
+@Composable
+private fun PinPadContent() {
     val s = LockState
     BackHandler(enabled = true) { if (s.pinAllowCancel) s.closePin(true) }
     LockBackground {
@@ -686,8 +714,7 @@ private suspend fun shake(x: Animatable<Float, *>) {
 }
 
 @Composable
-fun PatternPadScreen() {
-    if (!LockState.patternVisible) return
+private fun PatternPadContent() {
     val s = LockState
     BackHandler(enabled = true) { if (s.patternAllowCancel) s.closePattern(true) }
     LockBackground {
@@ -762,8 +789,7 @@ fun PatternPadScreen() {
 }
 
 @Composable
-fun BiometricLockScreen() {
-    if (!LockState.biometricVisible) return
+private fun BiometricLockContent() {
     val s = LockState
     BackHandler(enabled = true) { }
     // the system prompt opens by itself shortly after this screen appears
@@ -779,7 +805,7 @@ fun BiometricLockScreen() {
         ) {
             val c = AppTheme.colors
             Box(
-                Modifier.size(80.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f), CircleShape),
+                Modifier.size(80.dp).clip(CircleShape).background(if (AppTheme.colors.isLight) Color.Black.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.10f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) { FaIcon("fa-fingerprint", 30.dp, Brand.green) }
             AppText(
