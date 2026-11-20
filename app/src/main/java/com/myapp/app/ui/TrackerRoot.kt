@@ -35,8 +35,8 @@ import com.myapp.app.ui.theme.SystemBars
 import com.myapp.app.ui.theme.TrackerTheme
 import kotlinx.coroutines.delay
 
-/** The splash stays up for at least this long from app start (same as the old app: 2.2 s). */
-private const val MIN_SPLASH_MS = 2200L
+/** The splash stays up for at least this long from app start (was 2.2 s; shortened so the app opens faster). */
+private const val MIN_SPLASH_MS = 1200L
 
 @Composable
 fun TrackerRoot(activity: Activity) {
@@ -67,6 +67,7 @@ fun TrackerRoot(activity: Activity) {
         val appContext = activity.applicationContext
         LaunchedEffect(Unit) {
             com.myapp.app.ui.popup.ReminderPanel.requestAtLaunch()
+            delay(1500)   // keep the first frames free: alarm registration is not urgent
             com.myapp.app.reminder.Reminders.scheduleAll(appContext)
         }
         // A new / edited / settled / deleted debt changes its reminder: re-register shortly after the change.
