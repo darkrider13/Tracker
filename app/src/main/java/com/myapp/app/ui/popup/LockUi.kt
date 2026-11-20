@@ -726,7 +726,7 @@ fun PatternPadScreen() {
                                         ch.consume()
                                     }
                                     LockState.patternUp()
-                                },
+                                }
                             },
                     ) {
                         val k = size.width / 300f
