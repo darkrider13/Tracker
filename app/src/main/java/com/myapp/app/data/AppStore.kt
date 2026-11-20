@@ -2,7 +2,10 @@ package com.myapp.app.data
 
 import android.content.Context
 import android.util.AtomicFile
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import java.util.concurrent.Executors
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -111,16 +114,49 @@ object AppStore {
         }
     }
 
-    /** The old saveState(). Returns true when the data reached the disk. */
+    /** One background thread writes the file, in order, so a slow disk never freezes a popup animation. */
+    private val saver = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "store-save").apply { priority = Thread.NORM_PRIORITY - 1 }
+    }
+
+    /** The old saveState(). Returns true when the data reached the disk (waits for the writer, keeps order). */
     fun saveState(): Boolean {
         return try {
-            writeRaw(state.toJson().toString())
-            lastSaveError = null
-            true
+            val text = state.toJson().toString()
+            saver.submit<Boolean> {
+                try {
+                    writeRaw(text)
+                    lastSaveError = null
+                    true
+                } catch (e: Exception) {
+                    lastSaveError = e
+                    Log.e(TAG, "saveState failed", e)
+                    false
+                }
+            }.get()
         } catch (e: Exception) {
             lastSaveError = e
             Log.e(TAG, "saveState failed", e)
             false
+        }
+    }
+
+    /** Same as [saveState] but the disk write happens in the background (the UI thread only builds the text). */
+    private fun saveStateAsync() {
+        try {
+            val text = state.toJson().toString()
+            saver.execute {
+                try {
+                    writeRaw(text)
+                    lastSaveError = null
+                } catch (e: Exception) {
+                    lastSaveError = e
+                    Log.e(TAG, "saveState failed", e)
+                }
+            }
+        } catch (e: Exception) {
+            lastSaveError = e
+            Log.e(TAG, "saveState failed", e)
         }
     }
 
@@ -139,12 +175,29 @@ object AppStore {
     /** Redraw every screen (the old initApp()/re-render) without saving. */
     fun refresh() {
         ensureActiveFundValid()
-        revision += 1
+        if (redrawGate()) {
+            // A popup is open (and most likely closing right now): redraw every screen only after its
+            // fade-out, so the heavy redraw never lands in the middle of the animation.
+            if (!redrawPending) {
+                redrawPending = true
+                mainHandler.postDelayed({
+                    redrawPending = false
+                    revision += 1
+                }, 180L)
+            }
+        } else {
+            revision += 1
+        }
     }
+
+    /** Set by the popup layer: true while a popup is on screen. */
+    var redrawGate: () -> Boolean = { false }
+    private var redrawPending = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     /** The old `saveState(); initApp();` pair. */
     fun commit() {
-        saveState()
+        saveStateAsync()
         refresh()
     }
 
