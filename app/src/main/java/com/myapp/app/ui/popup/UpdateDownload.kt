@@ -124,7 +124,7 @@ fun UpdateDownloadOverlay() {
                         if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
                         else sizeText(done) + " " + unitMb,
                     ),
-                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = c.textGray900,
+                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
                 )
             }
             AppText(
