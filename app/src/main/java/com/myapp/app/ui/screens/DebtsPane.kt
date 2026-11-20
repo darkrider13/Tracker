@@ -95,7 +95,9 @@ fun DebtsPane(category: String) {
 
         val query = normalizedLogsQuery(cs.search.text)
         val entries = filteredDebtEntries(state, category)
-        DebtList(entries, category, query, accent)
+        // key(category): Debts and Receivables each get a fresh list state, so nothing (old heights, scroll
+        // position) is carried over and re-settled when switching between them.
+        key(category) { DebtList(entries, category, query, accent) }
     }
 }
 
@@ -369,9 +371,14 @@ private fun DebtList(entries: List<Debt>, category: String, query: String, accen
     }
     // exactly 2 cards at a time; snaps by page when there are more
     val paged = rememberPagedState(visible = 2, gap = 8.dp)
+    // Debt cards are a fixed 160 dp tall: the viewport starts at its final height (2 cards) and never
+    // glides, so no card blinks / grows in when switching between Debts and Receivables.
     ScrollFadePaged(
         state = paged, count = entries.size,
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp, end = 2.dp),
+        animateSize = false, defaultItemDp = 160.dp,
+        // no bottom fade here (same as the Transactions list): it flashed over the 2nd card on every switch
+        fade = false,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             entries.forEachIndexed { index, d ->
