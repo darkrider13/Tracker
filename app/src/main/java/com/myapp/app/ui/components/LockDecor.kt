@@ -47,7 +47,7 @@ private val DECOR = listOf(
 
 /**
  * The scattered, very faint finance icons behind the Welcome / Lock / PIN / Pattern screens.
- * Dark theme: 20 % (16 % for the white ones). Day mode: 16 %, white ones turned grey.
+ * Dark theme: 20 % (16 % for the white ones). Day mode: 32 % (deeper), white ones turned darker grey.
  */
 @Composable
 fun FinanceDecor(modifier: Modifier = Modifier, accent: Color = Brand.red) {
@@ -57,11 +57,11 @@ fun FinanceDecor(modifier: Modifier = Modifier, accent: Color = Brand.red) {
         val hh = maxHeight
         for (d in DECOR) {
             val color = when {
-                d.white && light -> Color(0xFF9CA3AF)
+                d.white && light -> Color(0xFF6B7280)
                 d.white -> Color.White
                 else -> accent
             }
-            val op = if (light) 0.16f else if (d.white) 0.16f else 0.20f
+            val op = if (light) 0.32f else if (d.white) 0.16f else 0.20f
             val x = if (d.fromLeft) w * d.h else w * (1f - d.h) - d.size
             val y = if (d.fromTop) hh * d.v else hh * (1f - d.v) - d.size
             Box(Modifier.offset(x = x, y = y).rotate(d.rotation).alpha(op)) {
