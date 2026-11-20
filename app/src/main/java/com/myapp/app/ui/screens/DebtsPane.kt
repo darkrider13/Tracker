@@ -130,7 +130,7 @@ private fun SummaryCard(state: AppState, category: String, cs: DebtCategoryState
                 letterSpacingEm = 0.05f, color = labelColor, modifier = Modifier.padding(end = 56.dp),
             )
             AppText(
-                text = "৳" + fmtMoney(total), size = 30f, lineHeight = 36f, weight = FontWeight.ExtraBold,
+                text = "৳" + fmtMoney(total), size = 24f, lineHeight = 32f, weight = FontWeight.ExtraBold,
                 letterSpacingEm = -0.025f, color = if (isReceivable) Green500 else Brand.red,
             )
         }
@@ -465,7 +465,7 @@ private fun DebtCard(d: Debt, query: String, category: String, accent: Color) {
                 modifier = Modifier.widthIn(max = 150.dp).padding(start = 8.dp),
             ) {
                 AppText(
-                    text = "৳$displayedAmountText", size = 16f, lineHeight = 24f, weight = FontWeight.Black,
+                    text = "৳$displayedAmountText", size = 14f, lineHeight = 20f, weight = FontWeight.Black,
                     color = accent, singleLineEllipsis = true,
                 )
                 if (!d.settled && hasPayments) {

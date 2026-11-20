@@ -482,7 +482,13 @@ private fun TransactionList(list: List<Transaction>, query: String) {
         }
     }
     val shownList = if (limit >= list.size) list else list.take(limit)
-    com.myapp.app.ui.components.ScrollFadePaged(state = paged, count = shownList.size, fade = false, smoothSnap = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+    // until the first cards are measured the viewport height is only an estimate: keep the list invisible for
+    // that single frame so the tab switch never shows a height jump at the bottom
+    val sized = shownList.size <= LOGS_VISIBLE_COUNT || paged.viewportMax(shownList.size) != null
+    com.myapp.app.ui.components.ScrollFadePaged(
+        state = paged, count = shownList.size, fade = false, smoothSnap = true,
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = if (sized) 1f else 0f },
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             shownList.forEachIndexed { index, t ->
                 key(t.id) {
@@ -562,9 +568,7 @@ internal fun TxCard(
                 if (isTransferCard) {
                     TransferArrowsIcon()
                 } else {
-                    // Receivable Collected is drawn mirrored (scaleX = -1)
-                    val mirror = if (t.category == "Debt Collection") Modifier.graphicsMirror() else Modifier
-                    CategoryIcon(t.category, 14.dp, iconColor, mirror)
+                    CategoryIcon(t.category, 14.dp, iconColor)
                 }
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
