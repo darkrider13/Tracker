@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -92,11 +93,9 @@ fun TrackerRoot(activity: Activity) {
             val blurOn = Popups.anyVisible || com.myapp.app.util.UpdateChecker.downloading
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
-                // Blur comes up at once with the popup / sheet (60 ms), and leaves softly (180 ms).
-                animationSpec = tween(
-                    durationMillis = if (blurOn) 60 else 180,
-                    easing = if (blurOn) LinearEasing else com.myapp.app.ui.popup.DropdownEase,
-                ),
+                // Blur comes up at once with the popup / sheet (60 ms) and is removed INSTANTLY the
+                // moment the popup starts to close (no lingering blur behind the fading popup).
+                animationSpec = if (blurOn) tween(durationMillis = 60, easing = LinearEasing) else snap(),
                 label = "popupBlur",
             )
 
