@@ -135,11 +135,12 @@ fun PagedViewport(
     snap: Boolean = true,
     animateSize: Boolean = true,
     smoothSnap: Boolean = true,
+    defaultItemDp: Dp = 76.dp,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
     val maxPx = state.viewportMax(count)
-    val shownPx = maxPx ?: if (count > state.visible) state.provisionalMax(with(density) { 76.dp.roundToPx() }) else null
+    val shownPx = maxPx ?: if (count > state.visible) state.provisionalMax(with(density) { defaultItemDp.roundToPx() }) else null
     val clamp = if (shownPx != null) Modifier.heightIn(max = with(density) { shownPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
 
     // smoothSnap: the fling itself glides onto the nearest card in ONE continuous motion
