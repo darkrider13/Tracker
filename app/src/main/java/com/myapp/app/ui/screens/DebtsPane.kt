@@ -344,7 +344,7 @@ private fun DebtList(entries: List<Debt>, category: String, query: String, accen
                 .fillMaxWidth()
                 .clip(shape)
                 .background(if (c.isLight) c.bgGray200a50 else SoftGlass.bg, shape)
-                .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
+                .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape)
                 .padding(32.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -413,7 +413,7 @@ private fun DebtCard(d: Debt, query: String, category: String, accent: Color) {
         .height(160.dp)
         .clip(shape)
         .background(cardBg, shape)
-        .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
+        .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape)
         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { DebtActions.openHistory(d.id) }
     val padding = if (d.settled) Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp)
     else Modifier.padding(16.dp)

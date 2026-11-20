@@ -304,7 +304,7 @@ private fun FundCard(state: AppState, name: String, isActive: Boolean) {
         Modifier
             .clip(shape)
             .background(if (c.isLight) c.bgWhite else SoftGlass.bg, shape)
-            .border(BorderStroke(1.dp, if (c.isLight) c.borderGray200 else SoftGlass.border), shape)
+            .border(BorderStroke(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border), shape)
     }
 
     Row(

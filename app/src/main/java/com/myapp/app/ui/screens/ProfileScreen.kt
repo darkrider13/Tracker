@@ -163,7 +163,7 @@ fun ProfileScreen() {
                     .fillMaxWidth()
                     .clip(shape)
                     .background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
-                    .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
+                    .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                         AppActions.openLockTypeChooser()
                     }
@@ -187,7 +187,7 @@ fun ProfileScreen() {
             // ---- Backup & Restore
             Column(
                 Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
-                    .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)).padding(16.dp),
+                    .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AppText(text = tr("profile_backup_title", "Backup & Restore"), size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = c.textGray800)
@@ -322,7 +322,7 @@ private fun SettingRow(icon: @Composable () -> Unit, title: String, desc: String
     val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     Row(
         Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
-            .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)).padding(16.dp),
+            .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape).padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -394,7 +394,7 @@ private fun NameBox() {
 
     Box(
         Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
-            .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)),
+            .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape),
     ) {
         // faint finance icons scattered behind (positions are % of the box, like the old absolute layout)
         BoxWithConstraints(Modifier.matchParentSize()) {

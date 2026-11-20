@@ -548,7 +548,7 @@ internal fun TxCard(
             .fillMaxWidth()
             .clip(shape)
             .background(cardBg, shape)
-            .then(if (!c.isLight) Modifier.border(1.dp, SoftGlass.border, shape) else Modifier)
+            .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape)
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
