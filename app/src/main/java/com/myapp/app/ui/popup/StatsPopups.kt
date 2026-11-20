@@ -305,13 +305,11 @@ fun AllCatMonthPickerPopup() {
     }
 }
 
-/** openHomeCategoryDetails(): Home > Category Breakdown row -> Stats > Spending + the "See all" sheet. */
+/** openHomeCategoryDetails(): Home > Category Breakdown row -> the "See all" sheet, opened on top of Home (closing it leaves you on Home). */
 fun installStatsHooks() {
     AppActions.openHomeCategoryDetails = {
         // the Home graph is always the current month, so drop any month picked with the Stats calendar
         AppUi.statsMonthOverride = null
-        AppUi.switchTab(Tab.Stats)
-        AppUi.statsSubtab = "spending"
         val state = AppStore.state
         if (statsMonthSpend(state, statsSpendMonthScope(state)).isNotEmpty()) AllCategoriesSheet.open()
     }
