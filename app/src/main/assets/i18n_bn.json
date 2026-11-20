@@ -6,7 +6,7 @@
 "nav_profile": "প্রোফাইল",
 "profile_title": "ব্যক্তিগত প্রোফাইল",
 "profile_subtitle": "সেটিংস, নিরাপত্তা এবং ডেভেলপার তথ্য কাস্টমাইজ করুন।",
-"profile_name_tagline": "আপনার ট্র্যাকার প্রোফাইল",
+"profile_chip_funds": "{count}টি ফান্ড",
 "profile_language": "ভাষা",
 "profile_language_desc": "অ্যাপের ভাষা পরিবর্তন করুন En → বাং",
 "profile_lightmode": "দিনের মোড",
