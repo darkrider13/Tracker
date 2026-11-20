@@ -489,5 +489,10 @@
 "update_permission_title": "ইনস্টলের অনুমতি দিন",
 "update_permission_msg": "আপডেট ইনস্টল করতে এই অ্যাপকে অনুমতি দিতে হবে। সেটিংসে গিয়ে অনুমতি চালু করে আবার আপডেট চাপুন।",
 "update_open_settings": "সেটিংস",
-"update_download_failed_title": "আপডেট ডাউনলোড করা যায়নি"
+"update_download_failed_title": "আপডেট ডাউনলোড করা যায়নি",
+"update_check_retry_msg": "কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+"update_unit_mb": "এমবি",
+"update_unit_mbps": "এমবি/সে.",
+"update_eta_sec": "{s} সেকেন্ড বাকি",
+"update_eta_min": "{m} মিনিট {s} সেকেন্ড বাকি"
 }
