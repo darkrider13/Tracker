@@ -21,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -194,15 +196,34 @@ fun BoxScope.FundDropdownOverlay(
     val paged = rememberPagedState(visible = 3, gap = rowGap, snapStep = 3)
     val selectedIndex = funds.indexOf(selectedFund).coerceAtLeast(0)
     val ready = funds.size <= 3 || paged.viewportMax(funds.size) != null
+    // The list stays invisible until every row is measured, the viewport is clamped to 3 rows and the
+    // selected page is in place; then it fades in. So it never jumps / half-cuts a row while opening.
+    var shown by remember { mutableStateOf(funds.size <= 3) }
     LaunchedEffect(ready, funds.size) {
-        if (ready) paged.scroll.scrollTo(if (funds.size > 3) paged.pageOffsetOfItem(selectedIndex) else 0)
+        if (funds.size <= 3) {
+            paged.scroll.scrollTo(0)
+            shown = true
+        } else if (ready) {
+            // wait for the clamped layout (scroll range appears), then jump to the selected page
+            kotlinx.coroutines.withTimeoutOrNull(500L) {
+                snapshotFlow { paged.scroll.maxValue }.first { it > 0 }
+            }
+            paged.scroll.scrollTo(paged.pageOffsetOfItem(selectedIndex))
+            shown = true
+        }
     }
+    val shownAlpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(120),
+        label = "fundListShown",
+    )
 
     Column(
         modifier = Modifier
             .align(Alignment.Center)
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
+            .graphicsLayer { alpha = shownAlpha }
             .clip(shape)
             .background(if (c.isLight) Color(0xFFD4D4D8) else Color(0xFF141414), shape)
             .clickable(
