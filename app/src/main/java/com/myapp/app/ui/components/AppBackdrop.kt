@@ -24,17 +24,19 @@ fun AppBackdrop(modifier: Modifier = Modifier) {
         val h = size.height
         if (!isLight) {
             drawRect(color = Color(0xFF000000))
-            // radial-gradient(ellipse 110% 42% at 50% 50%, .11 -> .04 (50%) -> 0)
+            // softer + fainter glow: ellipse 110% x 48%, .065 -> .04 (22%) -> .02 (50%) -> .006 (78%) -> 0
             val rx = w * 1.10f
-            val ry = h * 0.42f
+            val ry = h * 0.48f
             val center = Offset(w / 2f, h / 2f)
             scale(scaleX = 1f, scaleY = ry / rx, pivot = center) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         colorStops = arrayOf(
-                            0.0f to Color.White.copy(alpha = 0.11f),
-                            0.5f to Color.White.copy(alpha = 0.04f),
-                            1.0f to Color.White.copy(alpha = 0.0f),
+                            0.00f to Color.White.copy(alpha = 0.065f),
+                            0.22f to Color.White.copy(alpha = 0.040f),
+                            0.50f to Color.White.copy(alpha = 0.020f),
+                            0.78f to Color.White.copy(alpha = 0.006f),
+                            1.00f to Color.White.copy(alpha = 0.0f),
                         ),
                         center = center,
                         radius = rx,
