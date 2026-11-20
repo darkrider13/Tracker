@@ -274,13 +274,13 @@ private fun UpdateButton() {
         contentAlignment = Alignment.Center,
     ) {
         FaIcon(
-            "fa-arrows-rotate", 20.dp, c.textGray900,
+            "fa-arrows-rotate", 16.dp, c.textGray900,
             modifier = if (UpdateChecker.checking) Modifier.rotate(angle) else Modifier,
         )
         if (UpdateChecker.updateAvailable) {
-            Canvas(Modifier.align(Alignment.TopEnd).padding(top = 1.dp, end = 1.dp).size(14.dp)) {
+            Canvas(Modifier.align(Alignment.TopEnd).size(10.dp)) {
                 val center = Offset(size.width / 2f, size.height / 2f)
-                val core = 4.dp.toPx()
+                val core = 3.dp.toPx()
                 // soft pulsing halo
                 drawCircle(Tw.green500.copy(alpha = 0.45f * (1f - pulse)), radius = core + (size.width / 2f - core) * pulse, center = center)
                 drawCircle(Tw.green500.copy(alpha = 0.25f), radius = core + 1.5.dp.toPx(), center = center)

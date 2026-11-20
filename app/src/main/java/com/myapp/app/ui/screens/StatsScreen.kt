@@ -391,6 +391,8 @@ private fun InsightRow(icon: String, style: FaStyle, title: String, sub: String,
 private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
     val c = AppTheme.colors
     val top = groups.take(3)
+    val textRed = if (c.isLight) Brand.red else Color(0xFFFF6B6B)
+    val subRed = if (c.isLight) Color(0xFF991B1B).copy(alpha = 0.7f) else Color(0xFFFCA5A5)
     StatsCard(topPad = 12.dp, spacing = 12.dp) {
         CardHeader(
             "fa-arrow-trend-up", Brand.red, tr("stats_top_category", "Top Spending Category"),
@@ -408,9 +410,9 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
                 ) {
                     AppText(
                         text = tr("stats_see_all", "See all"), size = 10f, lineHeight = 15f,
-                        weight = FontWeight.Black, color = Brand.red, noWrap = true,
+                        weight = FontWeight.Black, color = textRed, noWrap = true,
                     )
-                    FaIcon("fa-chevron-right", 8.dp, Brand.red)
+                    FaIcon("fa-chevron-right", 8.dp, textRed)
                 }
             },
         )
@@ -428,20 +430,20 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val iconShape = RoundedCornerShape(12.dp)
                         Box(Modifier.size(40.dp).clip(iconShape).background(c.bgGray100, iconShape), contentAlignment = Alignment.Center) {
-                            CategoryIcon(g.label, 14.dp, Brand.red)
+                            CategoryIcon(g.label, 14.dp, textRed)
                         }
                         Column(Modifier.weight(1f)) {
-                            AppText(text = g.label, size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = Brand.red, singleLineEllipsis = true)
+                            AppText(text = g.label, size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = textRed, singleLineEllipsis = true)
                             AppText(
                                 text = trf("stats_pct_of_total", "${"%.1f".format(pct)}% of total spending", "pct" to localizeDigits("%.1f".format(pct))) +
                                     " · " + trf("stats_tx_count_suffix", "${g.count} transactions", "count" to localizeDigits(g.count.toString())),
-                                size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = Color(0xFF991B1B).copy(alpha = 0.7f),
+                                size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = subRed,
                             )
                         }
                     }
                     AppText(
                         text = "৳" + fmtMoney(Math.round(g.total).toDouble(), 0), size = 16f, lineHeight = 24f,
-                        weight = FontWeight.ExtraBold, color = Brand.red, noWrap = true, modifier = Modifier.padding(start = 8.dp),
+                        weight = FontWeight.ExtraBold, color = textRed, noWrap = true, modifier = Modifier.padding(start = 8.dp),
                     )
                 }
                 Box(
