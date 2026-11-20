@@ -54,9 +54,14 @@ fun TrackerRoot(activity: Activity) {
     }
 
     TrackerTheme(isLight = isLight, isBangla = isBangla) {
-        // No splash screen: the app is shown straight away; the lock (if any) appears right away too.
+        // The startup lock is already raised by MainActivity before the first frame. While it is up at
+        // launch the app screens stay hidden underneath (they are shown again once it is unlocked).
+        var startupGuard by remember { mutableStateOf(lockUp) }
+        LaunchedEffect(lockUp) { if (!lockUp) startupGuard = false }
+        // Tell the native launch screen the first frame is ready (it then goes away with no flash).
         LaunchedEffect(Unit) {
-            if (AppStore.state.onboardingComplete) com.myapp.app.ui.popup.LockState.showStartupLock()
+            androidx.compose.runtime.withFrameNanos { }
+            AppSession.uiReady = true
         }
 
         // initReminders(): every launch asks for the notification permission (the system only shows the
@@ -95,6 +100,7 @@ fun TrackerRoot(activity: Activity) {
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
+                        alpha = if (startupGuard) 0f else 1f
                         val r = blurDp * density
                         renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
                     },
