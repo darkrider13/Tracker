@@ -261,7 +261,7 @@ private fun UpdateButton() {
                             icon = "fa-circle-check",
                         )
                         is UpdateChecker.Result.Failed -> AppDialogs.alert(
-                            message = tr("update_failed_msg", "Check your internet connection and try again."),
+                            message = tr("update_failed_msg", "Check your internet connection and try again.") + "\n(" + result.reason + ")",
                             title = tr("update_failed_title", "Could not check for updates"),
                         )
                     }
