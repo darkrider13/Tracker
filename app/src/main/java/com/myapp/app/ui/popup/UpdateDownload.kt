@@ -108,29 +108,23 @@ fun UpdateDownloadOverlay() {
                         .background(DownloadGreen, track),
                 )
             }
-            // downloaded / total size and speed
+            // left: time remaining, right: downloaded / total size
+            val eta = if (total > 0 && speed > 0) ((total - done).coerceAtLeast(0L) / speed) else -1L
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                AppText(
+                    text = if (eta >= 0) localizeDigits(etaText(eta)) else "…",
+                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
+                )
                 AppText(
                     text = localizeDigits(
                         if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
                         else sizeText(done) + " " + unitMb,
                     ),
                     size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = c.textGray900,
-                )
-                AppText(
-                    text = if (speed > 0) localizeDigits(sizeText(speed) + " " + tr("update_unit_mbps", "MB/s")) else "",
-                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
-                )
-            }
-            val eta = if (total > 0 && speed > 0) ((total - done).coerceAtLeast(0L) / speed) else -1L
-            if (eta >= 0) {
-                AppText(
-                    text = localizeDigits(etaText(eta)),
-                    size = 11f, lineHeight = 16.5f, color = Color(0xFF9CA3AF),
-                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                 )
             }
             AppText(
