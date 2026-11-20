@@ -105,16 +105,21 @@ fun DailySpendChart(
 ) {
     // Grow-up animation: the bars rise from the baseline one after another (left to right).
     // It replays every time [play] turns true (coming back to Home) and when the week/month data changes.
-    val grow = remember { Animatable(0f) }
+    // A NEW Animatable (starting at 0) is created in the SAME composition as the new data, so the new
+    // week/month bars are never drawn once at full height before the animation restarts (that flash was
+    // what made the week -> month switch look like a clash).
     val contentKey = remember(data) { data.totals to data.isWeek }   // compared by content, not by object
-    LaunchedEffect(play, contentKey) {
-        grow.snapTo(0f)
+    val grow = remember(play, contentKey) { Animatable(0f) }
+    LaunchedEffect(grow) {
         if (play) {
-            delay(80)
-            grow.animateTo(1f, tween(durationMillis = 800, easing = LinearEasing))
+            delay(60)
+            grow.animateTo(1f, tween(durationMillis = 850, easing = LinearEasing))
         }
     }
     val growT = grow.value
+    // The frame (grid + axis labels) fades in during the first part, then the bars grow: the old chart
+    // is gone at once and the new one appears calmly instead of the two overlapping.
+    val frameA = (growT / 0.22f).coerceIn(0f, 1f)
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     var selected by remember(data) { mutableStateOf<Int?>(null) }
@@ -186,13 +191,14 @@ fun DailySpendChart(
         val dash = PathEffect.dashPathEffect(floatArrayOf(3f * dp, 4f * dp), 0f)
         for ((i, tv) in ticks.withIndex()) {
             val y = yOf(tv)
-            drawLine(gridColor, Offset(left, y), Offset(w, y), strokeWidth = 1f * dp, pathEffect = dash)
+            drawLine(gridColor, Offset(left, y), Offset(w, y), strokeWidth = 1f * dp, pathEffect = dash, alpha = frameA)
             val label = yLabels[i]
             if (label.isNotEmpty()) {
                 val layout = measurer.measure(label, yLabelStyle, softWrap = false, maxLines = 1)
                 drawText(
                     layout,
                     topLeft = Offset(yAxisW - yPad - layout.size.width, y - layout.size.height / 2f),
+                    alpha = frameA,
                 )
             }
         }
@@ -241,7 +247,7 @@ fun DailySpendChart(
                 if (label.isEmpty()) continue
                 val layout = measurer.measure(label, st, softWrap = false, maxLines = 1)
                 val cx = left + slot * (i + 0.5f)
-                drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f))
+                drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
             }
         } else {
             val slotDp = slot / dp
@@ -253,9 +259,9 @@ fun DailySpendChart(
                 if (isLabeledMonthDay(i, n)) {
                     val label = localizeDigits((i + 1).toString())
                     val layout = measurer.measure(label, st, softWrap = false, maxLines = 1)
-                    drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f))
+                    drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
                 } else {
-                    drawCircle(tickColor, radius = dotR, center = Offset(cx, centerY))
+                    drawCircle(tickColor, radius = dotR, center = Offset(cx, centerY), alpha = frameA)
                 }
             }
         }
