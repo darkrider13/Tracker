@@ -576,7 +576,8 @@ private fun LiabilityTab(state: AppState) {
     // ---- Top Partners Breakdown
     StatsCard(topPad = 12.dp, spacing = 16.dp, modifier = Modifier.padding(bottom = 32.dp)) {
         CardHeader("fa-people-arrows", Brand.red, tr("stats_top_partners", "Top Partners Breakdown"))
-        Column(Modifier.padding(top = 4.dp)) {
+        // same header-to-content gap as the Settlement Progress card above (pullUp 8 dp)
+        Column(Modifier.pullUp(8.dp)) {
             AppText(
                 text = tr("stats_top_people_owe", "Top People You Owe"), size = 10f, lineHeight = 15f, weight = FontWeight.Bold,
                 letterSpacingEm = 0.05f, color = c.textGray400, uppercase = true, modifier = Modifier.padding(bottom = 4.dp),
