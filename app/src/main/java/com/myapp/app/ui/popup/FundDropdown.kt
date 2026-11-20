@@ -156,7 +156,7 @@ fun FundSelectButton(
 
 /**
  * The floating fund list that opens over the popup card (blurred card behind it, list centred,
- * 24 px from both card edges). Three fund rows show at a time; scrolling moves a whole page of 3.
+ * 24 px from both card edges). Three fund rows show at a time; scrolling moves one row at a time.
  * Put it in the `overlay` slot of [GlassCard].
  */
 @Composable
@@ -193,7 +193,7 @@ fun BoxScope.FundDropdownOverlay(
 
     val rowGap = if (tight) 4.dp else 8.dp
     val shellPad = if (tight) 8.dp else 10.dp
-    val paged = rememberPagedState(visible = 3, gap = rowGap, snapStep = 3)
+    val paged = rememberPagedState(visible = 3, gap = rowGap, snapStep = 1)
     val selectedIndex = funds.indexOf(selectedFund).coerceAtLeast(0)
     val ready = funds.size <= 3 || paged.viewportMax(funds.size) != null
     // The list stays invisible until every row is measured, the viewport is clamped to 3 rows and the
@@ -208,7 +208,7 @@ fun BoxScope.FundDropdownOverlay(
             kotlinx.coroutines.withTimeoutOrNull(500L) {
                 snapshotFlow { paged.scroll.maxValue }.first { it > 0 }
             }
-            paged.scroll.scrollTo(paged.pageOffsetOfItem(selectedIndex))
+            paged.scroll.scrollTo(paged.offsetOf(selectedIndex))
             shown = true
         }
     }

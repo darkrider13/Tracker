@@ -108,25 +108,16 @@ fun UpdateDownloadOverlay() {
                         .background(DownloadGreen, track),
                 )
             }
-            // left: time remaining, right: downloaded / total size
-            val eta = if (total > 0 && speed > 0) ((total - done).coerceAtLeast(0L) / speed) else -1L
-            Row(
+            // downloaded / total size
+            AppText(
+                text = localizeDigits(
+                    if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
+                    else sizeText(done) + " " + unitMb,
+                ),
+                size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
+                align = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppText(
-                    text = if (eta >= 0) localizeDigits(etaText(eta)) else "…",
-                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
-                )
-                AppText(
-                    text = localizeDigits(
-                        if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
-                        else sizeText(done) + " " + unitMb,
-                    ),
-                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
-                )
-            }
+            )
             AppText(
                 text = tr("update_downloading_hint", "Installation starts automatically when the download finishes."),
                 size = 11f, lineHeight = 16.5f, color = Color(0xFF9CA3AF), align = TextAlign.Center,

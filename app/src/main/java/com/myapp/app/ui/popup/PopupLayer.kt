@@ -3,6 +3,9 @@ package com.myapp.app.ui.popup
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -157,6 +160,13 @@ fun GlassCard(
     val progress = LocalPopupProgress.current
     val maxHeight = LocalPopupMaxHeight.current
     val shape = RoundedCornerShape(radius)
+    // a fund list floating over the card blurs the card behind it
+    val dropdownOpen = FundDropdownState.openContext != null
+    val behindBlur by animateFloatAsState(
+        targetValue = if (dropdownOpen) 8f else 0f,
+        animationSpec = tween(if (dropdownOpen) 160 else 70, easing = LinearEasing),
+        label = "cardBehindBlur",
+    )
     Box(
         modifier = modifier
             .widthIn(max = maxWidth)
@@ -177,6 +187,10 @@ fun GlassCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    val r = behindBlur * density
+                    renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
+                }
                 .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                 .padding(padding),
             content = content,
