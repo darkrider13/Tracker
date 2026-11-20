@@ -67,6 +67,16 @@ import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.Brand
 import com.myapp.app.util.getAvatarOption
 import com.myapp.app.util.tr
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import com.myapp.app.ui.popup.AppDialogs
+import com.myapp.app.ui.theme.Tw
+import com.myapp.app.util.UpdateChecker
+import kotlinx.coroutines.launch
 
 /** updateLockTypeRow(): icon + label of the current screen lock. */
 private fun lockTypeIcon(type: String) = when (type) {
@@ -106,15 +116,18 @@ fun ProfileScreen() {
                 .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 128.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column {
-                AppText(
-                    text = tr("profile_title", "Personal Profile"), size = 24f, lineHeight = 32f,
-                    weight = FontWeight.Bold, letterSpacingEm = -0.025f, color = c.textGray900,
-                )
-                AppText(
-                    text = tr("profile_subtitle", "Customize settings, security, and developer details."),
-                    size = 12f, lineHeight = 16f, color = c.textGray500, modifier = Modifier.padding(top = 2.dp),
-                )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    AppText(
+                        text = tr("profile_title", "Personal Profile"), size = 24f, lineHeight = 32f,
+                        weight = FontWeight.Bold, letterSpacingEm = -0.025f, color = c.textGray900,
+                    )
+                    AppText(
+                        text = tr("profile_subtitle", "Customize settings, security, and developer details."),
+                        size = 12f, lineHeight = 16f, color = c.textGray500, modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                UpdateButton()
             }
 
             NameBox()
@@ -209,6 +222,62 @@ fun ProfileScreen() {
 }
 
 // ------------------------------------------------------------------ pieces
+
+/** Small round "check for update" button in the page header (green dot = a newer version exists). */
+@Composable
+private fun UpdateButton() {
+    val c = AppTheme.colors
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val spin = rememberInfiniteTransition(label = "updateSpin")
+    val angle by spin.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)), label = "updateAngle",
+    )
+    Box(
+        Modifier
+            .padding(start = 12.dp, top = 2.dp)
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(c.bgGray200a60, CircleShape)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                if (UpdateChecker.checking) return@clickable
+                UpdateChecker.checking = true
+                scope.launch {
+                    val result = UpdateChecker.check(context)
+                    UpdateChecker.checking = false
+                    when (result) {
+                        is UpdateChecker.Result.Available -> AppDialogs.confirm(
+                            message = tr("update_found_msg", "A new version is available.") +
+                                (result.versionName?.let { "\n$it" } ?: ""),
+                            title = tr("update_found_title", "Update available"),
+                            okLabel = tr("update_download", "Download"),
+                            cancelLabel = tr("update_later", "Later"),
+                            icon = "fa-circle-check",
+                        ) { ok -> if (ok == true) openExternalLink(context, result.url) }
+                        is UpdateChecker.Result.UpToDate -> AppDialogs.alert(
+                            message = tr("update_latest_msg", "Your app is up to date."),
+                            title = tr("update_latest_title", "You have the latest version"),
+                            icon = "fa-circle-check",
+                        )
+                        is UpdateChecker.Result.Failed -> AppDialogs.alert(
+                            message = tr("update_failed_msg", "Check your internet connection and try again."),
+                            title = tr("update_failed_title", "Could not check for updates"),
+                        )
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        FaIcon(
+            "fa-arrows-rotate", 14.dp, c.textGray900,
+            modifier = if (UpdateChecker.checking) Modifier.rotate(angle) else Modifier,
+        )
+        if (UpdateChecker.updateAvailable) {
+            Box(Modifier.align(Alignment.TopEnd).size(9.dp).background(Tw.green500, CircleShape))
+        }
+    }
+}
 
 @Composable
 private fun WhiteCircle(content: @Composable () -> Unit) {
