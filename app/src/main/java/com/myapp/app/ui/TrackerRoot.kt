@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
@@ -92,11 +92,11 @@ fun TrackerRoot(activity: Activity) {
 
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
             // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
-            // popup has finished fading out, so the background never snaps sharp in the middle of it.
-            val blurOn = Popups.anyVisible || Popups.layersShown > 0
+            // blur clears within a moment of the popup closing (no lingering blur).
+            val blurOn = Popups.anyVisible
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
-                animationSpec = tween(if (blurOn) 240 else 160, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
+                animationSpec = tween(if (blurOn) 200 else 70, easing = LinearEasing),
                 label = "popupBlur",
             )
 
