@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -219,7 +218,7 @@ fun ProfileScreen() {
                 Row(Modifier.pullUp(8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     SocialIcon("fa-facebook-f", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://m.facebook.com/insanul.islam.abirr/") }
                     SocialIcon("fa-whatsapp", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://wa.me/8801516531459") }
-                    SocialIcon("fa-instagram", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://instagram.com/insaanulislaamaabiir") }
+                    SocialIcon("fa-instagram", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://www.instagram.com/md.insanulislam") }
                     SocialIcon("fa-paper-plane", FaStyle.Solid, 21.dp) { openExternalLink(context, "https://t.me/insanul13") }
                 }
                 AppText(
@@ -384,7 +383,7 @@ private fun NameBox() {
             .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
+            Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -410,8 +409,7 @@ private fun NameBox() {
                 ) { FaIcon("fa-pen", 9.dp, avatar.color) }
             }
 
-            // top edge = "Welcome" text, bottom edge = the underline: same top / bottom lines as the avatar and the chips
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f)) {
                 var field by remember { mutableStateOf(TextFieldValue(state.username)) }
                 var focused by remember { mutableStateOf(false) }
                 // keep in sync when the name changes elsewhere (restore, onboarding)
@@ -447,22 +445,23 @@ private fun NameBox() {
             }
 
             // two small chips stacked on the right: they grow towards the left as the numbers get bigger
-            Column(Modifier.width(IntrinsicSize.Max).fillMaxHeight(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val txN = localizeDigits(state.transactions.size.toString())
                 val fundN = localizeDigits(state.funds.size.toString())
-                ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red, Modifier.weight(1f))
-                ProfileChip(trf("profile_chip_funds", "${state.funds.size} funds", "count" to fundN), Brand.green, Modifier.weight(1f))
+                ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red)
+                ProfileChip(trf("profile_chip_funds", "${state.funds.size} funds", "count" to fundN), Brand.green)
             }
         }
     }
 }
 
 @Composable
-private fun ProfileChip(text: String, color: Color, modifier: Modifier = Modifier) {
-    // both chips share one width (the wider one decides); together they fill the full row height
+private fun ProfileChip(text: String, color: Color) {
+    // both chips share one width (the wider one decides) and one fixed height, so their edges line up
     Box(
-        modifier
+        Modifier
             .fillMaxWidth()
+            .height(24.dp)
             .clip(CircleShape)
             .background(color.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 12.dp),
