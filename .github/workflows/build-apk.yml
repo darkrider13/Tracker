@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# Only the newest push builds: several quick uploads no longer run side by side
+# (they used to fight over the "latest" release and fail at the publish step).
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -66,7 +72,11 @@ jobs:
           printf '{"versionCode": %s, "versionName": "2.0.%s"}\n' \
             "$((1000 + GITHUB_RUN_NUMBER))" "$GITHUB_RUN_NUMBER" > version.json
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Tracker.apk version.json \
+          if ! gh release create latest Tracker.apk version.json \
             --title "Tracker - latest build" \
             --notes-file release-notes.txt \
-            --target "$GITHUB_SHA"
+            --target "$GITHUB_SHA"; then
+            # The release already exists (another run created it in between): just replace its files.
+            gh release upload latest Tracker.apk version.json --clobber
+            gh release edit latest --notes-file release-notes.txt
+          fi
