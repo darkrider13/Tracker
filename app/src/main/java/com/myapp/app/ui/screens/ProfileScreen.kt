@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import com.myapp.app.ui.components.pageScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,7 +109,8 @@ fun ProfileScreen() {
     val c = AppTheme.colors
     val context = LocalContext.current
 
-    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+    val pageScrollState = androidx.compose.foundation.rememberScrollState()
+    Box(Modifier.fillMaxSize().pageScroll(pageScrollState), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier
                 .widthIn(max = 448.dp)

@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.myapp.app.ui.components.pageScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.animation.core.animateDpAsState
@@ -182,7 +183,8 @@ fun StatsScreen() {
     val spending = AppUi.statsSubtab != "debts"
     val scope = statsSpendMonthScope(state)
 
-    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+    val pageScrollState = androidx.compose.foundation.rememberScrollState()
+    Box(Modifier.fillMaxSize().pageScroll(pageScrollState), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier
                 .widthIn(max = 448.dp)

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import com.myapp.app.ui.components.pageScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
@@ -103,7 +104,7 @@ fun LogsScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scroll),
+            .pageScroll(scroll),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
