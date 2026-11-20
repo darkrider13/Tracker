@@ -29,6 +29,9 @@ object AppSession {
     var bootStartMs: Long = 0L
         private set
 
+    /** Becomes true once the first real frame (with the lock already up, if any) has been drawn; until then the native splash (plain background) stays. */
+    @Volatile var uiReady: Boolean = false
+
     private var inited = false
 
     val isBangla: Boolean get() = lang == "bn"
