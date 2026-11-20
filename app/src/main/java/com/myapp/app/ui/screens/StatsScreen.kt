@@ -393,8 +393,11 @@ private fun InsightRow(icon: String, style: FaStyle, title: String, sub: String,
 private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
     val c = AppTheme.colors
     val top = groups.take(3)
-    val textRed = com.myapp.app.ui.theme.Tw.red500
-    val subRed = com.myapp.app.ui.theme.Tw.red500
+    // same red as the progress bar below, so the text and the bar match
+    val textRed = Brand.red
+    val subRed = Brand.red
+    // soft outline so the item card's edges stay visible against the card background
+    val edgeColor = if (c.isLight) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.12f)
     StatsCard(topPad = 12.dp, spacing = 12.dp) {
         CardHeader(
             "fa-arrow-trend-up", Brand.red, tr("stats_top_category", "Top Spending Category"),
@@ -425,13 +428,14 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
             Column(Modifier.fillMaxWidth()) {
                 val rowShape = RoundedCornerShape(16.dp)
                 Row(
-                    Modifier.fillMaxWidth().clip(rowShape).background(c.bgWhite70, rowShape).padding(12.dp),
+                    Modifier.fillMaxWidth().clip(rowShape).background(c.bgWhite70, rowShape)
+                        .border(1.dp, edgeColor, rowShape).padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val iconShape = RoundedCornerShape(12.dp)
-                        Box(Modifier.size(40.dp).clip(iconShape).background(c.bgGray100, iconShape), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(40.dp).clip(iconShape).background(c.bgGray100, iconShape).border(1.dp, edgeColor, iconShape), contentAlignment = Alignment.Center) {
                             CategoryIcon(g.label, 14.dp, textRed)
                         }
                         Column(Modifier.weight(1f)) {
