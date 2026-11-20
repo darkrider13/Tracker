@@ -480,7 +480,7 @@ private fun TransactionList(list: List<Transaction>, query: String) {
         }
     }
     val shownList = if (limit >= list.size) list else list.take(limit)
-    com.myapp.app.ui.components.ScrollFadePaged(state = paged, count = shownList.size, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+    com.myapp.app.ui.components.ScrollFadePaged(state = paged, count = shownList.size, fade = false, smoothSnap = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             shownList.forEachIndexed { index, t ->
                 key(t.id) {
