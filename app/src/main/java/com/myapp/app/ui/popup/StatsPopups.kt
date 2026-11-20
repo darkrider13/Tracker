@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -159,14 +160,29 @@ fun AllCategoriesSheetOverlay() {
             } else {
                 // exactly 3 categories visible; one swipe moves one page
                 val paged = rememberPagedState(visible = 3, gap = 8.dp)
-                PagedViewport(state = paged, count = groups.size, modifier = Modifier.fillMaxWidth()) {
+                PagedViewport(state = paged, count = groups.size, animateSize = false, modifier = Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         groups.forEachIndexed { i, g ->
                             key(g.label) {
                                 val pct = if (totalSpent > 0) g.total / totalSpent * 100 else 0.0
                                 val rowShape = RoundedCornerShape(16.dp)
+                                // staggered entrance (same motion as the fund list): each row rises, fades in and settles in turn
+                                val enter = remember { androidx.compose.animation.core.Animatable(0f) }
+                                LaunchedEffect(Unit) {
+                                    kotlinx.coroutines.delay(120L + i.coerceAtMost(6) * 70L)
+                                    enter.animateTo(1f, androidx.compose.animation.core.tween(460, easing = CatEnterEase))
+                                }
                                 Column(
-                                    Modifier.fillMaxWidth().pagedItem(paged, i).clip(rowShape).background(c.bgWhite70, rowShape).padding(12.dp),
+                                    Modifier.fillMaxWidth().pagedItem(paged, i)
+                                        .graphicsLayer {
+                                            val p = enter.value
+                                            alpha = p
+                                            translationY = (1f - p) * 18.dp.toPx()
+                                            val sc = 0.94f + 0.06f * p
+                                            scaleX = sc
+                                            scaleY = sc
+                                        }
+                                        .clip(rowShape).background(c.bgWhite70, rowShape).padding(12.dp),
                                 ) {
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -326,3 +342,5 @@ fun installStatsHooks() {
         if (statsMonthSpend(state, statsSpendMonthScope(state)).isNotEmpty()) AllCategoriesSheet.open()
     }
 }
+
+private val CatEnterEase = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
