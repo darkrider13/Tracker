@@ -1,5 +1,9 @@
 package com.myapp.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -233,7 +237,13 @@ fun HomeScreen() {
             HomeHeader(state)
             BalanceCard(state, panelOpen)
             DebtsCard(state)
-            if (!panelOpen) CategoryCard(state)
+            // Leaves at once when the funds panel opens (it sits last, so nothing above it moves);
+            // comes back with a soft fade after the card has settled.
+            AnimatedVisibility(
+                visible = !panelOpen,
+                enter = fadeIn(tween(220, delayMillis = 140, easing = Ease200)),
+                exit = ExitTransition.None,
+            ) { CategoryCard(state) }
         }
     }
 }
@@ -406,7 +416,12 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
 
     HomeCardBox(Modifier.padding(0.dp)) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            // The card glides to its new height when the funds panel opens / closes, so the list
+            // measuring itself (provisional -> final height) never shows as a jolt.
+            modifier = Modifier
+                .animateContentSize(tween(240, easing = Ease200))
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
