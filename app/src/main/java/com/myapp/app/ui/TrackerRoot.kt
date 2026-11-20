@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -15,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -98,11 +101,38 @@ fun TrackerRoot(activity: Activity) {
                     .graphicsLayer { alpha = if (bootPending) 0f else 1f }
                     .blur(blurRadius),
             ) {
-                when (AppUi.tab) {
-                    Tab.Home -> HomeScreen()
-                    Tab.Logs -> LogsScreen()
-                    Tab.Stats -> StatsScreen()
-                    Tab.Profile -> ProfileScreen()
+                // Tabs stay alive once opened (the others are warmed up quietly after launch), so a tap
+                // only shows/hides a ready screen instead of building a whole screen from scratch.
+                var warm by remember { mutableStateOf(setOf(Tab.Home)) }
+                val current = AppUi.tab
+                val alive = warm + current
+                LaunchedEffect(current) { warm = warm + current }
+                LaunchedEffect(bootPending) {
+                    if (!bootPending) {
+                        delay(600)
+                        for (t in listOf(Tab.Logs, Tab.Stats, Tab.Profile)) {
+                            delay(350)
+                            warm = warm + t
+                        }
+                    }
+                }
+                // A text field left focused on a hidden tab must not keep the keyboard open.
+                val focus = LocalFocusManager.current
+                LaunchedEffect(current) { focus.clearFocus() }
+
+                Tab.values().forEach { t ->
+                    key(t) {
+                        if (t in alive) {
+                            TabLayer(t) {
+                                when (t) {
+                                    Tab.Home -> HomeScreen()
+                                    Tab.Logs -> LogsScreen()
+                                    Tab.Stats -> StatsScreen()
+                                    Tab.Profile -> ProfileScreen()
+                                }
+                            }
+                        }
+                    }
                 }
                 BottomNavBar(Modifier.align(Alignment.BottomCenter))
                 FundDetailsScreen()
@@ -121,4 +151,21 @@ fun TrackerRoot(activity: Activity) {
             )
         }
     }
+}
+
+/**
+ * One tab's screen. Only the current tab is placed (drawn + touchable); the others stay composed
+ * but are not placed, so they cost nothing to draw and cannot catch touches.
+ */
+@Composable
+private fun TabLayer(tab: Tab, content: @Composable () -> Unit) {
+    val active = AppUi.tab == tab
+    Box(
+        Modifier
+            .fillMaxSize()
+            .layout { measurable, constraints ->
+                val p = measurable.measure(constraints)
+                layout(p.width, p.height) { if (active) p.place(0, 0) }
+            },
+    ) { content() }
 }
