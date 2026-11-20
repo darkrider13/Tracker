@@ -118,7 +118,7 @@ fun OnboardingScreen() {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
         if (c.isLight) com.myapp.app.ui.components.AppBackdrop(extend = true)
-        FinanceDecor()
+        FinanceDecor(accent = Brand.green)
         Column(
             Modifier
                 .fillMaxSize()
@@ -207,7 +207,7 @@ fun OnboardingScreen() {
                     .fillMaxWidth()
                     .shadow(8.dp, btnShape)
                     .clip(btnShape)
-                    .background(Brand.red, btnShape)
+                    .background(Brand.green, btnShape)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { complete() }
                     .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
