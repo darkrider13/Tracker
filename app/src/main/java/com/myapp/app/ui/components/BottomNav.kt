@@ -1,8 +1,15 @@
 package com.myapp.app.ui.components
 
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,24 +69,55 @@ private fun NavPill(
 ) {
     val shape = CircleShape
     val interaction = remember { MutableInteractionSource() }
+
+    // soft spring for the pill growing / shrinking, plain fades for colour
+    val bgAlpha by animateFloatAsState(
+        targetValue = if (active) 0.12f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = NavEase),
+        label = "navPillBg",
+    )
+    val padH by animateDpAsState(
+        targetValue = if (active) 12.dp else 10.dp,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "navPillPad",
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (active) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+        label = "navIconScale",
+    )
+
     Row(
         modifier = Modifier
-            .animateContentSize(tween(durationMillis = 250, easing = NavEase))
             .clip(shape)
-            .then(if (active) Modifier.background(Color.White.copy(alpha = 0.12f), shape) else Modifier)
+            .background(Color.White.copy(alpha = bgAlpha), shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = if (active) 12.dp else 10.dp, vertical = 8.dp),
+            .padding(horizontal = padH, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FaIcon(name = icon, size = 16.dp, color = Color.White)
-        if (active) {
-            Spacer(Modifier.width(4.dp))
-            BasicText(
-                text = label,
-                style = navStyle(11f, FontWeight.Bold, 16f),
-                softWrap = false,
-                maxLines = 1,
-            )
+        Box(Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) {
+            FaIcon(name = icon, size = 16.dp, color = Color.White)
+        }
+        AnimatedVisibility(
+            visible = active,
+            enter = expandHorizontally(
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+                expandFrom = Alignment.Start,
+            ) + fadeIn(tween(durationMillis = 220, delayMillis = 70)),
+            exit = shrinkHorizontally(
+                animationSpec = tween(durationMillis = 200, easing = NavEase),
+                shrinkTowards = Alignment.Start,
+            ) + fadeOut(tween(durationMillis = 90)),
+        ) {
+            Row {
+                Spacer(Modifier.width(4.dp))
+                BasicText(
+                    text = label,
+                    style = navStyle(11f, FontWeight.Bold, 16f),
+                    softWrap = false,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
