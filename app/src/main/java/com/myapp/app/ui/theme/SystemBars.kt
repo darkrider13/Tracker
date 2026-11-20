@@ -8,15 +8,14 @@ import androidx.core.view.WindowCompat
 /**
  * Both bars blend into the app backdrop (AppBackdrop.kt):
  *  - Dark : status bar + navigation bar #010101 (backdrop is pure black at the top and bottom edge).
- *  - Light: status bar #F9FAFB (the backdrop's solid top colour);
- *           navigation bar #F6EBEB (the backdrop's bottom edge: #F9FAFB + 12% brand red tint + the
- *           white glow, averaged across the screen width), with dark gesture pill / icons.
+ *  - Light: status bar #BAE7EB (the backdrop's top edge: #E6EEF5 + teal/violet glows, averaged across the width);
+ *           navigation bar #EBD6DF (the backdrop's bottom edge, rose glow, averaged), with dark gesture pill / icons.
  *           Android 7 and older cannot draw dark nav icons, so there the nav bar stays #010101.
  * While the app is in the background both bars are dark.
  */
 object SystemBars {
-    private val LIGHT_STATUS = AndroidColor.parseColor("#F9FAFB")
-    private val LIGHT_NAV = AndroidColor.parseColor("#F6EBEB")
+    private val LIGHT_STATUS = AndroidColor.parseColor("#BAE7EB")
+    private val LIGHT_NAV = AndroidColor.parseColor("#EBD6DF")
     private val SYSTEM_BLACK = AndroidColor.parseColor("#010101")
 
     fun apply(activity: Activity, isLight: Boolean, pureBlackScreen: Boolean) {
