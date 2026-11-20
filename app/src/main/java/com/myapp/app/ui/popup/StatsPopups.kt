@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,10 +81,20 @@ object AllCategoriesSheet {
 
 @Composable
 fun AllCategoriesSheetOverlay() {
-    if (!Popups.allCategories) return
+    val open = Popups.allCategories
+    // The sheet glides up together with the dim + blur behind it (same curve), and glides down on close.
+    val progress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (open) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = if (open) 300 else 200,
+            easing = DropdownEase,
+        ),
+        label = "allCatSheet",
+    )
+    if (!open && progress <= 0.001f) return
     val c = AppTheme.colors
     val state = AppStore.observe()
-    BackHandler(enabled = !Popups.allCatMonthPicker) { AllCategoriesSheet.close() }
+    BackHandler(enabled = open && !Popups.allCatMonthPicker) { AllCategoriesSheet.close() }
 
     val scope = statsSpendMonthScope(state)
     val filtered = statsMonthSpend(state, scope)
@@ -93,7 +104,7 @@ fun AllCategoriesSheetOverlay() {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f))
+            .background(Color.Black.copy(alpha = 0.45f * progress))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AllCategoriesSheet.close() },
         contentAlignment = Alignment.BottomCenter,
     ) {
@@ -103,6 +114,7 @@ fun AllCategoriesSheetOverlay() {
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .heightIn(max = maxHeight * 0.88f)
+                .graphicsLayer { translationY = (1f - progress) * size.height }
                 .clip(sheetShape)
                 .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
                 // taps on the sheet itself must not close it
