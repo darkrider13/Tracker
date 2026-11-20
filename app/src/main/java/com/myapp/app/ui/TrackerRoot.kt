@@ -88,19 +88,9 @@ fun TrackerRoot(activity: Activity) {
             AppBackdrop()
 
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
-            // No animated radius (re-blurring the whole screen on every frame made it start late and shake):
-            // the blur is on from the very first frame of a popup and stays until the popup has faded out,
-            // so popups opening one after another keep one steady blur.
-            var blurLinger by remember { mutableStateOf(false) }
-            LaunchedEffect(Popups.anyVisible) {
-                if (Popups.anyVisible) {
-                    blurLinger = true
-                } else {
-                    delay(180)
-                    blurLinger = false
-                }
-            }
-            val blurRadius = if (Popups.anyVisible || blurLinger) 20.dp else 0.dp
+            // No animated radius and no delay: the blur switches on together with the popup and
+            // switches off the very moment the popup is closed.
+            val blurRadius = if (Popups.anyVisible) 20.dp else 0.dp
 
             // The app screens appear (fade in) once the splash is leaving, like #app-root before.
             Box(
