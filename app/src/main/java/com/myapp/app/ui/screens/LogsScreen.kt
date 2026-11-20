@@ -492,7 +492,25 @@ private fun TransactionList(list: List<Transaction>, query: String) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             shownList.forEachIndexed { index, t ->
                 key(t.id) {
-                    Box(Modifier.pagedItem(paged, index)) { TxCard(t, query) }
+                    // staggered entrance (same motion as the fund list): each card rises, fades in and settles in turn.
+                    // Cards that stay in the list while a filter changes keep their state, so only new ones animate.
+                    val enter = remember { androidx.compose.animation.core.Animatable(0f) }
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(60L + index.coerceAtMost(6) * 70L)
+                        enter.animateTo(1f, androidx.compose.animation.core.tween(460, easing = TxEnterEase))
+                    }
+                    Box(
+                        Modifier
+                            .pagedItem(paged, index)
+                            .graphicsLayer {
+                                val p = enter.value
+                                alpha = p
+                                translationY = (1f - p) * 18.dp.toPx()
+                                val sc = 0.94f + 0.06f * p
+                                scaleX = sc
+                                scaleY = sc
+                            },
+                    ) { TxCard(t, query) }
                 }
             }
         }
@@ -854,3 +872,5 @@ internal fun openDebtAmountPicker(category: String) {
     )
     com.myapp.app.ui.popup.Popups.filterPicker = true
 }
+
+private val TxEnterEase = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)

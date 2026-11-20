@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -359,7 +360,24 @@ fun FundDetailsScreen() {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                 sorted.forEachIndexed { i, t ->
                                     key(t.id) {
-                                        Box(Modifier.pagedItem(paged, i)) { TxCard(t, "") { color -> DetailsActions(t, color) } }
+                                        // staggered entrance, same motion as the fund list / Logs
+                                        val enter = remember { androidx.compose.animation.core.Animatable(0f) }
+                                        LaunchedEffect(Unit) {
+                                            kotlinx.coroutines.delay(60L + i.coerceAtMost(6) * 70L)
+                                            enter.animateTo(1f, androidx.compose.animation.core.tween(460, easing = DetailsEnterEase))
+                                        }
+                                        Box(
+                                            Modifier
+                                                .pagedItem(paged, i)
+                                                .graphicsLayer {
+                                                    val p = enter.value
+                                                    alpha = p
+                                                    translationY = (1f - p) * 18.dp.toPx()
+                                                    val sc = 0.94f + 0.06f * p
+                                                    scaleX = sc
+                                                    scaleY = sc
+                                                },
+                                        ) { TxCard(t, "") { color -> DetailsActions(t, color) } }
                                     }
                                 }
                             }
@@ -497,3 +515,5 @@ private fun sameLocalDay(a: Long, b: Long): Boolean {
     val y = Calendar.getInstance().apply { timeInMillis = b }
     return x.get(Calendar.YEAR) == y.get(Calendar.YEAR) && x.get(Calendar.DAY_OF_YEAR) == y.get(Calendar.DAY_OF_YEAR)
 }
+
+private val DetailsEnterEase = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
