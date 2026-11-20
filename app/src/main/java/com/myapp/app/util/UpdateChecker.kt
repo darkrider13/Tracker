@@ -25,7 +25,7 @@ object UpdateChecker {
     sealed class Result {
         object UpToDate : Result()
         class Available(val versionName: String?, val url: String) : Result()
-        object Failed : Result()
+        class Failed(val reason: String) : Result()
     }
 
     @Suppress("DEPRECATION")
@@ -43,11 +43,12 @@ object UpdateChecker {
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("User-Agent", "Tracker-App")
             }
-            if (conn.responseCode != 200) return@withContext Result.Failed
+            val code = conn.responseCode
+            if (code != 200) return@withContext Result.Failed("HTTP $code")
             val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
             val body = json.optString("body")
             val remoteCode = Regex("versionCode:\\s*(\\d+)").find(body)?.groupValues?.get(1)?.toLongOrNull()
-                ?: return@withContext Result.Failed
+                ?: return@withContext Result.Failed("no versionCode in release notes")
             val remoteName = Regex("versionName:\\s*([\\w.\\-]+)").find(body)?.groupValues?.get(1)
 
             if (remoteCode <= installedCode(context)) {
@@ -67,8 +68,8 @@ object UpdateChecker {
             }
             updateAvailable = true
             Result.Available(remoteName, url)
-        } catch (_: Exception) {
-            Result.Failed
+        } catch (e: Exception) {
+            Result.Failed(e.javaClass.simpleName)
         } finally {
             conn?.disconnect()
         }
