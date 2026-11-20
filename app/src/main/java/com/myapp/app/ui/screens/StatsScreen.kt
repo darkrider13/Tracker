@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -423,10 +424,25 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
             },
         )
         val pager = rememberPagerState(pageCount = { top.size })
-        HorizontalPager(state = pager, modifier = Modifier.fillMaxWidth()) { page ->
+        HorizontalPager(state = pager, pageSpacing = 24.dp, modifier = Modifier.fillMaxWidth()) { page ->
             val g = top[page]
             val pct = if (totalSpent > 0) g.total / totalSpent * 100 else 0.0
-            Column(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    // Swipe polish: how far this page is from the centre (0 = centred, 1 = a full page away).
+                    // The page fades out quickly, shrinks a little and drifts slower than the finger, so two
+                    // pages never overlap / blend while swiping, and the next one eases in cleanly.
+                    .graphicsLayer {
+                        val signed = (pager.currentPage - page) + pager.currentPageOffsetFraction
+                        val dist = abs(signed).coerceIn(0f, 1f)
+                        alpha = (1f - dist * 1.6f).coerceIn(0f, 1f)
+                        val sc = 1f - 0.08f * dist
+                        scaleX = sc
+                        scaleY = sc
+                        translationX = pager.currentPageOffsetFraction * size.width * 0.12f   // both pages lag a little behind the finger
+                    },
+            ) {
                 // no edge / no fill: the item row blends straight into the card background
                 Row(
                     Modifier.fillMaxWidth().padding(12.dp),
