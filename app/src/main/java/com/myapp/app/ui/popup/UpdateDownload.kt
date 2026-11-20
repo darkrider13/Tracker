@@ -85,11 +85,6 @@ fun UpdateDownloadOverlay() {
                 text = tr("update_downloading_title", "Downloading update"), size = 16f, lineHeight = 24f,
                 weight = FontWeight.ExtraBold, color = c.textGray900, align = TextAlign.Center,
             )
-            AppText(
-                text = if (percent >= 0) localizeDigits("$percent%") else "…", size = 28f, lineHeight = 36f,
-                weight = FontWeight.ExtraBold, color = DownloadGreen, align = TextAlign.Center,
-                modifier = Modifier.padding(top = 12.dp),
-            )
             // progress bar
             val track = RoundedCornerShape(50)
             Box(
@@ -108,16 +103,24 @@ fun UpdateDownloadOverlay() {
                         .background(DownloadGreen, track),
                 )
             }
-            // downloaded / total size
-            AppText(
-                text = localizeDigits(
-                    if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
-                    else sizeText(done) + " " + unitMb,
-                ),
-                size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
-                align = TextAlign.Center,
+            // left: downloaded / total size, right: percent (same text size)
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppText(
+                    text = localizeDigits(
+                        if (total > 0) sizeText(done) + " / " + sizeText(total) + " " + unitMb
+                        else sizeText(done) + " " + unitMb,
+                    ),
+                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
+                )
+                AppText(
+                    text = if (percent >= 0) localizeDigits("$percent%") else "…",
+                    size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = DownloadGreen,
+                )
+            }
             AppText(
                 text = tr("update_downloading_hint", "Installation starts automatically when the download finishes."),
                 size = 11f, lineHeight = 16.5f, color = Color(0xFF9CA3AF), align = TextAlign.Center,
