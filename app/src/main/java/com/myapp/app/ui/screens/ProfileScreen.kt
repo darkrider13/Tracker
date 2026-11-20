@@ -68,6 +68,8 @@ import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.Brand
 import com.myapp.app.util.getAvatarOption
 import com.myapp.app.util.tr
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -77,6 +79,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.myapp.app.ui.popup.AppDialogs
 import com.myapp.app.ui.theme.Tw
 import com.myapp.app.util.UpdateChecker
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 /** updateLockTypeRow(): icon + label of the current screen lock. */
@@ -232,10 +235,8 @@ private fun UpdateButton() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val spin = rememberInfiniteTransition(label = "updateSpin")
-    val angle by spin.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)), label = "updateAngle",
-    )
+    // icon rotation (degrees); every spin ends on a full turn, so resetting to 0 afterwards is invisible
+    val angle = remember { Animatable(0f) }
     val pulse by spin.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "updatePulse",
@@ -248,7 +249,17 @@ private fun UpdateButton() {
                 if (UpdateChecker.checking) return@clickable
                 UpdateChecker.checking = true
                 scope.launch {
-                    val result = UpdateChecker.check(context)
+                    // check in the background while the icon spins smoothly 3 times, then show the popup
+                    val check = async { UpdateChecker.check(context) }
+                    angle.snapTo(0f)
+                    angle.animateTo(1080f, tween(1800, easing = FastOutSlowInEasing))
+                    // slow connection: keep turning (whole turns only) until the result is in
+                    while (!check.isCompleted) {
+                        angle.snapTo(0f)
+                        angle.animateTo(360f, tween(700, easing = LinearEasing))
+                    }
+                    val result = check.await()
+                    angle.snapTo(0f)
                     UpdateChecker.checking = false
                     val current = UpdateChecker.installedName(context)
                     when (result) {
@@ -277,7 +288,7 @@ private fun UpdateButton() {
     ) {
         FaIcon(
             "fa-arrows-rotate", 16.dp, c.textGray900,
-            modifier = if (UpdateChecker.checking) Modifier.rotate(angle) else Modifier,
+            modifier = Modifier.rotate(angle.value),
         )
         if (UpdateChecker.updateAvailable) {
             Canvas(Modifier.align(Alignment.TopEnd).size(10.dp)) {
