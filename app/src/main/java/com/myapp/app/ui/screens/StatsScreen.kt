@@ -79,6 +79,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import com.myapp.app.ui.components.SoftGlass
 
 private val GREEN600 = Tw.green600
 private val GREEN500 = Tw.green500
@@ -146,12 +147,13 @@ private fun StatsCard(
     content: @Composable () -> Unit,
 ) {
     val c = AppTheme.colors
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     Column(
         modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(c.bgGray200a50, shape)
+            .background(if (c.isLight) c.bgGray200a50 else SoftGlass.bg, shape)
+            .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
             .padding(start = horizontalPad, end = horizontalPad, top = topPad, bottom = bottomPad),
         verticalArrangement = Arrangement.spacedBy(spacing),
     ) { content() }
@@ -274,8 +276,8 @@ private fun SpendingTab(state: AppState, scope: StatsMonth) {
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(c.bgWhite60, shape)
-                .border(1.dp, Color.White.copy(alpha = 0.3f), shape)
+                .background(if (c.isLight) c.bgWhite60 else SoftGlass.bg, shape)
+                .border(1.dp, if (c.isLight) Color.White.copy(alpha = 0.3f) else SoftGlass.border, shape)
                 .padding(32.dp),
             contentAlignment = Alignment.Center,
         ) {

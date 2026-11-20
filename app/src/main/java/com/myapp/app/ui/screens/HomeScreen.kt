@@ -105,6 +105,7 @@ import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import com.myapp.app.ui.components.SoftGlass
 
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
@@ -358,13 +359,16 @@ private fun HomeHeader(state: AppState) {
 @Composable
 private fun HomeCardBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val c = AppTheme.colors
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(c.homeCardBg, shape)
-            .border(BorderStroke(c.homeCardBorderWidthDp.dp, c.homeCardBorder), shape),
+            .background(if (c.isLight) c.homeCardBg else SoftGlass.bg, shape)
+            .border(
+                if (c.isLight) BorderStroke(c.homeCardBorderWidthDp.dp, c.homeCardBorder) else BorderStroke(1.dp, SoftGlass.border),
+                shape,
+            ),
     ) {
         content()
     }
@@ -684,14 +688,14 @@ private fun CategoryCard(state: AppState) {
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
     val chart = buildHomeChart(state, range)
-    val shape = RoundedCornerShape(28.dp)
-    val borderColor = c.categoryCardBorder
+    val shape = RoundedCornerShape(if (c.isLight) 28.dp else SoftGlass.radius)
+    val borderColor = if (c.isLight) c.categoryCardBorder else SoftGlass.border
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(c.categoryCardBg, shape)
+            .background(if (c.isLight) c.categoryCardBg else SoftGlass.bg, shape)
             .then(if (borderColor != null) Modifier.border(BorderStroke(1.dp, borderColor), shape) else Modifier)
             .padding(20.dp),
     ) {

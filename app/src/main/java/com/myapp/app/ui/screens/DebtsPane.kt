@@ -61,6 +61,7 @@ import com.myapp.app.util.localizeDigits
 import com.myapp.app.util.normalizeHyphenForSearch
 import com.myapp.app.util.tr
 import com.myapp.app.util.trf
+import com.myapp.app.ui.components.SoftGlass
 
 private val Green500 = Tw.green500
 private val Green600 = Tw.green600
@@ -95,7 +96,7 @@ private fun SummaryCard(state: AppState, category: String, cs: DebtCategoryState
     val c = AppTheme.colors
     val isReceivable = category == "receivables"
     val total = debtTotalPending(state, category)
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     val labelColor = if (c.isLight) Color(0xFF6B7280) else c.textGray400
     val dateStr = cs.dateFilter
     val showDot = dateStr != "month" && !isDateFilterToday(dateStr)
@@ -104,8 +105,11 @@ private fun SummaryCard(state: AppState, category: String, cs: DebtCategoryState
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(c.categoryCardBg, shape)
-            .then(if (c.categoryCardBorder != null) Modifier.border(1.dp, c.categoryCardBorder!!, shape) else Modifier),
+            .background(if (c.isLight) c.categoryCardBg else SoftGlass.bg, shape)
+            .then(
+                if (!c.isLight) Modifier.border(1.dp, SoftGlass.border, shape)
+                else if (c.categoryCardBorder != null) Modifier.border(1.dp, c.categoryCardBorder!!, shape) else Modifier,
+            ),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             val label = (if (isReceivable) tr("logs_total_collectible", "Total Collectible") else tr("logs_total_owed", "Total Owed")) +
@@ -334,12 +338,13 @@ private fun SortChip(
 private fun DebtList(entries: List<Debt>, category: String, query: String, accent: Color) {
     val c = AppTheme.colors
     if (entries.isEmpty()) {
-        val shape = RoundedCornerShape(24.dp)
+        val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
         Box(
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(c.bgGray200a50, shape)
+                .background(if (c.isLight) c.bgGray200a50 else SoftGlass.bg, shape)
+                .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
                 .padding(32.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -401,13 +406,14 @@ private fun DebtCard(d: Debt, query: String, category: String, accent: Color) {
     val hasDetail = detail.text.isNotEmpty()
 
     val tint = if (c.isLight) 0.10f else 0.16f
-    val cardBg = if (isFullMatch) accent.copy(alpha = tint) else c.bgGray100a70
+    val cardBg = if (isFullMatch) accent.copy(alpha = tint) else if (c.isLight) c.bgGray100a70 else SoftGlass.bg
     val shape = RoundedCornerShape(16.dp)
     val cardModifier = Modifier
         .fillMaxWidth()
         .height(160.dp)
         .clip(shape)
         .background(cardBg, shape)
+        .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { DebtActions.openHistory(d.id) }
     val padding = if (d.settled) Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp)
     else Modifier.padding(16.dp)

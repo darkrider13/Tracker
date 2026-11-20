@@ -74,6 +74,7 @@ import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import com.myapp.app.ui.components.SoftGlass
 
 fun installFundDetailsHooks() {
     AppActions.openAccountDetails = { name -> AppUi.openFundDetails(name) }
@@ -205,13 +206,13 @@ fun FundDetailsScreen() {
                 }
 
                 // ---- balance card
-                val cardShape = RoundedCornerShape(28.dp)
+                val cardShape = RoundedCornerShape(if (c.isLight) 28.dp else SoftGlass.radius)
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .clip(cardShape)
-                        .background(c.homeCardBg, cardShape)
-                        .border(1.dp, c.cardBorder, cardShape)
+                        .background(if (c.isLight) c.homeCardBg else SoftGlass.bg, cardShape)
+                        .border(1.dp, if (c.isLight) c.cardBorder else SoftGlass.border, cardShape)
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
@@ -277,8 +278,8 @@ fun FundDetailsScreen() {
                             .weight(2f)
                             .fillMaxHeight()
                             .clip(boxShape)
-                            .background(c.homeCardBg, boxShape)
-                            .border(1.dp, c.cardBorder, boxShape)
+                            .background(if (c.isLight) c.homeCardBg else SoftGlass.bg, boxShape)
+                            .border(1.dp, if (c.isLight) c.cardBorder else SoftGlass.border, boxShape)
                             .padding(16.dp),
                     ) {
                         AppText(
@@ -295,8 +296,8 @@ fun FundDetailsScreen() {
                             .weight(1f)
                             .fillMaxHeight()
                             .clip(boxShape)
-                            .background(c.homeCardBg, boxShape)
-                            .border(1.dp, c.cardBorder, boxShape)
+                            .background(if (c.isLight) c.homeCardBg else SoftGlass.bg, boxShape)
+                            .border(1.dp, if (c.isLight) c.cardBorder else SoftGlass.border, boxShape)
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                 TransferFund.open(fund)
                             }
@@ -341,8 +342,8 @@ fun FundDetailsScreen() {
                             Modifier
                                 .fillMaxWidth()
                                 .clip(emptyShape)
-                                .background(c.bgWhite60, emptyShape)
-                                .border(1.dp, Color.White.copy(alpha = 0.3f), emptyShape)
+                                .background(if (c.isLight) c.bgWhite60 else SoftGlass.bg, emptyShape)
+                                .border(1.dp, if (c.isLight) Color.White.copy(alpha = 0.3f) else SoftGlass.border, emptyShape)
                                 .padding(24.dp),
                             contentAlignment = Alignment.Center,
                         ) {

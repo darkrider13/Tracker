@@ -69,6 +69,7 @@ import com.myapp.app.util.parseCssColor
 import com.myapp.app.util.tr
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import com.myapp.app.ui.components.SoftGlass
 
 private const val FUNDS_VISIBLE_COUNT = 4
 private const val HOLD_MS = 400L
@@ -301,8 +302,8 @@ private fun FundCard(state: AppState, name: String, isActive: Boolean) {
     } else {
         Modifier
             .clip(shape)
-            .background(c.bgWhite, shape)
-            .border(BorderStroke(1.dp, c.borderGray200), shape)
+            .background(if (c.isLight) c.bgWhite else SoftGlass.bg, shape)
+            .border(BorderStroke(1.dp, if (c.isLight) c.borderGray200 else SoftGlass.border), shape)
     }
 
     Row(

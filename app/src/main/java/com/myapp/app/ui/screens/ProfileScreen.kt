@@ -81,6 +81,7 @@ import com.myapp.app.ui.theme.Tw
 import com.myapp.app.util.UpdateChecker
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import com.myapp.app.ui.components.SoftGlass
 
 /** updateLockTypeRow(): icon + label of the current screen lock. */
 private fun lockTypeIcon(type: String) = when (type) {
@@ -156,12 +157,13 @@ fun ProfileScreen() {
             }
 
             // ---- Screen lock type
-            val shape = RoundedCornerShape(24.dp)
+            val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
             Row(
                 Modifier
                     .fillMaxWidth()
                     .clip(shape)
-                    .background(c.bgGray200a60, shape)
+                    .background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
+                    .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                         AppActions.openLockTypeChooser()
                     }
@@ -184,7 +186,8 @@ fun ProfileScreen() {
 
             // ---- Backup & Restore
             Column(
-                Modifier.fillMaxWidth().clip(shape).background(c.bgGray200a60, shape).padding(16.dp),
+                Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
+                    .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AppText(text = tr("profile_backup_title", "Backup & Restore"), size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = c.textGray800)
@@ -316,9 +319,10 @@ private fun WhiteCircle(content: @Composable () -> Unit) {
 @Composable
 private fun SettingRow(icon: @Composable () -> Unit, title: String, desc: String, trailing: @Composable () -> Unit) {
     val c = AppTheme.colors
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(c.bgGray200a60, shape).padding(16.dp),
+        Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
+            .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)).padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -385,10 +389,13 @@ private fun SocialIcon(icon: String, style: FaStyle, size: Dp, onClick: () -> Un
 private fun NameBox() {
     val state = AppStore.observe()
     val c = AppTheme.colors
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
     val avatar = getAvatarOption(state.profileAvatar)
 
-    Box(Modifier.fillMaxWidth().clip(shape).background(c.bgGray200a60, shape)) {
+    Box(
+        Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
+            .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape)),
+    ) {
         // faint finance icons scattered behind (positions are % of the box, like the old absolute layout)
         BoxWithConstraints(Modifier.matchParentSize()) {
             val w = maxWidth

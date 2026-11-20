@@ -85,6 +85,7 @@ import com.myapp.app.util.normalizeHyphenForSearch
 import com.myapp.app.util.tr
 import com.myapp.app.util.trf
 import com.myapp.app.util.translatedCategoryLabel
+import com.myapp.app.ui.components.SoftGlass
 
 /** The Transactions list shows 5 full cards at a time (fitListToVisibleCount(container, 5)). */
 private const val LOGS_VISIBLE_COUNT = 5
@@ -450,12 +451,13 @@ private fun clearAllTransactionsHistory() {
 private fun TransactionList(list: List<Transaction>, query: String) {
     val c = AppTheme.colors
     if (list.isEmpty()) {
-        val shape = RoundedCornerShape(24.dp)
+        val shape = RoundedCornerShape(if (c.isLight) 24.dp else SoftGlass.radius)
         Box(
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(c.bgGray200a50, shape)
+                .background(if (c.isLight) c.bgGray200a50 else SoftGlass.bg, shape)
+                .then(if (c.isLight) Modifier else Modifier.border(1.dp, SoftGlass.border, shape))
                 .padding(32.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -537,16 +539,16 @@ internal fun TxCard(
     val cardBg = when {
         isFullMatch && isIncoming -> Brand.green.copy(alpha = if (c.isLight) 0.10f else 0.16f)
         isFullMatch -> Brand.red.copy(alpha = if (c.isLight) 0.10f else 0.16f)
-        else -> c.bgWhite
+        else -> if (c.isLight) c.bgWhite else SoftGlass.bg
     }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(if (c.isLight) 12.dp else SoftGlass.radius)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
             .background(cardBg, shape)
-            .then(if (!c.isLight) Modifier.border(1.dp, c.cardBorder, shape) else Modifier)
+            .then(if (!c.isLight) Modifier.border(1.dp, SoftGlass.border, shape) else Modifier)
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
