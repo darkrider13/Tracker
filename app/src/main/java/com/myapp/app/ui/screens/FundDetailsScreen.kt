@@ -355,7 +355,7 @@ fun FundDetailsScreen() {
                     } else {
                         // 4 cards per view; the last visible one fades
                         val paged = rememberPagedState(visible = 4, gap = 8.dp)
-                        ScrollFadePaged(state = paged, count = sorted.size, modifier = Modifier.fillMaxWidth().padding(end = 2.dp)) {
+                        ScrollFadePaged(state = paged, count = sorted.size, smoothSnap = true, modifier = Modifier.fillMaxWidth().padding(end = 2.dp)) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                 sorted.forEachIndexed { i, t ->
                                     key(t.id) {
