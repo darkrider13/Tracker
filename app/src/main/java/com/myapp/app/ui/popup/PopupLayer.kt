@@ -7,6 +7,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -166,7 +167,7 @@ fun GlassCard(
     val dropdownOpen = FundDropdownState.openContext != null
     val behindBlur by animateFloatAsState(
         targetValue = if (dropdownOpen) 10f else 0f,
-        animationSpec = tween(if (dropdownOpen) 300 else 200, easing = DropdownEase),
+        animationSpec = if (dropdownOpen) tween(300, easing = DropdownEase) else snap(),
         label = "cardBehindBlur",
     )
     Box(

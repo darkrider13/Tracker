@@ -2,6 +2,7 @@ package com.myapp.app.ui.popup
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,7 @@ fun AllPopups() {
     val dialogOn = Popups.alert != null || Popups.confirm != null
     val underBlur by animateFloatAsState(
         targetValue = if (dialogOn) 20f else 0f,
-        animationSpec = tween(if (dialogOn) 200 else 70, easing = LinearEasing),
+        animationSpec = if (dialogOn) tween(200, easing = LinearEasing) else snap(),
         label = "underDialogBlur",
     )
     Box(
