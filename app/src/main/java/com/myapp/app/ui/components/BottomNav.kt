@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -82,26 +83,52 @@ private fun RowScope.NavPill(
     val interaction = remember { MutableInteractionSource() }
     val spec = tween<Float>(durationMillis = 240, easing = NavEase)
 
-    val slotWeight by animateFloatAsState(if (active) 2.2f else 1f, spec, label = "navSlotWeight")
-    val bgAlpha by animateFloatAsState(if (active) 0.12f else 0f, spec, label = "navPillBg")
+    val slotWeight by animateFloatAsState(if (active) 1.75f else 1f, spec, label = "navSlotWeight")
+    val bgAlpha by animateFloatAsState(if (active) 1f else 0f, spec, label = "navPillBg")
     val labelFrac by animateFloatAsState(if (active) 1f else 0f, spec, label = "navLabelFrac")
-    val iconScale by animateFloatAsState(if (active) 1.08f else 1f, spec, label = "navIconScale")
+    val iconScale by animateFloatAsState(if (active) 1.06f else 1f, spec, label = "navIconScale")
 
+    // The slot only reserves room; the highlight is a small pill that hugs icon + label (not the whole slot).
     Box(
         modifier = Modifier
             .weight(slotWeight)
-            .height(34.dp)
-            .clip(shape)
-            .background(Color.White.copy(alpha = bgAlpha), shape)
+            .height(36.dp)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.wrapContentWidth(unbounded = true),
+            modifier = Modifier
+                .height(32.dp)
+                .clip(shape)
+                .drawBehind {
+                    if (bgAlpha > 0.001f) {
+                        drawRect(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.17f * bgAlpha),
+                                    Color.White.copy(alpha = 0.07f * bgAlpha),
+                                ),
+                            ),
+                        )
+                    }
+                }
+                .border(
+                    0.75.dp,
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.22f * bgAlpha),
+                            Color.White.copy(alpha = 0.05f * bgAlpha),
+                        ),
+                    ),
+                    shape,
+                )
+                .padding(horizontal = (6f + 8f * labelFrac).dp)
+                .wrapContentWidth(unbounded = true),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
         ) {
             Box(Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) {
-                FaIcon(name = icon, size = 16.dp, color = Color.White)
+                FaIcon(name = icon, size = 16.dp, color = Color.White.copy(alpha = 0.62f + 0.38f * labelFrac))
             }
             Box(
                 Modifier
@@ -113,7 +140,7 @@ private fun RowScope.NavPill(
                     .graphicsLayer { alpha = labelFrac },
             ) {
                 Row {
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(5.dp))
                     BasicText(
                         text = label,
                         style = navStyle(11f, FontWeight.Bold, 16f),
