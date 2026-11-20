@@ -120,7 +120,7 @@ fun DailySpendChart(
         list
     }
     val yLabelStyle = textStyle(9f, false, tickColor)
-    val yLabels = ticks.map { if (it == 0.0) "" else localizeDigits(it.roundToInt().toString()) }
+    val yLabels = ticks.map { localizeDigits(it.roundToInt().toString()) }   // starts at 0, then 10, 20, ...
     var widest = 0f
     for (l in yLabels) if (l.isNotEmpty()) widest = max(widest, measureW(measurer, l, yLabelStyle))
     val yAxisW = widest + yPad
