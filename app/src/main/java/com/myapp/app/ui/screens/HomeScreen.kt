@@ -39,6 +39,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.myapp.app.ui.components.pageScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -640,7 +644,7 @@ private fun DebtsCard(state: AppState) {
                         )
                         FitText(
                             text = "৳" + fmtMoney(jsRound(totalOwe), 0),
-                            maxFontSize = 14f,
+                            maxFontSize = 16f,
                             color = Brand.red,
                             weight = FontWeight.ExtraBold,
                             lineHeightRatio = 1.4f,
@@ -666,7 +670,7 @@ private fun DebtsCard(state: AppState) {
                         )
                         FitText(
                             text = "৳" + fmtMoney(jsRound(totalOwed), 0),
-                            maxFontSize = 14f,
+                            maxFontSize = 16f,
                             color = Brand.green,
                             weight = FontWeight.ExtraBold,
                             lineHeightRatio = 1.4f,
@@ -689,6 +693,18 @@ private fun CategoryCard(state: AppState) {
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
     val chart = buildHomeChart(state, range)
+    // One thing at a time: the unlock reveal (lock dissolves, Home fades in, ~450 ms) plays first; the chart
+    // bars only start growing once it has settled. With no lock (or when only switching tabs) there is no wait.
+    val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
+        com.myapp.app.ui.popup.LockState.biometricVisible
+    var lockSettled by remember { mutableStateOf(!lockUp) }
+    LaunchedEffect(lockUp) {
+        if (lockUp) lockSettled = false
+        else {
+            if (!lockSettled) delay(450)
+            lockSettled = true
+        }
+    }
     val shape = RoundedCornerShape(if (c.isLight) 28.dp else SoftGlass.radius)
     val borderColor = if (c.isLight) c.categoryCardBorder else SoftGlass.border
 
@@ -752,8 +768,7 @@ private fun CategoryCard(state: AppState) {
             data = chart.data,
             isDark = !c.isLight,
             // the bars grow up again every time the Home tab is opened (and not while a lock screen is up)
-            play = AppUi.tab == Tab.Home && !(com.myapp.app.ui.popup.LockState.pinVisible ||
-                com.myapp.app.ui.popup.LockState.patternVisible || com.myapp.app.ui.popup.LockState.biometricVisible),
+            play = AppUi.tab == Tab.Home && lockSettled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(112.dp),

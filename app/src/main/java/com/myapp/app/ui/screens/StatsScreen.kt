@@ -434,13 +434,18 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
                     // The page fades out quickly, shrinks a little and drifts slower than the finger, so two
                     // pages never overlap / blend while swiping, and the next one eases in cleanly.
                     .graphicsLayer {
-                        val signed = (pager.currentPage - page) + pager.currentPageOffsetFraction
+                        // On the first / last card there is nothing to swipe to: a drag past the end only
+                        // produces a tiny offset that springs back. Ignore it, so the card stays perfectly
+                        // still instead of shaking (fade / scale / shift only act between two real cards).
+                        val raw = pager.currentPageOffsetFraction
+                        val frac = if ((pager.currentPage >= top.lastIndex && raw > 0f) || (pager.currentPage <= 0 && raw < 0f)) 0f else raw
+                        val signed = (pager.currentPage - page) + frac
                         val dist = abs(signed).coerceIn(0f, 1f)
                         alpha = (1f - dist * 1.6f).coerceIn(0f, 1f)
                         val sc = 1f - 0.08f * dist
                         scaleX = sc
                         scaleY = sc
-                        translationX = pager.currentPageOffsetFraction * size.width * 0.12f   // both pages lag a little behind the finger
+                        translationX = frac * size.width * 0.12f   // both pages lag a little behind the finger
                     },
             ) {
                 // no edge / no fill: the item row blends straight into the card background
