@@ -231,19 +231,14 @@ fun ProfileScreen() {
 
 // ------------------------------------------------------------------ pieces
 
-/** "Check for update" icon in the page header (green pulsing dot = a newer version exists). */
+/** "Check for update" icon in the page header (no dot: tapping it tells you whether a newer version exists). */
 @Composable
 private fun UpdateButton() {
     val c = AppTheme.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val spin = rememberInfiniteTransition(label = "updateSpin")
     // icon rotation (degrees); every spin ends on a full turn, so resetting to 0 afterwards is invisible
     val angle = remember { Animatable(0f) }
-    val pulse by spin.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "updatePulse",
-    )
     Box(
         Modifier
             .padding(start = 12.dp)
@@ -297,16 +292,6 @@ private fun UpdateButton() {
             "fa-arrows-rotate", 16.dp, c.textGray900,
             modifier = Modifier.rotate(angle.value),
         )
-        if (UpdateChecker.updateAvailable) {
-            Canvas(Modifier.align(Alignment.TopEnd).size(10.dp)) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val core = 3.dp.toPx()
-                // soft pulsing halo
-                drawCircle(Tw.green500.copy(alpha = 0.45f * (1f - pulse)), radius = core + (size.width / 2f - core) * pulse, center = center)
-                drawCircle(Tw.green500.copy(alpha = 0.25f), radius = core + 1.5.dp.toPx(), center = center)
-                drawCircle(Tw.green500, radius = core, center = center)
-            }
-        }
     }
 }
 
@@ -418,46 +403,67 @@ private fun NameBox() {
             Decor("fa-wallet", 18.dp, Brand.red.copy(alpha = 0.16f), -14f, 0.08f, null, -0.02f)
         }
 
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(
-                Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(c.bgGray100, CircleShape)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
-                contentAlignment = Alignment.Center,
-            ) { FaIcon(avatar.icon, 20.dp, avatar.color) }
-
-            Column {
-                var field by remember { mutableStateOf(TextFieldValue(state.username)) }
-                var focused by remember { mutableStateOf(false) }
-                // keep in sync when the name changes elsewhere (restore, onboarding)
-                if (!focused && field.text != state.username) field = TextFieldValue(state.username)
-
-                fun commit() {
-                    val v = field.text.trim().ifEmpty { "User" }
-                    AppStore.state.username = v
-                    AppStore.commit()
-                    field = TextFieldValue(v)
-                }
-                // the underline is only as wide as the text (autoSizeUsernameInput)
-                Column(Modifier.width(IntrinsicSize.Max)) {
-                    BasicTextField(
-                        value = field,
-                        onValueChange = { field = it },
-                        singleLine = true,
-                        textStyle = appTextStyle(16f, c.textGray900, FontWeight.Bold, lineHeight = 24f),
-                        cursorBrush = SolidColor(c.textGray900),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { commit() }),
-                        modifier = Modifier.onFocusChanged {
-                            if (focused && !it.isFocused) commit()
-                            focused = it.isFocused
-                        },
-                    )
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
-                }
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            // big avatar with a coloured ring and a small pencil badge (tap = choose avatar)
+            Box(Modifier.size(72.dp)) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(c.bgGray100, CircleShape)
+                        .border(2.dp, avatar.color, CircleShape)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
+                    contentAlignment = Alignment.Center,
+                ) { FaIcon(avatar.icon, 30.dp, avatar.color) }
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 2.dp, y = 2.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(c.bgWhite, CircleShape)
+                        .border(1.dp, c.borderGray300, CircleShape)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
+                    contentAlignment = Alignment.Center,
+                ) { FaIcon("fa-pen", 10.dp, c.textGray900) }
             }
+
+            var field by remember { mutableStateOf(TextFieldValue(state.username)) }
+            var focused by remember { mutableStateOf(false) }
+            // keep in sync when the name changes elsewhere (restore, onboarding)
+            if (!focused && field.text != state.username) field = TextFieldValue(state.username)
+
+            fun commit() {
+                val v = field.text.trim().ifEmpty { "User" }
+                AppStore.state.username = v
+                AppStore.commit()
+                field = TextFieldValue(v)
+            }
+            // the underline is only as wide as the text (autoSizeUsernameInput), centred under the avatar
+            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                BasicTextField(
+                    value = field,
+                    onValueChange = { field = it },
+                    singleLine = true,
+                    textStyle = appTextStyle(20f, c.textGray900, FontWeight.Bold, lineHeight = 28f).copy(textAlign = TextAlign.Center),
+                    cursorBrush = SolidColor(c.textGray900),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { commit() }),
+                    modifier = Modifier.fillMaxWidth().onFocusChanged {
+                        if (focused && !it.isFocused) commit()
+                        focused = it.isFocused
+                    },
+                )
+                Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
+            }
+            AppText(
+                text = tr("profile_name_tagline", "Your tracker profile"),
+                size = 13f, lineHeight = 18f, color = c.textGray500, align = TextAlign.Center,
+            )
         }
     }
 }
