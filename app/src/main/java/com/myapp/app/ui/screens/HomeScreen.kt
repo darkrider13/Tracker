@@ -2,7 +2,9 @@ package com.myapp.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
@@ -103,6 +105,7 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
 /** JS Math.round for positive numbers. */
@@ -416,14 +419,9 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
 
     HomeCardBox(Modifier.padding(0.dp)) {
         Column(
-            // The card glides to its new height when the funds panel opens / closes, so the list
-            // measuring itself (provisional -> final height) never shows as a jolt.
-            modifier = Modifier
-                .animateContentSize(tween(240, easing = Ease200))
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
+            // (Spacing is given by the children's own padding, so the animated panel below adds no gap when closed.)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -472,10 +470,17 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 ChevronToggle(open = panelOpen) { AppUi.toggleFundsPanel() }
             }
 
-            if (panelOpen) {
+            AnimatedVisibility(
+                visible = panelOpen,
+                enter = expandVertically(tween(340, easing = PanelEase), expandFrom = Alignment.Top) +
+                    fadeIn(tween(240, delayMillis = 70, easing = PanelEase)),
+                exit = shrinkVertically(tween(260, easing = PanelEase), shrinkTowards = Alignment.Top) +
+                    fadeOut(tween(140, easing = PanelEase)),
+            ) {
                 val lineColor = c.borderGray200a60
                 Column(
                     modifier = Modifier
+                        .padding(top = 8.dp)
                         .fillMaxWidth()
                         .drawBehind {
                             drawLine(lineColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
@@ -528,7 +533,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 lineHeight = 16f,
                 weight = FontWeight.Medium,
                 color = c.textGray500,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 12.dp),
             )
         }
     }
