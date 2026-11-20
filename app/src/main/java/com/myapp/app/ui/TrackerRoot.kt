@@ -92,7 +92,8 @@ fun TrackerRoot(activity: Activity) {
             val blurOn = Popups.anyVisible || com.myapp.app.util.UpdateChecker.downloading
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
-                animationSpec = tween(if (blurOn) 200 else 70, easing = LinearEasing),
+                // same curve + length as the popup / sheet motion, so blur and popup arrive together
+                animationSpec = tween(if (blurOn) 280 else 180, easing = com.myapp.app.ui.popup.DropdownEase),
                 label = "popupBlur",
             )
 
