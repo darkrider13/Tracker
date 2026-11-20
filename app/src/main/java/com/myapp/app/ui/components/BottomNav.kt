@@ -2,11 +2,13 @@ package com.myapp.app.ui.components
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -61,10 +63,11 @@ private fun NavPill(
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
+            .animateContentSize(tween(durationMillis = 250, easing = NavEase))
             .clip(shape)
             .then(if (active) Modifier.background(Color.White.copy(alpha = 0.12f), shape) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 7.dp, vertical = 8.dp),
+            .padding(horizontal = if (active) 12.dp else 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FaIcon(name = icon, size = 16.dp, color = Color.White)
@@ -135,21 +138,14 @@ fun BottomNavBar(modifier: Modifier = Modifier) {
                         .background(c.navBarBg, CircleShape)
                         .border(1.dp, c.navBarBorder, CircleShape)
                         .padding(horizontal = 3.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val current = AppUi.tab
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        NavPill("fa-home", tr("nav_home", "Home"), current == Tab.Home) { AppUi.switchTab(Tab.Home) }
-                    }
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        NavPill("fa-list", tr("nav_logs", "Logs"), current == Tab.Logs) { AppUi.switchTab(Tab.Logs) }
-                    }
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        NavPill("fa-chart-bar", tr("nav_stats", "Stats"), current == Tab.Stats) { AppUi.switchTab(Tab.Stats) }
-                    }
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        NavPill("fa-user", tr("nav_profile", "Profile"), current == Tab.Profile) { AppUi.switchTab(Tab.Profile) }
-                    }
+                    NavPill("fa-home", tr("nav_home", "Home"), current == Tab.Home) { AppUi.switchTab(Tab.Home) }
+                    NavPill("fa-list", tr("nav_logs", "Logs"), current == Tab.Logs) { AppUi.switchTab(Tab.Logs) }
+                    NavPill("fa-chart-bar", tr("nav_stats", "Stats"), current == Tab.Stats) { AppUi.switchTab(Tab.Stats) }
+                    NavPill("fa-user", tr("nav_profile", "Profile"), current == Tab.Profile) { AppUi.switchTab(Tab.Profile) }
                 }
 
                 Spacer(Modifier.width(gap))
