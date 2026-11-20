@@ -49,6 +49,10 @@ object UpdateChecker {
     var downloading by mutableStateOf(false)
     /** 0..100, or -1 when the server did not tell the file size. */
     var percent by mutableStateOf(0)
+    /** Bytes received so far, the file size (-1 = unknown) and the current speed in bytes/second. */
+    var downloadedBytes by mutableStateOf(0L)
+    var totalBytes by mutableStateOf(-1L)
+    var speedBps by mutableStateOf(0L)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var job: Job? = null
@@ -134,6 +138,9 @@ object UpdateChecker {
         }
         downloading = true
         percent = 0
+        downloadedBytes = 0L
+        totalBytes = -1L
+        speedBps = 0L
         job = scope.launch {
             try {
                 val file = download(app, apkUrl)
@@ -173,23 +180,35 @@ object UpdateChecker {
             val code = conn.responseCode
             if (code != 200) throw IOException("HTTP $code")
             val total = conn.contentLengthLong
+            totalBytes = total
             conn.inputStream.use { input ->
                 file.outputStream().use { out ->
                     val buf = ByteArray(32 * 1024)
                     var read = 0L
                     var last = -2
+                    var tickT = System.nanoTime()
+                    var tickBytes = 0L
                     while (true) {
                         val n = input.read(buf)
                         if (n < 0) break
                         ensureActive()
                         out.write(buf, 0, n)
                         read += n
+                        val now = System.nanoTime()
+                        if (now - tickT >= 400_000_000L) {
+                            val inst = (read - tickBytes) * 1_000_000_000L / (now - tickT)
+                            speedBps = if (speedBps == 0L) inst else (speedBps * 0.6 + inst * 0.4).toLong()
+                            downloadedBytes = read
+                            tickT = now
+                            tickBytes = read
+                        }
                         val p = if (total > 0) (read * 100 / total).toInt().coerceIn(0, 100) else -1
                         if (p != last) {
                             last = p
                             percent = p
                         }
                     }
+                    downloadedBytes = read
                 }
             }
             if (total > 0 && file.length() != total) throw IOException("incomplete download")
