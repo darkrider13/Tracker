@@ -86,7 +86,7 @@ private fun RowScope.NavPill(
     val slotWeight by animateFloatAsState(if (active) 1.75f else 1f, spec, label = "navSlotWeight")
     val bgAlpha by animateFloatAsState(if (active) 1f else 0f, spec, label = "navPillBg")
     val labelFrac by animateFloatAsState(if (active) 1f else 0f, spec, label = "navLabelFrac")
-    val iconScale by animateFloatAsState(if (active) 1.06f else 1f, spec, label = "navIconScale")
+    val iconScale by animateFloatAsState(1f, spec, label = "navIconScale")
 
     // The slot only reserves room; the highlight is a small pill that hugs icon + label (not the whole slot).
     Box(
@@ -98,37 +98,21 @@ private fun RowScope.NavPill(
     ) {
         Row(
             modifier = Modifier
-                .height(32.dp)
+                .height(34.dp)
                 .clip(shape)
                 .drawBehind {
+                    // flat, solid highlight (no gradient, no border) – like a plain grey pill
                     if (bgAlpha > 0.001f) {
-                        drawRect(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.17f * bgAlpha),
-                                    Color.White.copy(alpha = 0.07f * bgAlpha),
-                                ),
-                            ),
-                        )
+                        drawRect(Color.White.copy(alpha = 0.13f * bgAlpha))
                     }
                 }
-                .border(
-                    0.75.dp,
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.22f * bgAlpha),
-                            Color.White.copy(alpha = 0.05f * bgAlpha),
-                        ),
-                    ),
-                    shape,
-                )
-                .padding(horizontal = (6f + 8f * labelFrac).dp)
+                .padding(horizontal = (7f + 8f * labelFrac).dp)
                 .wrapContentWidth(unbounded = true),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
             Box(Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) {
-                FaIcon(name = icon, size = 16.dp, color = Color.White.copy(alpha = 0.62f + 0.38f * labelFrac))
+                FaIcon(name = icon, size = 18.dp, color = Color.White)
             }
             Box(
                 Modifier
@@ -143,7 +127,7 @@ private fun RowScope.NavPill(
                     Spacer(Modifier.width(5.dp))
                     BasicText(
                         text = label,
-                        style = navStyle(11f, FontWeight.Bold, 16f),
+                        style = navStyle(12f, FontWeight.Bold, 16f),
                         softWrap = false,
                         maxLines = 1,
                     )
