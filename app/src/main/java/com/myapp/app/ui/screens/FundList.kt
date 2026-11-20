@@ -245,6 +245,7 @@ fun FundList(state: AppState) {
             state = paged,
             count = names.size,
             snap = dragging == null,
+            animateSize = false,   // opening the funds panel: no height animation, it just appears
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
