@@ -196,7 +196,7 @@ fun ProfileScreen() {
 
             // ---- Developer credit
             Column(
-                Modifier.fillMaxWidth().padding(top = 16.dp).clip(shape).background(c.bgGray200a60, shape).padding(20.dp),
+                Modifier.fillMaxWidth().clip(shape).background(c.bgGray200a60, shape).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -265,7 +265,7 @@ private fun UpdateButton() {
                             icon = "fa-circle-check",
                         )
                         is UpdateChecker.Result.Failed -> AppDialogs.alert(
-                            message = tr("update_failed_msg", "Check your internet connection and try again.") + "\n(" + result.reason + ")",
+                            message = tr("update_check_retry_msg", "Please try again after some time."),
                             title = tr("update_failed_title", "Could not check for updates"),
                         )
                     }
