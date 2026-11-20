@@ -43,6 +43,7 @@ import com.myapp.app.data.Transaction
 import com.myapp.app.ui.AppActions
 import com.myapp.app.ui.AppUi
 import com.myapp.app.ui.Tab
+import com.myapp.app.ui.components.AppBackdrop
 import com.myapp.app.ui.components.AppText
 import com.myapp.app.ui.components.FaIcon
 import com.myapp.app.ui.components.FaStyle
@@ -174,10 +175,12 @@ fun FundDetailsScreen() {
     Box(
         Modifier
             .fillMaxSize()
-            .background(c.screenBg)
+            .background(c.bodyBg)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }, // swallow taps
         contentAlignment = Alignment.TopCenter,
     ) {
+        // exactly the same page background as the Home screen (black + soft glow / light tint)
+        AppBackdrop()
         Column(
             Modifier
                 .fillMaxSize()
@@ -241,7 +244,7 @@ fun FundDetailsScreen() {
                         // balance + the two small chips; the whole line shrinks to fit (fitBalanceText)
                         FitRow {
                             AppText(
-                                text = "৳" + fmtMoney(balance), size = 36f, lineHeight = 40f, weight = FontWeight.ExtraBold,
+                                text = "৳" + fmtMoney(balance), size = 20f, lineHeight = 28f, weight = FontWeight.ExtraBold,
                                 letterSpacingEm = -0.025f, color = c.categoryCardText, noWrap = true,
                             )
                             if (debtSum > 0.005 || recvSum > 0.005) {
@@ -283,7 +286,7 @@ fun FundDetailsScreen() {
                             weight = FontWeight.Bold, letterSpacingEm = 0.05f, color = mutedOnCard(), uppercase = true,
                         )
                         AppText(
-                            text = "৳" + fmtMoney(totalSpent), size = 20f, lineHeight = 28f,
+                            text = "৳" + fmtMoney(totalSpent), size = 18f, lineHeight = 28f,
                             weight = FontWeight.ExtraBold, color = Brand.red, singleLineEllipsis = true,
                         )
                     }
