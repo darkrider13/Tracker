@@ -421,12 +421,14 @@ private fun NameBox() {
                     AppStore.commit()
                     field = TextFieldValue(v)
                 }
+                // greeting follows the time of day: 5-12 morning, 12-15 noon, 15-17 afternoon, 17-19 evening, else night
+                val greeting = remember { timeGreeting() }
                 AppText(
-                    text = tr("home_welcome", "Welcome Back"),
-                    size = 12f, lineHeight = 16f, color = c.textGray500,
+                    text = greeting,
+                    size = 13f, lineHeight = 18f, weight = FontWeight.Bold, color = c.textGray500,
                 )
                 // the underline is only as wide as the text (autoSizeUsernameInput)
-                Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 64.dp)) {
+                Column(Modifier.padding(start = 10.dp).width(IntrinsicSize.Max).widthIn(min = 64.dp)) {
                     BasicTextField(
                         value = field,
                         onValueChange = { field = it },
@@ -474,3 +476,14 @@ private fun ProfileChip(text: String, color: Color) {
 /** Where the name box and other screens read the avatar of the current profile. */
 @Suppress("unused")
 private val ProfileFontFamily = FontFamily.Default
+
+private fun timeGreeting(): String {
+    val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    return when (h) {
+        in 5..11 -> tr("greet_morning", "Good Morning")
+        in 12..14 -> tr("greet_noon", "Good Noon")
+        in 15..16 -> tr("greet_afternoon", "Good Afternoon")
+        in 17..18 -> tr("greet_evening", "Good Evening")
+        else -> tr("greet_night", "Good Night")
+    }
+}

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -278,21 +279,13 @@ private fun HomeHeader(state: AppState) {
     // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
     AppStore.observe()
     val c = AppTheme.colors
+    // name + date pill + bell all share one centre line
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-            AppText(
-                text = tr("home_welcome", "Welcome Back"),
-                size = 14f,
-                lineHeight = 20f,
-                weight = FontWeight.Bold,
-                letterSpacingEm = 0.05f,
-                color = c.textGray400,
-                uppercase = true,
-            )
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.Center) {
             AppText(
                 text = state.username.ifEmpty { "User" },
                 size = 24f,
