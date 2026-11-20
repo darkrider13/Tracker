@@ -210,8 +210,8 @@ fun FundDetailsScreen() {
                     Modifier
                         .fillMaxWidth()
                         .clip(cardShape)
-                        .background(c.categoryCardBg, cardShape)
-                        .then(if (c.categoryCardBorder != null) Modifier.border(1.dp, c.categoryCardBorder!!, cardShape) else Modifier)
+                        .background(c.homeCardBg, cardShape)
+                        .border(1.dp, c.cardBorder, cardShape)
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
@@ -277,8 +277,8 @@ fun FundDetailsScreen() {
                             .weight(2f)
                             .fillMaxHeight()
                             .clip(boxShape)
-                            .background(c.categoryCardBg, boxShape)
-                            .then(if (c.categoryCardBorder != null) Modifier.border(1.dp, c.categoryCardBorder!!, boxShape) else Modifier)
+                            .background(c.homeCardBg, boxShape)
+                            .border(1.dp, c.cardBorder, boxShape)
                             .padding(16.dp),
                     ) {
                         AppText(
@@ -295,8 +295,8 @@ fun FundDetailsScreen() {
                             .weight(1f)
                             .fillMaxHeight()
                             .clip(boxShape)
-                            .background(c.categoryCardBg, boxShape)
-                            .then(if (c.categoryCardBorder != null) Modifier.border(1.dp, c.categoryCardBorder!!, boxShape) else Modifier)
+                            .background(c.homeCardBg, boxShape)
+                            .border(1.dp, c.cardBorder, boxShape)
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                 TransferFund.open(fund)
                             }

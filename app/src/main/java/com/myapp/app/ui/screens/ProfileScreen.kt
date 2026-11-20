@@ -244,7 +244,11 @@ private fun UpdateButton() {
     Box(
         Modifier
             .padding(start = 12.dp)
-            .size(36.dp)
+            // same height as the headline's line (32dp) so both share one centre line; the small lift
+            // matches where the headline's glyphs visually sit inside that line
+            .width(36.dp)
+            .height(32.dp)
+            .offset(y = (-1.5).dp)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 if (UpdateChecker.checking) return@clickable
                 UpdateChecker.checking = true
