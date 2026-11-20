@@ -672,7 +672,7 @@ private fun CategoryCard(state: AppState) {
             verticalAlignment = Alignment.Top,
         ) {
             Row(
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -688,8 +688,8 @@ private fun CategoryCard(state: AppState) {
                 Column(modifier = Modifier.weight(1f, fill = false)) {
                     AppText(
                         text = tr("home_category_breakdown", "Category Breakdown"),
-                        size = 14f,
-                        lineHeight = 20f,
+                        size = 12f,
+                        lineHeight = 17f,
                         weight = FontWeight.Bold,
                         letterSpacingEm = -0.025f,
                         color = c.categoryCardText,
@@ -704,7 +704,7 @@ private fun CategoryCard(state: AppState) {
             // week / month switch
             Row(
                 modifier = Modifier
-                    .offset(x = 6.dp)
+                    .offset(x = 8.dp)
                     .clip(CircleShape)
                     .background(c.categoryPillBg, CircleShape)
                     .padding(4.dp),
