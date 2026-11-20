@@ -193,7 +193,7 @@ fun OnboardingScreen() {
                             }
                             Box(
                                 Modifier.fillMaxWidth().height(1.dp)
-                                    .background(if (error) Color(0xFFEF4444) else if (focused) Brand.red else c.borderGray300),
+                                    .background(if (error) Color(0xFFEF4444) else if (focused) Brand.green else c.borderGray300),
                             )
                         }
                     }
@@ -380,7 +380,7 @@ private fun NoteBox(n: NoteModal) {
             .height(146.dp)
             .clip(shape)
             .background(c.bgWhite80, shape)
-            .border(1.dp, if (focused) Brand.red else c.borderGray200, shape),
+            .border(1.dp, if (focused) Brand.green else c.borderGray200, shape),
     ) {
         Box(Modifier.fillMaxSize().padding(12.dp).verticalScroll(scroll)) {
             BasicTextField(

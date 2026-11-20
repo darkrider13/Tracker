@@ -34,7 +34,7 @@ import com.myapp.app.ui.theme.Tw
 
 /**
  * The text box used in every popup (p-3 bg-white/80 rounded-xl text-sm font-bold border,
- * red border while focused).
+ * green border while focused).
  */
 @Composable
 fun AppTextField(
@@ -45,7 +45,7 @@ fun AppTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     textColor: Color? = null,
     maxLength: Int = Int.MAX_VALUE,
-    focusColor: Color = Brand.red,
+    focusColor: Color = Brand.green,
     readOnly: Boolean = false,
 ) {
     val c = AppTheme.colors

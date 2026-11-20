@@ -1,5 +1,9 @@
 package com.myapp.app.ui.popup
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -100,7 +104,7 @@ class CategoryPickerState {
         allLarge = false
         filterText = ""
         highlighted = name
-        resetScrollTick++
+        revealTick++   // keep the row where it is, only bring the picked chip into view
     }
 
     /** The category text box changed (handleCategoryTyped). */
@@ -131,7 +135,12 @@ private fun Chip(
     val c = AppTheme.colors
     val display = categoryDisplayName(name)
     val labelSize = if (name == "Fun") 8f else 10f
-    val circle = if (big) 48.dp else 40.dp
+    // The circle grows / shrinks and changes colour smoothly. The slot is always 48 dp tall, so
+    // the row never jumps when the selection moves from one chip to another.
+    val circle by animateDpAsState(if (big) 48.dp else 40.dp, tween(200, easing = FastOutSlowInEasing), label = "chipSize")
+    val circleBg by animateColorAsState(if (selected) Brand.green else c.bgGray200a70, tween(220), label = "chipBg")
+    val iconColor by animateColorAsState(if (selected) Color.White else c.textGray500, tween(220), label = "chipIcon")
+    val baseColor by animateColorAsState(if (selected) Brand.green else c.textGray700, tween(220), label = "chipLabel")
     Column(
         modifier = modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
@@ -141,16 +150,17 @@ private fun Chip(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(circle)
-                .clip(CircleShape)
-                .background(if (selected) Brand.green else c.bgGray200a70, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            CategoryIcon(name, 12.dp, if (selected) Color.White else c.textGray500)
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(circle)
+                    .clip(CircleShape)
+                    .background(circleBg, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                CategoryIcon(name, 12.dp, iconColor)
+            }
         }
-        val baseColor = if (selected) Brand.green else c.textGray700
         if (highlightLen > 0) {
             val matchLen = minOf(highlightLen, display.length)
             val text = buildAnnotatedString {
@@ -184,7 +194,7 @@ private fun Chip(
 private fun PlusChip(big: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = AppTheme.colors
     // same circle size as the category chips (48 dp when they are enlarged, else 40 dp) so the row stays aligned
-    val circle = if (big) 48.dp else 40.dp
+    val circle by animateDpAsState(if (big) 48.dp else 40.dp, tween(200, easing = FastOutSlowInEasing), label = "plusSize")
     val dash = Color(0xFF9CA3AF).copy(alpha = 0.6f)
     Column(
         modifier = modifier.clickable(
@@ -195,21 +205,23 @@ private fun PlusChip(big: Boolean, modifier: Modifier, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(circle)
-                .drawBehind {
-                    drawCircle(
-                        color = dash,
-                        style = Stroke(
-                            width = 1.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())),
-                        ),
-                    )
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            FaIcon("fa-plus", 12.dp, c.textGray500)
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(circle)
+                    .drawBehind {
+                        drawCircle(
+                            color = dash,
+                            style = Stroke(
+                                width = 1.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())),
+                            ),
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                FaIcon("fa-plus", 12.dp, c.textGray500)
+            }
         }
         AppText(
             text = tr("cat_add_short", "New"),
@@ -299,8 +311,8 @@ fun CategoryChips(
             if (idx >= 0) {
                 val left = idx * stepPx
                 val right = left + chipWPx
-                if (left < scroll.value) scroll.scrollTo(left.roundToInt())
-                else if (right > scroll.value + viewportW) scroll.scrollTo((right - viewportW).roundToInt())
+                if (left < scroll.value) scroll.animateScrollTo(left.roundToInt())
+                else if (right > scroll.value + viewportW) scroll.animateScrollTo((right - viewportW).roundToInt())
             }
         }
         // settle on a whole chip after every scroll (scroll-snap)
