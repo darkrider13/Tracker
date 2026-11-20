@@ -396,8 +396,6 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
     // same red as the progress bar below, so the text and the bar match
     val textRed = Brand.red
     val subRed = Brand.red
-    // soft outline kept only for the small category icon tile
-    val edgeColor = if (c.isLight) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.12f)
     StatsCard(topPad = 12.dp, spacing = 12.dp) {
         CardHeader(
             "fa-arrow-trend-up", Brand.red, tr("stats_top_category", "Top Spending Category"),
@@ -433,8 +431,7 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val iconShape = RoundedCornerShape(12.dp)
-                        Box(Modifier.size(40.dp).clip(iconShape).background(c.bgGray100, iconShape).border(1.dp, edgeColor, iconShape), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                             CategoryIcon(g.label, 14.dp, textRed)
                         }
                         Column(Modifier.weight(1f)) {
