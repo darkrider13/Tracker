@@ -168,7 +168,14 @@ fun BoxScope.FundDropdownOverlay(
     tight: Boolean = false,
     onPick: (String) -> Unit,
 ) {
-    if (FundDropdownState.openContext != context) return
+    val isOpen = FundDropdownState.openContext == context
+    // open: eased glide in (300 ms); close: quicker fade out (180 ms). Kept composed while it animates out.
+    val progress by animateFloatAsState(
+        targetValue = if (isOpen) 1f else 0f,
+        animationSpec = tween(if (isOpen) 300 else 180, easing = DropdownEase),
+        label = "fundDropdownProgress",
+    )
+    if (!isOpen && progress <= 0.001f) return
     val c = AppTheme.colors
     val state = AppStore.observe()
     val funds = state.funds.keys.filter { it != excludeFund }
@@ -184,7 +191,8 @@ fun BoxScope.FundDropdownOverlay(
     Box(
         modifier = Modifier
             .matchParentSize()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .graphicsLayer { alpha = progress }
+            .background(Color.Black.copy(alpha = 0.55f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -223,7 +231,14 @@ fun BoxScope.FundDropdownOverlay(
             .align(Alignment.Center)
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
-            .graphicsLayer { alpha = shownAlpha }
+            .graphicsLayer {
+                alpha = shownAlpha * progress
+                val sc = 0.94f + 0.06f * progress
+                scaleX = sc
+                scaleY = sc
+                translationY = (1f - progress) * 14.dp.toPx()
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.35f)
+            }
             .clip(shape)
             .background(if (c.isLight) Color(0xFFD4D4D8) else Color(0xFF141414), shape)
             .clickable(

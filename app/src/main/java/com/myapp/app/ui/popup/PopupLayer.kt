@@ -96,6 +96,8 @@ internal val LocalPopupProgress = compositionLocalOf<State<Float>> { mutableStat
 /** 88% of the screen height: the tallest a popup card may be (max-h-[88vh] before). */
 internal val LocalPopupMaxHeight = compositionLocalOf { 600.dp }
 
+internal val DropdownEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+
 private val PopupEase = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 /**
@@ -163,8 +165,8 @@ fun GlassCard(
     // a fund list floating over the card blurs the card behind it
     val dropdownOpen = FundDropdownState.openContext != null
     val behindBlur by animateFloatAsState(
-        targetValue = if (dropdownOpen) 8f else 0f,
-        animationSpec = tween(if (dropdownOpen) 160 else 70, easing = LinearEasing),
+        targetValue = if (dropdownOpen) 10f else 0f,
+        animationSpec = tween(if (dropdownOpen) 300 else 200, easing = DropdownEase),
         label = "cardBehindBlur",
     )
     Box(
