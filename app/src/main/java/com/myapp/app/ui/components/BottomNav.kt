@@ -78,12 +78,12 @@ private fun NavPill(
     )
     val padH by animateDpAsState(
         targetValue = if (active) 12.dp else 10.dp,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = tween(durationMillis = 220, easing = NavEase),
         label = "navPillPad",
     )
     val iconScale by animateFloatAsState(
         targetValue = if (active) 1.12f else 1f,
-        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+        animationSpec = tween(durationMillis = 220, easing = NavEase),
         label = "navIconScale",
     )
 
@@ -101,13 +101,13 @@ private fun NavPill(
         AnimatedVisibility(
             visible = active,
             enter = expandHorizontally(
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+                animationSpec = tween(durationMillis = 220, easing = NavEase),
                 expandFrom = Alignment.Start,
-            ) + fadeIn(tween(durationMillis = 220, delayMillis = 70)),
+            ) + fadeIn(tween(durationMillis = 180, delayMillis = 40)),
             exit = shrinkHorizontally(
-                animationSpec = tween(durationMillis = 200, easing = NavEase),
+                animationSpec = tween(durationMillis = 220, easing = NavEase),
                 shrinkTowards = Alignment.Start,
-            ) + fadeOut(tween(durationMillis = 90)),
+            ) + fadeOut(tween(durationMillis = 100)),
         ) {
             Row {
                 Spacer(Modifier.width(4.dp))
