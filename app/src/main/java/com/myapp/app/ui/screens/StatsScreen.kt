@@ -187,7 +187,8 @@ fun StatsScreen() {
     val scope = statsSpendMonthScope(state)
 
     val pageScrollState = androidx.compose.foundation.rememberScrollState()
-    Box(Modifier.fillMaxSize().pageScroll(pageScrollState), contentAlignment = Alignment.TopCenter) {
+    // Debts & Receivables analytics is a fixed one-screen page: no scrolling at all
+    Box(Modifier.fillMaxSize().pageScroll(pageScrollState, forceLock = !spending), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier
                 .widthIn(max = 448.dp)

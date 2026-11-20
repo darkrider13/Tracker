@@ -481,6 +481,7 @@ private fun TransactionList(list: List<Transaction>, query: String) {
             limit = minOf(list.size, limit + LOGS_NEXT_BATCH)
         }
     }
+    val enterToken = AppUi.logsEnterToken
     val shownList = if (limit >= list.size) list else list.take(limit)
     // until the first cards are measured the viewport height is only an estimate: keep the list invisible for
     // that single frame so the tab switch never shows a height jump at the bottom
@@ -494,8 +495,10 @@ private fun TransactionList(list: List<Transaction>, query: String) {
                 key(t.id) {
                     // staggered entrance (same motion as the fund list): each card rises, fades in and settles in turn.
                     // Cards that stay in the list while a filter changes keep their state, so only new ones animate.
-                    val enter = remember { androidx.compose.animation.core.Animatable(0f) }
-                    LaunchedEffect(Unit) {
+                    // remember(enterToken): arriving on Logs from another tab starts every card at 0 again (same frame,
+                    // no flicker) so the whole history list replays the entrance, like the fund list on Home.
+                    val enter = remember(enterToken) { androidx.compose.animation.core.Animatable(0f) }
+                    LaunchedEffect(enter) {
                         kotlinx.coroutines.delay(60L + index.coerceAtMost(6) * 70L)
                         enter.animateTo(1f, androidx.compose.animation.core.tween(460, easing = TxEnterEase))
                     }
