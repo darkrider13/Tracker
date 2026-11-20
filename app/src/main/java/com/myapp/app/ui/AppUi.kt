@@ -29,6 +29,10 @@ object AppUi {
     var currentDetailsFund by mutableStateOf<String?>(null)
 
     var logsSubtab by mutableStateOf("transactions")   // transactions | debts | receivables
+
+    /** Bumped every time the user arrives on Logs from another tab: the history list replays its staggered entrance. */
+    var logsEnterToken by mutableStateOf(0)
+        private set
     var statsSubtab by mutableStateOf("spending")      // spending | debts
 
     /** Month picked with the calendar button on Stats (statsMonthOverride) - memory only, resets on a fresh launch. */
@@ -64,6 +68,7 @@ object AppUi {
         if (target != Tab.Logs) com.myapp.app.ui.popup.AddDebt.fundContext = null
         // Leaving Home with the funds panel open closes it (and brings the nav bar back).
         if (target != Tab.Home && fundsPanelOpen) fundsPanelOpen = false
+        if (target == Tab.Logs && tab != Tab.Logs) logsEnterToken++
         tab = target
     }
 
