@@ -261,6 +261,8 @@ fun StatsScreen() {
 
 @Composable
 private fun SpendingTab(state: AppState, scope: StatsMonth) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     val filtered = statsMonthSpend(state, scope)
 
@@ -469,6 +471,8 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
 
 @Composable
 private fun LiabilityTab(state: AppState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     val debts = state.debts
     val pendingDebts = debts.filter { it.type == "debt" && !it.settled }

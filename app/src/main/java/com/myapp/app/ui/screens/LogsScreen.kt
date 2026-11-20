@@ -181,6 +181,8 @@ private fun SubtabSwitch() {
 
 @Composable
 private fun TransactionsPane(state: AppState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SearchRow(state)
         FilterChips(state)

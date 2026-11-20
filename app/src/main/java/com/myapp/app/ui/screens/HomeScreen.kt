@@ -255,6 +255,8 @@ private fun homeTodayLabel(): String {
 
 @Composable
 private fun HomeHeader(state: AppState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -394,6 +396,8 @@ private fun ChevronToggle(open: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun BalanceCard(state: AppState, panelOpen: Boolean) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     val fin = calculateFinance()
     val meta = ensureFundMeta(state.activeFund)
@@ -547,6 +551,8 @@ private fun PanelButton(icon: String, label: String, modifier: Modifier, onClick
 
 @Composable
 private fun DebtsCard(state: AppState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     var totalOwe = 0.0
     var totalOwed = 0.0
@@ -652,6 +658,8 @@ private fun DebtsCard(state: AppState) {
 
 @Composable
 private fun CategoryCard(state: AppState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
     val chart = buildHomeChart(state, range)

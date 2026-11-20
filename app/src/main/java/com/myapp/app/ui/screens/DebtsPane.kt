@@ -90,6 +90,8 @@ fun DebtsPane(category: String) {
 
 @Composable
 private fun SummaryCard(state: AppState, category: String, cs: DebtCategoryState) {
+    // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
+    AppStore.observe()
     val c = AppTheme.colors
     val isReceivable = category == "receivables"
     val total = debtTotalPending(state, category)
