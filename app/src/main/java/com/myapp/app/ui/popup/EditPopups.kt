@@ -341,6 +341,7 @@ fun EditTransactionPopup() {
                             value = EditTransaction.amount,
                             onValueChange = { EditTransaction.amount = formatAmountField(it) },
                             placeholder = tr("modal_amount_placeholder", "Amount (৳)"),
+                            focusColor = com.myapp.app.ui.theme.Brand.green,
                             keyboardType = KeyboardType.Decimal,
                             readOnly = locked,
                         )
@@ -350,6 +351,7 @@ fun EditTransactionPopup() {
                         value = EditTransaction.description,
                         onValueChange = { EditTransaction.description = it },
                         placeholder = tr("modal_description_placeholder", "Note"),
+                        focusColor = com.myapp.app.ui.theme.Brand.green,
                     )
                     AppTextField(
                         value = EditTransaction.category,
@@ -359,6 +361,7 @@ fun EditTransactionPopup() {
                             EditTransaction.picker.onTyped(stripped.text)
                         },
                         placeholder = tr("modal_enter_category_placeholder", "Enter Category"),
+                        focusColor = com.myapp.app.ui.theme.Brand.green,
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         AppText(

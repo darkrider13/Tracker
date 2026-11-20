@@ -133,12 +133,14 @@ fun AddExpensePopup() {
                         value = AddExpense.amount,
                         onValueChange = { AddExpense.amount = formatAmountField(it) },
                         placeholder = tr("modal_amount_placeholder", "Amount (৳)"),
+                        focusColor = com.myapp.app.ui.theme.Brand.green,
                         keyboardType = KeyboardType.Decimal,
                     )
                     AppTextField(
                         value = AddExpense.description,
                         onValueChange = { AddExpense.description = it },
                         placeholder = tr("modal_description_placeholder", "Note"),
+                        focusColor = com.myapp.app.ui.theme.Brand.green,
                     )
                     AppTextField(
                         value = AddExpense.category,
@@ -148,6 +150,7 @@ fun AddExpensePopup() {
                             AddExpense.picker.onTyped(stripped.text)
                         },
                         placeholder = tr("modal_enter_category_placeholder", "Enter Category"),
+                        focusColor = com.myapp.app.ui.theme.Brand.green,
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         AppText(

@@ -145,16 +145,16 @@ private fun Chip(
             modifier = Modifier
                 .size(circle)
                 .clip(CircleShape)
-                .background(if (selected) Brand.red else c.bgGray200a70, CircleShape),
+                .background(if (selected) Brand.green else c.bgGray200a70, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             CategoryIcon(name, 12.dp, if (selected) Color.White else c.textGray500)
         }
-        val baseColor = if (selected) Brand.red else c.textGray700
+        val baseColor = if (selected) Brand.green else c.textGray700
         if (highlightLen > 0) {
             val matchLen = minOf(highlightLen, display.length)
             val text = buildAnnotatedString {
-                withStyle(SpanStyle(color = Brand.red)) { append(display.substring(0, matchLen)) }
+                withStyle(SpanStyle(color = Brand.green)) { append(display.substring(0, matchLen)) }
                 append(display.substring(matchLen))
             }
             BasicText(
