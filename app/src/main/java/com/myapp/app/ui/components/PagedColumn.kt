@@ -151,8 +151,26 @@ fun PagedViewport(
         PagedSnapFling(state, { currentCount }, fallbackFling, decay)
     }
 
+    // smoothSnap: the fling already lands on a card. This only re-settles when the list itself changed
+    // while resting (a card was deleted / a filter shortened it / heights were re-measured), so the
+    // viewport never stays on a half card.
     LaunchedEffect(state, count, snap, smoothSnap) {
-        if (smoothSnap) return@LaunchedEffect
+        if (smoothSnap) {
+            if (!snap) return@LaunchedEffect
+            snapshotFlow { Triple(state.scroll.isScrollInProgress, state.scroll.maxValue, state.viewportMax(count)) }
+                .collect { (moving, _, vp) ->
+                    if (!moving && count > state.visible && vp != null) {
+                        kotlinx.coroutines.delay(60)   // let the layout settle first
+                        if (!state.scroll.isScrollInProgress) {
+                            val target = state.nearestPageOffset(count)
+                            if (abs(target - state.scroll.value) > 1) {
+                                state.scroll.animateScrollTo(target, tween(180, easing = FastOutSlowInEasing))
+                            }
+                        }
+                    }
+                }
+            return@LaunchedEffect
+        }
         snapshotFlow { state.scroll.isScrollInProgress }.collect { moving ->
             if (!moving && snap && count > state.visible && state.viewportMax(count) != null) {
                 val target = state.nearestPageOffset(count)
