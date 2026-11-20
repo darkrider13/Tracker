@@ -14,7 +14,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,16 +91,24 @@ fun TrackerRoot(activity: Activity) {
             AppBackdrop()
 
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
-            // No animated radius and no delay: the blur switches on together with the popup and
-            // switches off the very moment the popup is closed.
-            val blurRadius = if (Popups.anyVisible) 20.dp else 0.dp
+            // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
+            // popup has finished fading out, so the background never snaps sharp in the middle of it.
+            val blurOn = Popups.anyVisible || Popups.layersShown > 0
+            val blurDp by animateFloatAsState(
+                targetValue = if (blurOn) 20f else 0f,
+                animationSpec = tween(if (blurOn) 240 else 160, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
+                label = "popupBlur",
+            )
 
             // The app screens appear (fade in) once the splash is leaving, like #app-root before.
             Box(
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = if (bootPending) 0f else 1f }
-                    .blur(blurRadius),
+                    .graphicsLayer {
+                        alpha = if (bootPending) 0f else 1f
+                        val r = blurDp * density
+                        renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
+                    },
             ) {
                 // Tabs stay alive once opened (the others are warmed up quietly after launch), so a tap
                 // only shows/hides a ready screen instead of building a whole screen from scratch.
