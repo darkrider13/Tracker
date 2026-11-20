@@ -1,13 +1,19 @@
 package com.myapp.app.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.platform.LocalDensity
 import kotlin.math.hypot
 import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.Brand
@@ -18,13 +24,23 @@ import com.myapp.app.ui.theme.Brand
  *  - light: #E6EEF5 with three soft glows (teal / violet / rose), same as TaskFlow
  */
 @Composable
-fun AppBackdrop(modifier: Modifier = Modifier) {
+fun AppBackdrop(modifier: Modifier = Modifier, extend: Boolean = false) {
     val isLight = AppTheme.colors.isLight
+    // extend = also paint under the status bar / navigation bar, exactly like the root backdrop does,
+    // so a full-screen layer (lock / welcome / fund details) blends into the bars with no seam.
+    val density = LocalDensity.current
+    val topPx = if (extend) WindowInsets.systemBars.getTop(density).toFloat() else 0f
+    val bottomPx = if (extend) WindowInsets.systemBars.getBottom(density).toFloat() else 0f
     Canvas(modifier = modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
+        if (topPx == 0f && bottomPx == 0f) drawBackdrop(isLight, size.width, size.height)
+        else translate(top = -topPx) { drawBackdrop(isLight, size.width, size.height + topPx + bottomPx) }
+    }
+}
+
+private fun DrawScope.drawBackdrop(isLight: Boolean, w: Float, h: Float) {
+    run {
         if (!isLight) {
-            drawRect(color = Color(0xFF000000))
+            drawRect(color = Color(0xFF000000), size = Size(w, h))
             // softer + fainter glow: ellipse 110% x 48%, .065 -> .04 (22%) -> .02 (50%) -> .006 (78%) -> 0
             val rx = w * 1.10f
             val ry = h * 0.48f
@@ -49,7 +65,7 @@ fun AppBackdrop(modifier: Modifier = Modifier) {
         } else {
             // Same day-mode background as TaskFlow: #E6EEF5 base + three soft glows
             // (teal top-left, violet right, rose bottom-left).
-            drawRect(color = Color(0xFFE6EEF5))
+            drawRect(color = Color(0xFFE6EEF5), size = Size(w, h))
             fun glow(cx: Float, cy: Float, c: Color, frac: Float) {
                 val far = maxOf(
                     maxOf(hypot(cx, cy), hypot(w - cx, cy)),
