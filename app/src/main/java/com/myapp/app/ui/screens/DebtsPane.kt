@@ -124,8 +124,7 @@ private fun SummaryCard(state: AppState, category: String, cs: DebtCategoryState
             ),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val label = (if (isReceivable) tr("logs_total_collectible", "Total Collectible") else tr("logs_total_owed", "Total Owed")) +
-                (if (total > 0) tr("logs_pending_suffix", " (Pending)") else "")
+            val label = if (isReceivable) tr("logs_total_collectible", "Total Collectible") else tr("logs_total_owed", "Total Owed")
             AppText(
                 text = label.uppercase(), size = 10f, lineHeight = 15f, weight = FontWeight.Bold,
                 letterSpacingEm = 0.05f, color = labelColor, modifier = Modifier.padding(end = 56.dp),

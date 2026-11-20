@@ -294,6 +294,7 @@ private fun HomeHeader(state: AppState) {
                 letterSpacingEm = -0.025f,
                 color = c.textGray900,
                 singleLineEllipsis = true,
+                modifier = Modifier.padding(start = 10.dp),
             )
         }
         Row(
