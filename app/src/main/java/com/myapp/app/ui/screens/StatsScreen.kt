@@ -391,8 +391,8 @@ private fun InsightRow(icon: String, style: FaStyle, title: String, sub: String,
 private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
     val c = AppTheme.colors
     val top = groups.take(3)
-    val textRed = if (c.isLight) Brand.red else Color(0xFFFF6B6B)
-    val subRed = if (c.isLight) Color(0xFF991B1B).copy(alpha = 0.7f) else Color(0xFFFCA5A5)
+    val textRed = Color(0xFFFF0000)
+    val subRed = Color(0xFFFF0000)
     StatsCard(topPad = 12.dp, spacing = 12.dp) {
         CardHeader(
             "fa-arrow-trend-up", Brand.red, tr("stats_top_category", "Top Spending Category"),
