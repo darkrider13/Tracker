@@ -210,21 +210,22 @@ fun StatsScreen() {
                 if (spending) {
                     Row(
                         Modifier
-                            .padding(top = 5.dp)
-                            .height(22.dp)
+                            // same height as the title's line (32 dp), top-aligned with it, and the same
+                            // look as the Home date badge (chipBg, Bold) so the two headers match
+                            .height(32.dp)
                             .clip(CircleShape)
-                            .background(c.bgGray200a60, CircleShape)
+                            .background(c.chipBg, CircleShape)
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                 AllCatMonthPicker.open()
                             }
-                            .padding(start = 10.dp, end = 12.dp),
+                            .padding(start = 12.dp, end = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         FaIcon("fa-calendar-alt", 12.dp, Brand.red, style = FaStyle.Regular)
                         AppText(
                             text = allCatMonthLabel(scope), size = 11f, lineHeight = 16.5f,
-                            weight = FontWeight.ExtraBold, color = c.textGray700, noWrap = true,
+                            weight = FontWeight.Bold, color = c.textGray700, noWrap = true,
                         )
                     }
                 }
