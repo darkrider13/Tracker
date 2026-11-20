@@ -400,7 +400,6 @@ private fun NameBox() {
             val white16 = Color.White.copy(alpha = 0.16f)
             Decor("fa-chart-pie", 18.dp, white16, 10f, 0.10f, null, 0.34f)
             Decor("fa-coins", 18.dp, Brand.red.copy(alpha = 0.18f), -8f, null, 0.12f, 0.22f)
-            Decor("fa-university", 20.dp, white16, 9f, 0.14f, null, 0.09f)
             Decor("fa-chart-line", 18.dp, Brand.red.copy(alpha = 0.18f), -10f, null, 0.08f, -0.01f)
             Decor("fa-wallet", 18.dp, Brand.red.copy(alpha = 0.16f), -14f, 0.08f, null, -0.02f)
         }
@@ -463,7 +462,7 @@ private fun NameBox() {
                             focused = it.isFocused
                         },
                     )
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.green else c.borderGray300))
                 }
             }
 

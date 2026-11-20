@@ -388,6 +388,8 @@ private fun DebtList(entries: List<Debt>, category: String, query: String, accen
 
 @Composable
 private fun DebtCard(d: Debt, query: String, category: String, accent: Color) {
+    // Same Debt object is passed again after a commit, so Compose would skip this card; reading the revision makes it redraw (star, paid amounts, ...).
+    AppStore.observe()
     val c = AppTheme.colors
     val cs = DebtUi.of(category)
     val isReceivable = d.type == "receivable"
