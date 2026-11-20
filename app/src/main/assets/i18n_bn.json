@@ -77,7 +77,7 @@
 "logs_no_matching_tx": "এখনো কোনো লেনদেন যুক্ত করা হয়নি।",
 "debt_lent": "ধার দিয়েছেন",
 "debt_borrowed": "ধার নিয়েছেন",
-"debt_note_paid_back_to": "{name}র দেনা পরিশোধ করেছি",
+"debt_note_paid_back_to": "{name}-এর দেনা পরিশোধ করেছি",
 "debt_note_received_from": "{name}-এর ধারের টাকা পেয়েছি",
 "debt_from_fund": "{fund} থেকে",
 "debt_to_fund": "{fund}-এ যোগ হয়েছে",
