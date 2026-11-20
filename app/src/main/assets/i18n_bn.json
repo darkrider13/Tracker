@@ -473,5 +473,13 @@
 "biometric_unlock_title": "ট্র্যাকার আনলক করুন",
 "biometric_verify_continue_desc": "চালিয়ে যেতে আপনার পরিচয় যাচাই করুন",
 "biometric_unlock_btn": "আনলক করুন",
-"biometric_verify_failed": "যাচাই ব্যর্থ হয়েছে। আবার চেষ্টা করুন।"
+"biometric_verify_failed": "যাচাই ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+"update_found_title": "নতুন আপডেট পাওয়া গেছে",
+"update_found_msg": "অ্যাপের একটি নতুন ভার্সন পাওয়া গেছে। এখনই ডাউনলোড করতে চান?",
+"update_download": "ডাউনলোড",
+"update_later": "পরে",
+"update_latest_title": "আপনি সর্বশেষ ভার্সনে আছেন",
+"update_latest_msg": "আপনার অ্যাপ আপ-টু-ডেট আছে।",
+"update_failed_title": "আপডেট চেক করা যায়নি",
+"update_failed_msg": "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
 }
