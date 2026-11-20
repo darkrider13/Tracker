@@ -396,7 +396,7 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
     // same red as the progress bar below, so the text and the bar match
     val textRed = Brand.red
     val subRed = Brand.red
-    // soft outline so the item card's edges stay visible against the card background
+    // soft outline kept only for the small category icon tile
     val edgeColor = if (c.isLight) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.12f)
     StatsCard(topPad = 12.dp, spacing = 12.dp) {
         CardHeader(
@@ -426,10 +426,9 @@ private fun TopCategoriesCard(groups: List<CategoryGroup>, totalSpent: Double) {
             val g = top[page]
             val pct = if (totalSpent > 0) g.total / totalSpent * 100 else 0.0
             Column(Modifier.fillMaxWidth()) {
-                val rowShape = RoundedCornerShape(16.dp)
+                // no edge / no fill: the item row blends straight into the card background
                 Row(
-                    Modifier.fillMaxWidth().clip(rowShape).background(c.bgWhite70, rowShape)
-                        .border(1.dp, edgeColor, rowShape).padding(12.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
