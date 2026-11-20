@@ -464,7 +464,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     }
                     FitText(
                         text = "৳" + fmtMoney(fin.activeBalance),
-                        maxFontSize = 30f,
+                        maxFontSize = 26f,
                         color = c.textDefault,
                         weight = FontWeight.ExtraBold,
                         letterSpacingEm = -0.025f,
