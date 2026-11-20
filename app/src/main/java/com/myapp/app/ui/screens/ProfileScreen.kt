@@ -29,6 +29,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import com.myapp.app.ui.components.pageScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -114,9 +116,17 @@ fun ProfileScreen() {
     val lang = AppSession.lang
     val c = AppTheme.colors
     val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     val pageScrollState = androidx.compose.foundation.rememberScrollState()
-    Box(Modifier.fillMaxSize().pageScroll(pageScrollState), contentAlignment = Alignment.TopCenter) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .pageScroll(pageScrollState)
+            // tapping anywhere else ends name editing: focus clears (-> name is saved, cursor + keyboard go away)
+            .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } },
+        contentAlignment = Alignment.TopCenter,
+    ) {
         Column(
             Modifier
                 .widthIn(max = 448.dp)
@@ -424,11 +434,11 @@ private fun NameBox() {
                 // greeting follows the time of day: 5-12 morning, 12-15 noon, 15-17 afternoon, 17-19 evening, else night
                 val greeting = remember { timeGreeting() }
                 AppText(
-                    text = greeting,
+                    text = "$greeting,",
                     size = 13f, lineHeight = 18f, weight = FontWeight.Bold, color = c.textGray500,
                 )
                 // the underline is only as wide as the text (autoSizeUsernameInput)
-                Column(Modifier.padding(start = 10.dp).width(IntrinsicSize.Max).widthIn(min = 64.dp)) {
+                Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 64.dp)) {
                     BasicTextField(
                         value = field,
                         onValueChange = { field = it },
