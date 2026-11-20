@@ -144,38 +144,56 @@ object FilterPicker {
     }
 }
 
+/** What the picker shows, copied while it is open so it does not change while it fades out. */
+private class PickerSnap(
+    val title: String,
+    val headline: Boolean,
+    val options: List<Pair<String, String>>,
+    val icons: Map<String, Pair<String, com.myapp.app.ui.components.FaStyle>>,
+    val selected: String,
+    val showClear: Boolean,
+)
+
 @Composable
 fun FilterPickerPopup() {
     val c = AppTheme.colors
+    val holder = remember { arrayOfNulls<PickerSnap>(1) }
+    if (Popups.filterPicker) {
+        holder[0] = PickerSnap(
+            LogsState.pickerTitle, LogsState.pickerTitleIsHeadline, LogsState.pickerOptions,
+            LogsState.pickerIcons, LogsState.pendingValue, FilterPicker.hasActiveFilter(),
+        )
+    }
+    val snap = holder[0] ?: return
     PopupLayer(visible = Popups.filterPicker, scrim = 0.6f) {
         GlassCard(radius = 28.dp, padding = 24.dp) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PopupHeaderIcon("fa-filter", 32.dp, 12.dp, Brand.red)
-                    if (LogsState.pickerTitleIsHeadline) {
+                    if (snap.headline) {
                         // the search picker's headline is a full sentence: text-xs, leading-snug
                         AppText(
-                            text = LogsState.pickerTitle, size = 12f, lineHeight = 15f,
+                            text = snap.title, size = 12f, lineHeight = 15f,
                             weight = FontWeight.ExtraBold, letterSpacingEm = -0.025f, color = c.textGray900,
                         )
                     } else {
                         AppText(
-                            text = LogsState.pickerTitle, size = 18f, lineHeight = 28f,
+                            text = snap.title, size = 18f, lineHeight = 28f,
                             weight = FontWeight.ExtraBold, letterSpacingEm = -0.025f, color = c.textGray900,
                         )
                     }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((value, label) in LogsState.pickerOptions) {
+                    for ((value, label) in snap.options) {
                         PickerOption(
-                            label, selected = value == LogsState.pendingValue,
-                            icon = LogsState.pickerIcons[value],
+                            label, selected = value == snap.selected,
+                            icon = snap.icons[value],
                         ) { FilterPicker.stage(value, label) }
                     }
                 }
 
-                if (FilterPicker.hasActiveFilter()) {
+                if (snap.showClear) {
                     ModalButton(
                         tr("filter_clear_filter", "Clear Filter"), ModalButtonKind.Secondary,
                         Modifier.fillMaxWidth(),

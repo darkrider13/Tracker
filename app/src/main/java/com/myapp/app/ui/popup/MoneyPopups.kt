@@ -100,7 +100,7 @@ object AddMoney {
 
     fun close() {
         Popups.addMoney = false
-        editingId = null
+        Popups.afterFade { if (!Popups.addMoney) editingId = null }
     }
 
     /** saveAddMoney() */

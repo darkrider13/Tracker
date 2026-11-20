@@ -1,5 +1,7 @@
 package com.myapp.app.ui.popup
 
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -67,6 +69,13 @@ object Popups {
     var noteModal by mutableStateOf(false)
     var reminders by mutableStateOf(false)
     var allCatMonthPicker by mutableStateOf(false)
+    private val fadeHandler = Handler(Looper.getMainLooper())
+
+    /** Runs [block] once the close animation (0.15 s) is over, so a popup never changes while it fades out. */
+    fun afterFade(block: () -> Unit) {
+        fadeHandler.postDelayed(block, 200L)
+    }
+
     /** Layers on screen right now, fading in or out included (blur stays until the last one is gone). */
     var layersShown by mutableIntStateOf(0)
     var alert by mutableStateOf<AlertRequest?>(null)

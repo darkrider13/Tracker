@@ -76,7 +76,7 @@ object EditTransfer {
 
     fun close() {
         Popups.editTransfer = false
-        editingId = null
+        Popups.afterFade { if (!Popups.editTransfer) editingId = null }
         FundDropdownState.close()
     }
 
@@ -252,7 +252,7 @@ object EditTransaction {
 
     fun close() {
         Popups.editTransaction = false
-        editingId = null
+        Popups.afterFade { if (!Popups.editTransaction) editingId = null }
         FundDropdownState.close()
     }
 

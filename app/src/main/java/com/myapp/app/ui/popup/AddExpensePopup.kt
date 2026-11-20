@@ -49,10 +49,15 @@ object AddExpense {
     fun close() {
         Popups.addExpense = false
         FundDropdownState.close()
-        amount = TextFieldValue("")
-        description = TextFieldValue("")
-        category = TextFieldValue("")
-        picker.onOpen(null)
+        // clear the form only after the fade-out (it must not change while the popup is leaving)
+        Popups.afterFade {
+            if (!Popups.addExpense) {
+                amount = TextFieldValue("")
+                description = TextFieldValue("")
+                category = TextFieldValue("")
+                picker.onOpen(null)
+            }
+        }
     }
 
     /** selectQuickCategory(name) */
