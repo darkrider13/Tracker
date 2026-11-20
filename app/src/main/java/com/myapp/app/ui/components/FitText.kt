@@ -1,6 +1,7 @@
 package com.myapp.app.ui.components
 
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -68,6 +69,8 @@ fun FitText(
         }
         BasicText(
             text = text,
+            // full width so End / Center alignment really moves the text (a wrap-content text ignores it)
+            modifier = Modifier.fillMaxWidth(),
             style = fitStyle(size, weight, color, letterSpacingEm, lineHeightRatio, align),
             softWrap = false,
             maxLines = 1,
