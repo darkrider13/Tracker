@@ -2,6 +2,7 @@ package com.myapp.app.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,9 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.myapp.app.ui.theme.AppTheme
 
 /**
- * A [PagedViewport] with the old `.scroll-fade` look: the bottom edge stays softly faded while there
- * is more below (also at rest), and the fade disappears once the very end is reached. When
- * everything fits, the fade still shows if the list holds at least one full page of cards.
+ * A [PagedViewport] with a bottom fade that appears only while the list is being scrolled (and there
+ * is more below) and disappears instantly when scrolling stops or the very end is reached.
  *
  * The fade is 40 dp and takes the page background colour (#000 dark / #f4f4f4 light), 90 % opaque
  * at the bottom, fading in/out over 250 ms.
@@ -36,9 +36,13 @@ fun ScrollFadePaged(
     val scroll = state.scroll
     val scrollable = scroll.maxValue in 3 until Int.MAX_VALUE
     val more = if (scrollable) scroll.value < scroll.maxValue - 2 else (count > 0 && count >= state.visible)
+    // The fade shows only while the list is moving (and there is more below). The moment the
+    // scrolling stops it is gone at once (no fade-out animation); it eases in softly when scrolling starts.
+    val moving = scroll.isScrollInProgress
+    val show = more && moving
     val alpha by animateFloatAsState(
-        targetValue = if (more) 1f else 0f,
-        animationSpec = tween(250, easing = FastOutSlowInEasing),
+        targetValue = if (show) 1f else 0f,
+        animationSpec = if (show) tween(140, easing = FastOutSlowInEasing) else snap(),
         label = "scrollFade",
     )
 
