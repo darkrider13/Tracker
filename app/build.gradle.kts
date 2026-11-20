@@ -37,7 +37,11 @@ android {
 
     buildTypes {
         getByName("debug") {
-            isMinifyEnabled = false
+            // Fast start-up: a debuggable, un-optimised APK is JIT-only and opens slowly.
+            // Not debuggable + R8 gives a much quicker cold start (same signing key as before).
+            isDebuggable = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
@@ -82,4 +86,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.animation:animation")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")   // pre-compiles Compose on first launches -> faster start
 }
