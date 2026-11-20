@@ -67,6 +67,7 @@ import com.myapp.app.data.AppStore
 import com.myapp.app.data.JsDate
 import com.myapp.app.ui.AppActions
 import com.myapp.app.ui.AppUi
+import com.myapp.app.ui.Tab
 import com.myapp.app.ui.components.AppRichText
 import com.myapp.app.ui.components.AppText
 import com.myapp.app.ui.components.CategoryIcon
@@ -639,7 +640,7 @@ private fun DebtsCard(state: AppState) {
                         )
                         FitText(
                             text = "৳" + fmtMoney(jsRound(totalOwe), 0),
-                            maxFontSize = 20f,
+                            maxFontSize = 14f,
                             color = Brand.red,
                             weight = FontWeight.ExtraBold,
                             lineHeightRatio = 1.4f,
@@ -665,7 +666,7 @@ private fun DebtsCard(state: AppState) {
                         )
                         FitText(
                             text = "৳" + fmtMoney(jsRound(totalOwed), 0),
-                            maxFontSize = 20f,
+                            maxFontSize = 14f,
                             color = Brand.green,
                             weight = FontWeight.ExtraBold,
                             lineHeightRatio = 1.4f,
@@ -750,6 +751,9 @@ private fun CategoryCard(state: AppState) {
         DailySpendChart(
             data = chart.data,
             isDark = !c.isLight,
+            // the bars grow up again every time the Home tab is opened (and not while a lock screen is up)
+            play = AppUi.tab == Tab.Home && !(com.myapp.app.ui.popup.LockState.pinVisible ||
+                com.myapp.app.ui.popup.LockState.patternVisible || com.myapp.app.ui.popup.LockState.biometricVisible),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(112.dp),
