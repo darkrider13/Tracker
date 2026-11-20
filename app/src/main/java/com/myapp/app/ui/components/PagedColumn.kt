@@ -122,6 +122,7 @@ fun PagedViewport(
     count: Int,
     modifier: Modifier = Modifier,
     snap: Boolean = true,
+    animateSize: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -139,7 +140,12 @@ fun PagedViewport(
     }
 
     // size changes (a longer / shorter list after a filter) glide instead of jumping
-    Box(modifier.animateContentSize(tween(180, easing = FastOutSlowInEasing)).then(clamp).verticalScroll(state.scroll)) {
+    Box(
+        modifier
+            .then(if (animateSize) Modifier.animateContentSize(tween(180, easing = FastOutSlowInEasing)) else Modifier)
+            .then(clamp)
+            .verticalScroll(state.scroll),
+    ) {
         content()
     }
 }
