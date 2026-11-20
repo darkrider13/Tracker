@@ -537,12 +537,15 @@ object LockState {
 // Screens
 // =============================================================================================
 
-/** The full-screen background of the lock screens: gradient in day mode, pure black in dark mode. */
+/** The full-screen background of the lock screens: the Home backdrop in day mode, pure black in dark mode. */
 @Composable
-private fun LockBackground(content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+private fun LockBackground(
+    accent: Color = Brand.red,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
+) {
     val c = AppTheme.colors
-    val bg = if (c.isLight) Modifier.background(Brush.verticalGradient(listOf(Color(0xFFF9FAFB), Color(0xFFF9FAFB), Color(0xFFFEF2F2))))
-    else Modifier.background(Color.Black)
+    // day mode: exactly the Home backdrop (also under the bars); dark mode: pure black as before
+    val bg = if (c.isLight) Modifier else Modifier.background(Color.Black)
     Box(
         Modifier
             .fillMaxSize()
@@ -550,7 +553,8 @@ private fun LockBackground(content: @Composable androidx.compose.foundation.layo
             // everything below is blocked while a lock screen is up
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
-        FinanceDecor()
+        if (c.isLight) com.myapp.app.ui.components.AppBackdrop(extend = true)
+        FinanceDecor(accent = accent)
         content()
     }
 }
@@ -767,7 +771,7 @@ fun BiometricLockScreen() {
         delay(450)
         if (LockState.biometricVisible) LockState.verifyBiometricUnlock()
     }
-    LockBackground {
+    LockBackground(accent = Brand.green) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -777,7 +781,7 @@ fun BiometricLockScreen() {
             Box(
                 Modifier.size(80.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f), CircleShape),
                 contentAlignment = Alignment.Center,
-            ) { FaIcon("fa-fingerprint", 30.dp, Brand.red) }
+            ) { FaIcon("fa-fingerprint", 30.dp, Brand.green) }
             AppText(
                 text = tr("lock_title", "Tracker is Locked"), size = 20f, lineHeight = 28f, weight = FontWeight.Bold,
                 color = LockTitleColor(), align = TextAlign.Center, modifier = Modifier.padding(top = 24.dp),
@@ -792,7 +796,7 @@ fun BiometricLockScreen() {
                 Modifier
                     .shadow(8.dp, btnShape)
                     .clip(btnShape)
-                    .background(Brand.red, btnShape)
+                    .background(Brand.green, btnShape)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { LockState.verifyBiometricUnlock() }
                     .padding(horizontal = 32.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -804,7 +808,7 @@ fun BiometricLockScreen() {
             if (s.biometricError) {
                 AppText(
                     text = tr("biometric_verify_failed", "Verification failed. Try again."), size = 11f, lineHeight = 16.5f,
-                    weight = FontWeight.Medium, color = RedError, align = TextAlign.Center, modifier = Modifier.padding(top = 16.dp),
+                    weight = FontWeight.Medium, color = Color(0xFFFF0000), align = TextAlign.Center, modifier = Modifier.padding(top = 16.dp),
                 )
             }
         }
@@ -867,7 +871,7 @@ fun LockTypeChooserPopup() {
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Box(
-                                    Modifier.size(36.dp).shadow(1.dp, CircleShape).background(c.bgWhite, CircleShape),
+                                    Modifier.size(36.dp).background(c.bgWhite, CircleShape),
                                     contentAlignment = Alignment.Center,
                                 ) { FaIcon(icon, 14.dp, Brand.red) }
                                 AppText(text = label, size = 14f, lineHeight = 20f, weight = FontWeight.Bold, color = c.textGray800)

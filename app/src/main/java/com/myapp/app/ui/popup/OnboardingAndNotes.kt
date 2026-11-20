@@ -108,8 +108,8 @@ fun OnboardingScreen() {
     }
 
     BackHandler(enabled = true) { }
-    val bgModifier = if (c.isLight) Modifier.background(Brush.verticalGradient(listOf(Color(0xFFF9FAFB), Color(0xFFF9FAFB), Color(0xFFFEF2F2))))
-    else Modifier.background(Color.Black)
+    // day mode: exactly the Home backdrop (also under the bars); dark mode: pure black as before
+    val bgModifier = if (c.isLight) Modifier else Modifier.background(Color.Black)
 
     Box(
         Modifier
@@ -117,6 +117,7 @@ fun OnboardingScreen() {
             .then(bgModifier)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
+        if (c.isLight) com.myapp.app.ui.components.AppBackdrop(extend = true)
         FinanceDecor()
         Column(
             Modifier
@@ -308,7 +309,7 @@ fun NoteModalPopup() {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            Modifier.size(28.dp).shadow(1.dp, CircleShape).background(c.bgWhite, CircleShape),
+                            Modifier.size(28.dp).background(c.bgWhite, CircleShape),
                             contentAlignment = Alignment.Center,
                         ) { NoteGlyph(11.dp, Brand.red) }
                         AppText(
