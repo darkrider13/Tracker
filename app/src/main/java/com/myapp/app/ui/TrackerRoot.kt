@@ -110,6 +110,7 @@ fun TrackerRoot(activity: Activity) {
 
             AllPopups()
             com.myapp.app.ui.popup.BusyOverlay()
+            com.myapp.app.ui.popup.UpdateDownloadOverlay()
             com.myapp.app.ui.popup.LockHost()
 
             BootSplash(
