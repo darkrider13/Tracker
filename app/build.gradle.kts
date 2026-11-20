@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.myapp.app.kotlin"
+    namespace = "com.myapp.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.myapp.app"
+        applicationId = "com.myapp.app.kotlin"
         minSdk = 22
         targetSdk = 34
 
