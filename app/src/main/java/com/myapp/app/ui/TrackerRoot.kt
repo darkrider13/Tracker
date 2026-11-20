@@ -1,7 +1,6 @@
 package com.myapp.app.ui
 
 import android.app.Activity
-import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +29,6 @@ import com.myapp.app.data.AppSession
 import com.myapp.app.data.AppStore
 import com.myapp.app.ui.components.AppBackdrop
 import com.myapp.app.ui.components.BottomNavBar
-import com.myapp.app.ui.screens.BootSplash
 import com.myapp.app.ui.screens.FundDetailsScreen
 import com.myapp.app.ui.screens.HomeScreen
 import com.myapp.app.ui.screens.ProfileScreen
@@ -40,9 +38,6 @@ import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.SystemBars
 import com.myapp.app.ui.theme.TrackerTheme
 import kotlinx.coroutines.delay
-
-/** The splash stays up for at least this long from app start (was 2.2 s; shortened so the app opens faster). */
-private const val MIN_SPLASH_MS = 1200L
 
 @Composable
 fun TrackerRoot(activity: Activity) {
@@ -59,12 +54,8 @@ fun TrackerRoot(activity: Activity) {
     }
 
     TrackerTheme(isLight = isLight, isBangla = isBangla) {
-        var bootPending by remember { mutableStateOf(true) }
+        // No splash screen: the app is shown straight away; the lock (if any) appears right away too.
         LaunchedEffect(Unit) {
-            val elapsed = SystemClock.elapsedRealtime() - AppSession.bootStartMs
-            delay((MIN_SPLASH_MS - elapsed).coerceAtLeast(0L))
-            bootPending = false
-            // The lock appears together with the splash going away (a finished profile only).
             if (AppStore.state.onboardingComplete) com.myapp.app.ui.popup.LockState.showStartupLock()
         }
 
@@ -100,12 +91,10 @@ fun TrackerRoot(activity: Activity) {
                 label = "popupBlur",
             )
 
-            // The app screens appear (fade in) once the splash is leaving, like #app-root before.
             Box(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = if (bootPending) 0f else 1f
                         val r = blurDp * density
                         renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
                     },
@@ -116,13 +105,11 @@ fun TrackerRoot(activity: Activity) {
                 val current = AppUi.tab
                 val alive = warm + current
                 LaunchedEffect(current) { warm = warm + current }
-                LaunchedEffect(bootPending) {
-                    if (!bootPending) {
-                        delay(600)
-                        for (t in listOf(Tab.Logs, Tab.Stats, Tab.Profile)) {
-                            delay(350)
-                            warm = warm + t
-                        }
+                LaunchedEffect(Unit) {
+                    delay(600)
+                    for (t in listOf(Tab.Logs, Tab.Stats, Tab.Profile)) {
+                        delay(350)
+                        warm = warm + t
                     }
                 }
                 // A text field left focused on a hidden tab must not keep the keyboard open.
@@ -153,11 +140,6 @@ fun TrackerRoot(activity: Activity) {
             com.myapp.app.ui.popup.UpdateDownloadOverlay()
             com.myapp.app.ui.popup.LockHost()
 
-            BootSplash(
-                isLight = isLight,
-                isBangla = isBangla,
-                visible = bootPending,
-            )
         }
     }
 }
