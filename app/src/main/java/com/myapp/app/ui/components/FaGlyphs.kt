@@ -11,6 +11,7 @@ object FaGlyphs {
         "arrow-down" to 0xf063,
         "arrow-left" to 0xf060,
         "arrow-right" to 0xf061,
+        "arrow-trend-down" to 0xe097,
         "arrow-trend-up" to 0xe098,
         "arrows-rotate" to 0xf021,
         "baby" to 0xf77c,

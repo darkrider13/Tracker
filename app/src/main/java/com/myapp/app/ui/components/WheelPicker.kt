@@ -108,8 +108,8 @@ fun WheelPicker(
     loop: Boolean,
     width: Dp,
     resetKey: Any,
-    onSettle: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onSettle: (String) -> Unit,
 ) {
     val c = AppTheme.colors
     val n = items.size
