@@ -68,6 +68,8 @@ import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.Brand
 import com.myapp.app.util.getAvatarOption
 import com.myapp.app.util.tr
+import com.myapp.app.util.localizeDigits
+import com.myapp.app.util.trf
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -403,68 +405,87 @@ private fun NameBox() {
             Decor("fa-wallet", 18.dp, Brand.red.copy(alpha = 0.16f), -14f, 0.08f, null, -0.02f)
         }
 
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // big avatar with a coloured ring and a small pencil badge (tap = choose avatar)
-            Box(Modifier.size(72.dp)) {
+            // avatar with a small pencil badge (tap = choose avatar)
+            Box(Modifier.size(56.dp)) {
                 Box(
                     Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
                         .background(c.bgGray100, CircleShape)
-                        .border(2.dp, avatar.color, CircleShape)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
                     contentAlignment = Alignment.Center,
-                ) { FaIcon(avatar.icon, 30.dp, avatar.color) }
+                ) { FaIcon(avatar.icon, 22.dp, avatar.color) }
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)
-                        .offset(x = 2.dp, y = 2.dp)
-                        .size(24.dp)
+                        .offset(x = 3.dp, y = 3.dp)
+                        .size(20.dp)
                         .clip(CircleShape)
-                        .background(c.bgWhite, CircleShape)
-                        .border(1.dp, c.borderGray300, CircleShape)
+                        .background(Brand.red.copy(alpha = 0.22f), CircleShape)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AvatarPicker.open() },
                     contentAlignment = Alignment.Center,
-                ) { FaIcon("fa-pen", 10.dp, c.textGray900) }
+                ) { FaIcon("fa-pen", 9.dp, Brand.red) }
             }
 
-            var field by remember { mutableStateOf(TextFieldValue(state.username)) }
-            var focused by remember { mutableStateOf(false) }
-            // keep in sync when the name changes elsewhere (restore, onboarding)
-            if (!focused && field.text != state.username) field = TextFieldValue(state.username)
+            Column(Modifier.weight(1f)) {
+                var field by remember { mutableStateOf(TextFieldValue(state.username)) }
+                var focused by remember { mutableStateOf(false) }
+                // keep in sync when the name changes elsewhere (restore, onboarding)
+                if (!focused && field.text != state.username) field = TextFieldValue(state.username)
 
-            fun commit() {
-                val v = field.text.trim().ifEmpty { "User" }
-                AppStore.state.username = v
-                AppStore.commit()
-                field = TextFieldValue(v)
-            }
-            // the underline is only as wide as the text (autoSizeUsernameInput), centred under the avatar
-            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                BasicTextField(
-                    value = field,
-                    onValueChange = { field = it },
-                    singleLine = true,
-                    textStyle = appTextStyle(20f, c.textGray900, FontWeight.Bold, lineHeight = 28f).copy(textAlign = TextAlign.Center),
-                    cursorBrush = SolidColor(c.textGray900),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { commit() }),
-                    modifier = Modifier.fillMaxWidth().onFocusChanged {
-                        if (focused && !it.isFocused) commit()
-                        focused = it.isFocused
-                    },
+                fun commit() {
+                    val v = field.text.trim().ifEmpty { "User" }
+                    AppStore.state.username = v
+                    AppStore.commit()
+                    field = TextFieldValue(v)
+                }
+                AppText(
+                    text = tr("home_welcome", "Welcome Back"),
+                    size = 12f, lineHeight = 16f, color = c.textGray500,
                 )
-                Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
+                // the underline is only as wide as the text (autoSizeUsernameInput)
+                Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 64.dp)) {
+                    BasicTextField(
+                        value = field,
+                        onValueChange = { field = it },
+                        singleLine = true,
+                        textStyle = appTextStyle(18f, c.textGray900, FontWeight.Bold, lineHeight = 26f),
+                        cursorBrush = SolidColor(c.textGray900),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { commit() }),
+                        modifier = Modifier.onFocusChanged {
+                            if (focused && !it.isFocused) commit()
+                            focused = it.isFocused
+                        },
+                    )
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) Brand.red else c.borderGray300))
+                }
+                // two small chips: how many entries and funds the profile holds
+                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val txN = localizeDigits(state.transactions.size.toString())
+                    val fundN = localizeDigits(state.funds.size.toString())
+                    ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red)
+                    ProfileChip(trf("profile_chip_funds", "${state.funds.size} funds", "count" to fundN), Brand.green)
+                }
             }
-            AppText(
-                text = tr("profile_name_tagline", "Your tracker profile"),
-                size = 13f, lineHeight = 18f, color = c.textGray500, align = TextAlign.Center,
-            )
         }
+    }
+}
+
+@Composable
+private fun ProfileChip(text: String, color: Color) {
+    Box(
+        Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.14f), CircleShape)
+            .padding(horizontal = 10.dp, vertical = 2.dp),
+    ) {
+        AppText(text = text, size = 12f, lineHeight = 18f, weight = FontWeight.Bold, color = color, noWrap = true)
     }
 }
 
