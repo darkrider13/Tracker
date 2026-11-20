@@ -312,7 +312,7 @@ private fun SortChip(
             .height(32.dp)
             .clip(shape)
             .background(c.bgWhite, shape)
-            .border(1.dp, c.borderGray200.copy(alpha = 0.8f), shape)
+            .border(1.dp, c.borderGray200, shape)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
