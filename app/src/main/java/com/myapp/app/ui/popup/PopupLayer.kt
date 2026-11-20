@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -65,6 +67,8 @@ object Popups {
     var noteModal by mutableStateOf(false)
     var reminders by mutableStateOf(false)
     var allCatMonthPicker by mutableStateOf(false)
+    /** Layers on screen right now, fading in or out included (blur stays until the last one is gone). */
+    var layersShown by mutableIntStateOf(0)
     var alert by mutableStateOf<AlertRequest?>(null)
     var confirm by mutableStateOf<ConfirmRequest?>(null)
 
@@ -99,6 +103,10 @@ fun PopupLayer(
         label = "popupProgress",
     )
     if (!visible && progress.value <= 0.001f) return
+    DisposableEffect(Unit) {
+        Popups.layersShown++
+        onDispose { Popups.layersShown-- }
+    }
 
     BoxWithConstraints(
         modifier = modifier

@@ -4,6 +4,7 @@ import com.myapp.app.ui.AppActions
 
 /** Connects the buttons of the screens (Home, + button...) to the popups built in this step. */
 fun installPopupHooks() {
+    com.myapp.app.data.AppStore.redrawGate = { Popups.anyVisible }
     installDatePickerHooks()
     installDebtPopupHooks()
     com.myapp.app.ui.screens.installFundDetailsHooks()
