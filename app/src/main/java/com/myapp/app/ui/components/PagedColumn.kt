@@ -1,5 +1,8 @@
 package com.myapp.app.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
@@ -53,6 +56,19 @@ class PagedState(val scroll: ScrollState, val visible: Int, val gapPx: Int, val 
             start += 1
         }
         return if (best > 0) best else null
+    }
+
+    /**
+     * A good-enough viewport height (px) while the real one is not known yet (some items are still
+     * unmeasured): average of the items measured so far. Keeps the list from flashing at full length
+     * for a frame and then collapsing (the "shake" when a long list replaces a short one).
+     */
+    fun provisionalMax(defaultItemPx: Int): Int {
+        var sum = 0
+        var n = 0
+        for (h in heights.values) { sum += h; n++ }
+        val avg = if (n > 0) sum / n else defaultItemPx
+        return avg * visible + gapPx * (visible - 1)
     }
 
     /** Scroll offset (px) where page-start item [index] sits at the top. */
@@ -110,7 +126,8 @@ fun PagedViewport(
 ) {
     val density = LocalDensity.current
     val maxPx = state.viewportMax(count)
-    val clamp = if (maxPx != null) Modifier.heightIn(max = with(density) { maxPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
+    val shownPx = maxPx ?: if (count > state.visible) state.provisionalMax(with(density) { 76.dp.roundToPx() }) else null
+    val clamp = if (shownPx != null) Modifier.heightIn(max = with(density) { shownPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
 
     LaunchedEffect(state, count, snap) {
         snapshotFlow { state.scroll.isScrollInProgress }.collect { moving ->
@@ -121,7 +138,8 @@ fun PagedViewport(
         }
     }
 
-    Box(modifier.then(clamp).verticalScroll(state.scroll)) {
+    // size changes (a longer / shorter list after a filter) glide instead of jumping
+    Box(modifier.animateContentSize(tween(180, easing = FastOutSlowInEasing)).then(clamp).verticalScroll(state.scroll)) {
         content()
     }
 }
