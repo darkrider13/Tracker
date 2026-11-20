@@ -14,13 +14,15 @@ import androidx.compose.ui.unit.dp
  * The page only scrolls when the content really runs under the nav bar (small phones, long content);
  * lists inside the page keep their own normal scrolling.
  *
+ * [forceLock] keeps the page locked no matter how tall the content is.
+ *
  * [bottomPad] is the empty space the screen keeps at its end (128 dp), [navClear] the part of it the
  * floating nav bar covers. Only what is more than the rest counts as real overflow.
  */
 @Composable
-fun Modifier.pageScroll(state: ScrollState, bottomPad: Dp = 128.dp, navClear: Dp = 76.dp): Modifier {
+fun Modifier.pageScroll(state: ScrollState, bottomPad: Dp = 128.dp, navClear: Dp = 76.dp, forceLock: Boolean = false): Modifier {
     val slack = with(LocalDensity.current) { (bottomPad - navClear).roundToPx() }
-    val canScroll = state.maxValue > slack
+    val canScroll = !forceLock && state.maxValue > slack
     // If the content shrinks until it fits again, the page returns to the top and locks.
     LaunchedEffect(canScroll) {
         if (!canScroll && state.value > 0) state.animateScrollTo(0)
