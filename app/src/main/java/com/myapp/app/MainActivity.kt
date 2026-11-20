@@ -31,6 +31,9 @@ class MainActivity : FragmentActivity() {
         com.myapp.app.ui.popup.BackupUi.attach(this)   // file picker for Import
         com.myapp.app.ui.popup.BiometricHelper.activity = this   // fingerprint prompt host
         com.myapp.app.ui.popup.ReminderPanel.attach(this)         // notification permission launcher
+        // Edge-to-edge: the page background is drawn under the (transparent, day mode) bars; TrackerRoot
+        // pads the content by the bar sizes, so layouts stay exactly where they were.
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
 
         // Security: the lock is raised BEFORE the first frame is composed (not after it), so Home can
