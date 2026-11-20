@@ -59,8 +59,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk Tracker.apk
+          # The app's "check for update" button reads versionCode from these notes.
+          printf 'Auto-built APK from commit %s\nversionCode: %s\nversionName: 2.0.%s\n' \
+            "${GITHUB_SHA::7}" "$((1000 + GITHUB_RUN_NUMBER))" "$GITHUB_RUN_NUMBER" > release-notes.txt
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest Tracker.apk \
             --title "Tracker - latest build" \
-            --notes "Auto-built APK from commit ${GITHUB_SHA::7}" \
+            --notes-file release-notes.txt \
             --target "$GITHUB_SHA"
