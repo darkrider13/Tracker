@@ -27,6 +27,11 @@ import androidx.compose.animation.core.tween
 import com.myapp.app.ui.popup.AllPopups
 import com.myapp.app.ui.popup.Popups
 import com.myapp.app.data.AppSession
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import com.myapp.app.data.AppStore
 import com.myapp.app.ui.components.AppBackdrop
 import com.myapp.app.ui.components.BottomNavBar
@@ -85,7 +90,15 @@ fun TrackerRoot(activity: Activity) {
                 .fillMaxSize()
                 .background(AppTheme.colors.bodyBg),
         ) {
+            // the page background fills the WHOLE window, also under the status / navigation bar
             AppBackdrop()
+
+            // everything else sits between the bars (and above the keyboard), where it always was
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime)),
+            ) {
 
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
             // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
@@ -149,6 +162,7 @@ fun TrackerRoot(activity: Activity) {
             com.myapp.app.ui.popup.UpdateDownloadOverlay()
             com.myapp.app.ui.popup.LockHost()
 
+            }
         }
     }
 }
