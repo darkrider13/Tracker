@@ -247,6 +247,7 @@ fun FundList(state: AppState) {
             count = names.size,
             snap = dragging == null,
             animateSize = false,   // opening the funds panel: no height animation, it just appears
+            smoothSnap = true,     // same glide-onto-a-whole-card scrolling as the fund history list
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
