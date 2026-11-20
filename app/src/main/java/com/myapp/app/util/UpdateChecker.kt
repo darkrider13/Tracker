@@ -12,11 +12,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * "Check for update": asks GitHub for the newest release of this repo and compares its
- * versionCode (written into the release notes by build-apk.yml) with the installed one.
+ * "Check for update": downloads the small version.json that build-apk.yml attaches to the
+ * "latest" release and compares its versionCode with the installed one.
+ * (Plain github.com download links are used, NOT api.github.com, because the API refuses
+ * anonymous phones with HTTP 403 once the shared IP address hits its hourly limit.)
  */
 object UpdateChecker {
-    private const val RELEASE_API = "https://api.github.com/repos/darkrider13/Tracker-V2/releases/latest"
+    private const val BASE = "https://github.com/darkrider13/Tracker-V2/releases/download/latest/"
+    private const val VERSION_URL = BASE + "version.json"
+    private const val APK_URL = BASE + "Tracker.apk"
 
     /** true after a check found a newer version (shows the green dot on the update icon). */
     var updateAvailable by mutableStateOf(false)
@@ -37,37 +41,27 @@ object UpdateChecker {
     suspend fun check(context: Context): Result = withContext(Dispatchers.IO) {
         var conn: HttpURLConnection? = null
         try {
-            conn = (URL(RELEASE_API).openConnection() as HttpURLConnection).apply {
+            conn = (URL(VERSION_URL).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 10_000
                 readTimeout = 10_000
-                setRequestProperty("Accept", "application/vnd.github+json")
+                useCaches = false
+                instanceFollowRedirects = true
+                setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("User-Agent", "Tracker-App")
             }
             val code = conn.responseCode
             if (code != 200) return@withContext Result.Failed("HTTP $code")
             val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
-            val body = json.optString("body")
-            val remoteCode = Regex("versionCode:\\s*(\\d+)").find(body)?.groupValues?.get(1)?.toLongOrNull()
-                ?: return@withContext Result.Failed("no versionCode in release notes")
-            val remoteName = Regex("versionName:\\s*([\\w.\\-]+)").find(body)?.groupValues?.get(1)
+            val remoteCode = json.optLong("versionCode", -1L)
+            if (remoteCode < 0) return@withContext Result.Failed("bad version.json")
+            val remoteName = json.optString("versionName").ifEmpty { null }
 
             if (remoteCode <= installedCode(context)) {
                 updateAvailable = false
                 return@withContext Result.UpToDate
             }
-            var url = json.optString("html_url")
-            val assets = json.optJSONArray("assets")
-            if (assets != null) {
-                for (i in 0 until assets.length()) {
-                    val a = assets.getJSONObject(i)
-                    if (a.optString("name").endsWith(".apk", ignoreCase = true)) {
-                        url = a.optString("browser_download_url")
-                        break
-                    }
-                }
-            }
             updateAvailable = true
-            Result.Available(remoteName, url)
+            Result.Available(remoteName, APK_URL)
         } catch (e: Exception) {
             Result.Failed(e.javaClass.simpleName)
         } finally {
