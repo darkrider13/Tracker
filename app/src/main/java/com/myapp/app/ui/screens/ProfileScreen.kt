@@ -382,28 +382,6 @@ private fun NameBox() {
         Modifier.fillMaxWidth().clip(shape).background(if (c.isLight) c.bgGray200a60 else SoftGlass.bg, shape)
             .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape),
     ) {
-        // faint finance icons scattered behind (positions are % of the box, like the old absolute layout)
-        BoxWithConstraints(Modifier.matchParentSize()) {
-            val w = maxWidth
-            val h = maxHeight
-            @Composable
-            fun Decor(icon: String, size: Dp, tint: Color, rotation: Float, topPct: Float?, bottomPct: Float?, rightPct: Float) {
-                val mod = Modifier
-                    .align(if (topPct != null) Alignment.TopEnd else Alignment.BottomEnd)
-                    .offset(
-                        x = -(w * rightPct),
-                        y = if (topPct != null) h * topPct else -(h * (bottomPct ?: 0f)),
-                    )
-                    .rotate(rotation)
-                Box(mod) { FaIcon(icon, size, tint) }
-            }
-            val white16 = Color.White.copy(alpha = 0.16f)
-            Decor("fa-chart-pie", 18.dp, white16, 10f, 0.10f, null, 0.34f)
-            Decor("fa-coins", 18.dp, Brand.red.copy(alpha = 0.18f), -8f, null, 0.12f, 0.22f)
-            Decor("fa-chart-line", 18.dp, Brand.red.copy(alpha = 0.18f), -10f, null, 0.08f, -0.01f)
-            Decor("fa-wallet", 18.dp, Brand.red.copy(alpha = 0.16f), -14f, 0.08f, null, -0.02f)
-        }
-
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -467,7 +445,7 @@ private fun NameBox() {
             }
 
             // two small chips stacked on the right: they grow towards the left as the numbers get bigger
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val txN = localizeDigits(state.transactions.size.toString())
                 val fundN = localizeDigits(state.funds.size.toString())
                 ProfileChip(trf("stats_tx_count_suffix", "${state.transactions.size} transactions", "count" to txN), Brand.red)
@@ -479,13 +457,17 @@ private fun NameBox() {
 
 @Composable
 private fun ProfileChip(text: String, color: Color) {
+    // both chips share one width (the wider one decides) and one fixed height, so their edges line up
     Box(
         Modifier
+            .fillMaxWidth()
+            .height(24.dp)
             .clip(CircleShape)
             .background(color.copy(alpha = 0.14f), CircleShape)
-            .padding(horizontal = 10.dp, vertical = 2.dp),
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        AppText(text = text, size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = color, noWrap = true)
+        AppText(text = text, size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = color, noWrap = true, align = TextAlign.Center)
     }
 }
 
