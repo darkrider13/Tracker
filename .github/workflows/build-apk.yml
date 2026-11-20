@@ -17,10 +17,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -47,11 +50,9 @@ jobs:
       - name: Build Debug APK with Gradle
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: |
-          gradle assembleDebug --no-daemon --stacktrace || \
-          (echo "First attempt failed, clearing Gradle cache and retrying..." && \
-           rm -rf ~/.gradle/caches && \
-           gradle assembleDebug --no-daemon --stacktrace)
+        # One build only: a code error fails fast (the old retry wiped the whole Gradle cache and
+        # rebuilt everything, which doubled the time of every failed build).
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
