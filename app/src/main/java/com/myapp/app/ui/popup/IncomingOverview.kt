@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import com.myapp.app.data.AppState
 import com.myapp.app.data.AppStore
@@ -121,17 +122,21 @@ private fun monthIndexOf(ms: Long): Int {
 private fun incomingFor(state: AppState, filter: String): List<Transaction> {
     val nowCal = Calendar.getInstance()
     val curIdx = nowCal.get(Calendar.YEAR) * 12 + nowCal.get(Calendar.MONTH)
-    fun ms(t: Transaction) = JsDate.parseMillis(t.date) ?: 0L
-    return state.transactions
-        .filter { t ->
-            if (!isIncomingTx(t)) return@filter false
-            when (filter) {
-                "month" -> JsDate.parseMillis(t.date)?.let { monthIndexOf(it) == curIdx } ?: false
-                "last" -> JsDate.parseMillis(t.date)?.let { monthIndexOf(it) == curIdx - 1 } ?: false
-                else -> true
-            }
+    // every date is parsed ONCE (the old sort parsed it again on every comparison: slow on a big history, worst on a cold start)
+    val rows = ArrayList<Pair<Long, Transaction>>()
+    for (t in state.transactions) {
+        if (!isIncomingTx(t)) continue
+        val ms = JsDate.parseMillis(t.date)
+        val keep = when (filter) {
+            "month" -> ms != null && monthIndexOf(ms) == curIdx
+            "last" -> ms != null && monthIndexOf(ms) == curIdx - 1
+            else -> true
         }
-        .sortedWith(compareByDescending<Transaction> { ms(it) }.thenByDescending { it.id })
+        if (keep) rows.add((ms ?: 0L) to t)
+    }
+    return rows
+        .sortedWith(compareByDescending<Pair<Long, Transaction>> { it.first }.thenByDescending { it.second.id })
+        .map { it.second }
 }
 
 /** "From whom": the person of a debt line, or the note of added money. */
@@ -149,21 +154,32 @@ fun IncomingOverviewSheet() {
     // recomposed on every frame of the animation. `mounted` keeps it on screen until the slide-out has finished.
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     var mounted by remember { mutableStateOf(false) }
-    // the rows are built only once the slide-in has fully finished (same as the All Categories Summary sheet)
+    // false until the slide-in has finished: the rows are already built (so the sheet has its FINAL height from the
+    // first frame and nothing jumps when it lands) but stay invisible; they fade in one after another once it has landed.
     var listReady by remember { mutableStateOf(false) }
+    // [0] = sheet height, [1] = screen height (px), filled in by the layout below
+    val geo = remember { FloatArray(2) }
     val closeNow = !open && IncomingOverview.skipCloseAnim
     LaunchedEffect(open) {
         if (open) {
             mounted = true
-            // let the sheet be composed + measured at progress 0 first (the heaviest frame), so that frame
-            // is not counted as animation time and the slide does not start with a jump / rush up
-            androidx.compose.runtime.withFrameNanos { }
-            androidx.compose.runtime.withFrameNanos { }
-            progress.animateTo(1f, tween(SHEET_OPEN_MS, easing = SheetEase))
+            // Let the sheet be composed + measured at progress 0 first (the heaviest frames), so they are not counted
+            // as animation time and the slide never starts with a jump / rush. Three frames: composition, then the
+            // follow-up recomposition that settles the list height.
+            repeat(3) { androidx.compose.runtime.withFrameNanos { } }
+            // A tall sheet has further to travel, so it gets proportionally more time: the speed matches the shorter
+            // All Categories sheet instead of racing up.
+            val frac = if (geo[1] > 0f) geo[0] / geo[1] else 0.45f
+            val openMs = (SHEET_OPEN_MS * frac / 0.45f).coerceIn(SHEET_OPEN_MS.toFloat(), 600f).toInt()
+            progress.animateTo(1f, tween(openMs, easing = SheetEase))
             listReady = true
         } else if (mounted) {
             if (IncomingOverview.skipCloseAnim) progress.snapTo(0f)
-            else progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
+            else {
+                val frac = if (geo[1] > 0f) geo[0] / geo[1] else 0.45f
+                val closeMs = (SHEET_CLOSE_MS * frac / 0.45f).coerceIn(SHEET_CLOSE_MS.toFloat(), 380f).toInt()
+                progress.animateTo(0f, tween(closeMs, easing = SheetCloseEase))
+            }
             mounted = false
             listReady = false
             IncomingOverview.skipCloseAnim = false
@@ -191,6 +207,7 @@ fun IncomingOverviewSheet() {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
+            .onSizeChanged { geo[1] = it.height.toFloat() }
             .drawBehind { drawRect(Color.Black.copy(alpha = 0.45f * progress.value)) }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
         contentAlignment = Alignment.BottomCenter,
@@ -206,6 +223,7 @@ fun IncomingOverviewSheet() {
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .heightIn(max = maxSheetH)
+                .onSizeChanged { geo[0] = it.height.toFloat() }
                 .graphicsLayer { translationY = (1f - progress.value) * size.height }
                 .clip(sheetShape)
                 .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
@@ -283,14 +301,10 @@ fun IncomingOverviewSheet() {
                     TabSwitch(tab)
                     // a fresh list (new measuring, new entrance) whenever the tab or the period changes
                     key(tab, filter) {
-                        if (!listReady) {
-                            // placeholder of about the final size while the sheet slides in (the rows come in right after)
-                            val n = minOf(if (tab == "fund") perFund.size else list.size, visibleRows)
-                            Spacer(Modifier.fillMaxWidth().height(INCOMING_ROW_DP.dp * n + 8.dp * (n - 1)))
-                        } else if (tab == "fund") {
-                            IncomingPagedList(count = perFund.size, visible = visibleRows) { i -> FundRow(perFund[i], total) }
+                        if (tab == "fund") {
+                            IncomingPagedList(count = perFund.size, visible = visibleRows, go = listReady) { i -> FundRow(perFund[i], total) }
                         } else {
-                            IncomingPagedList(count = list.size, visible = visibleRows) { i -> IncomingRow(list[i]) }
+                            IncomingPagedList(count = list.size, visible = visibleRows, go = listReady) { i -> IncomingRow(list[i]) }
                         }
                     }
                 }
@@ -312,7 +326,7 @@ private const val INCOMING_ROW_DP = 78f
  * The first rows come in one after another (fade + rise + settle), like the fund list does when it opens.
  */
 @Composable
-private fun IncomingPagedList(count: Int, visible: Int, row: @Composable (Int) -> Unit) {
+private fun IncomingPagedList(count: Int, visible: Int, go: Boolean, row: @Composable (Int) -> Unit) {
     val paged = rememberPagedState(visible = visible, gap = 8.dp)
     PagedViewport(
         state = paged,
@@ -328,7 +342,7 @@ private fun IncomingPagedList(count: Int, visible: Int, row: @Composable (Int) -
                         .fillMaxWidth()
                         .pagedItem(paged, i)
                         .then(
-                            if (i < visible + 1) Modifier.entrance(go = true, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
+                            if (i < visible + 1) Modifier.entrance(go = go, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
                             else Modifier,
                         ),
                 ) { row(i) }
