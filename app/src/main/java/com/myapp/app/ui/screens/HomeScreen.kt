@@ -127,7 +127,7 @@ import com.myapp.app.ui.components.SoftGlass
 private const val FUNDS_STAGGER_MAX = 6
 
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
-private const val FUND_LIST_ENTER_MS = 900
+private const val FUND_LIST_ENTER_MS = 650
 private const val PANEL_OPEN_MS = 560
 private const val PANEL_CLOSE_MS = 300
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -556,7 +556,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             letterSpacingEm = 0.05f,
                             color = c.textGray400,
                             uppercase = true,
-                            modifier = Modifier.staggeredReveal(clockState, start = 0f, end = 0.45f, rise = 6.dp),
+                            modifier = Modifier.staggeredReveal(clockState, start = 0f, end = 0.4f, rise = 4.dp),
                         )
                         FundList(state, open = panelOpen, clock = clockState)
                         val borderTop = c.borderGray100
@@ -566,7 +566,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .staggeredReveal(clockState, start = buttonsStart, end = 1f, rise = 10.dp)
+                                .staggeredReveal(clockState, start = buttonsStart, end = 1f, rise = 6.dp)
                                 .drawBehind {
                                     drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
                                 }
@@ -592,7 +592,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             label = tr("incoming_overview", "Incoming Overview"),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .staggeredReveal(clockState, start = buttonsStart + 0.06f, end = 1f, rise = 10.dp),
+                                .staggeredReveal(clockState, start = buttonsStart + 0.06f, end = 1f, rise = 6.dp),
                         ) { AppActions.openIncomingOverview() }
                     }
                 }
