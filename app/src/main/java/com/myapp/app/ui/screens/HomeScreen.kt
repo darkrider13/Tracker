@@ -127,6 +127,7 @@ import com.myapp.app.ui.components.SoftGlass
 private const val FUNDS_STAGGER_MAX = 6
 
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
+private const val FUND_LIST_ENTER_MS = 900
 private const val PANEL_OPEN_MS = 560
 private const val PANEL_CLOSE_MS = 300
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -505,10 +506,23 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // No animation on the funds panel: it opens / closes instantly (cards, buttons and the "spent" line included).
-            // 1f = open, 0f = closed; the children read it as a plain State.
+            // The panel itself opens / closes instantly (1f = open, 0f = closed). The fund list inside it plays the SAME
+            // staggered entrance as the Logs history: each card fades in, rises and settles one after another.
             val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
-            val clockState = progress
+            // one shared 0..1 clock for the cards + buttons (read only in the graphics layer: no recomposition per frame)
+            val enterClock = remember { Animatable(0f) }
+            LaunchedEffect(panelOpen) {
+                if (panelOpen) {
+                    enterClock.snapTo(0f)
+                    // let the panel be composed + measured first (two quiet frames), then start the cards
+                    androidx.compose.runtime.withFrameNanos { }
+                    androidx.compose.runtime.withFrameNanos { }
+                    enterClock.animateTo(1f, tween(FUND_LIST_ENTER_MS, easing = LinearEasing))
+                } else {
+                    enterClock.snapTo(0f)   // closed: ready to replay on the next opening
+                }
+            }
+            val clockState = enterClock.asState()
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
                 Box(
