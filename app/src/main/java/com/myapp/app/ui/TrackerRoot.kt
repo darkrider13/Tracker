@@ -63,20 +63,20 @@ fun TrackerRoot(activity: Activity) {
         // The startup lock is already raised by MainActivity before the first frame. While it is up at
         // launch the app screens stay hidden underneath (they are shown again once it is unlocked).
         var startupGuard by remember { mutableStateOf(lockUp) }
-        // One thing at a time: the lock screen finishes its own dissolve FIRST; only then does Home start
-        // to fade in. (Starting both together made Home push in while the lock was still on screen.)
+        // Cross-fade: the lock screen starts to dissolve, and shortly after (LOCK_HOME_REVEAL_DELAY_MS) Home starts
+        // to fade in underneath it, so there is no dark gap between the two.
         LaunchedEffect(lockUp) {
             if (!lockUp && startupGuard) {
-                delay(com.myapp.app.ui.popup.LOCK_EXIT_MS + 40L)
+                delay(com.myapp.app.ui.popup.LOCK_HOME_REVEAL_DELAY_MS)
                 startupGuard = false
             }
         }
-        // Unlock reveal: once the lock screen has fully dissolved, the app fades in (settling from 97 % to 100 %).
+        // Unlock reveal: the app fades in while settling from 97 % to 100 % (HOME_REVEAL_MS, soft ease-out).
         // With no lock at launch it starts at 1f, so nothing animates.
         val reveal by animateFloatAsState(
             targetValue = if (startupGuard) 0f else 1f,
             // ease-OUT (starts quickly, lands softly): FastOutSlowIn started slowly, which felt laggy
-            animationSpec = tween(380, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
+            animationSpec = tween(com.myapp.app.ui.popup.HOME_REVEAL_MS, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
             label = "unlockReveal",
         )
         // Tell the native launch screen the first frame is ready (it then goes away with no flash).
@@ -88,7 +88,12 @@ fun TrackerRoot(activity: Activity) {
         // initReminders(): every launch asks for the notification permission (the system only shows the
         // dialog while it is still allowed to) and registers the alarms again with the current wording.
         val appContext = activity.applicationContext
-        LaunchedEffect(Unit) {
+        // start-up is "settled" once the launch screen is gone and the first frames come on time; the lock /
+        // Welcome entrance and the chart start from that moment, and the housekeeping below waits for it too
+        val settled = com.myapp.app.ui.components.rememberUiSettled()
+        LaunchedEffect(settled) {
+            if (!settled) return@LaunchedEffect
+            delay(900)   // not in the middle of the entrance animation
             com.myapp.app.ui.popup.ReminderPanel.requestAtLaunch()
             delay(1500)   // keep the first frames free: alarm registration is not urgent
             com.myapp.app.reminder.Reminders.scheduleAll(appContext)
