@@ -782,7 +782,7 @@ private fun CategoryCard(state: AppState) {
             play = AppUi.tab == Tab.Home && lockSettled,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (chart.data.isWeek) 112.dp else 136.dp),
+                .height(112.dp),
         )
         Spacer(Modifier.height(16.dp))
 
