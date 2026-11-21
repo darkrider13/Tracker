@@ -294,10 +294,10 @@ fun IncomingOverviewSheet() {
 }
 
 /** How many rows are visible at once in each tab. */
-private const val INCOMING_VISIBLE = 4
+private const val INCOMING_VISIBLE = 5
 
 /** Height of the page above the list (top bar, chips, total, tabs, paddings) and of one row, in dp: used to pick how many rows fit. */
-private const val INCOMING_CHROME_DP = 350f
+private const val INCOMING_CHROME_DP = 290f
 private const val INCOMING_ROW_DP = 78f
 
 /**
