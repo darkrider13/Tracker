@@ -209,5 +209,5 @@ Not ported because they can never be opened in the old app (no code ever shows t
 ## NEW FEATURE - Incoming Overview (Home, written, NOT yet compiled)
 - Home: small green "Incoming Overview" / "আয়ের সারসংক্ষেপ" pill at the right end of the "spent from this fund" line (`HomeScreen.kt`, `IncomingOverviewButton`).
 - `ui/popup/IncomingOverview.kt`: bottom sheet - filter chips (This Month / Last Month / All Time), Total Received card (+ "This month" pill when another filter is on), By Fund summary, combined list (category, from whom, fund, date/time, amount).
-- Counted as incoming: Money Added, Fund Transfer (in), Receivable Collected, Money Borrowed (all `add_money` / `transfer_in` lines, history-hidden lines skipped).
+- Counted as incoming: Money Added, Receivable Collected, Money Borrowed (`add_money` lines only; Fund Transfer is NOT counted, history-hidden lines skipped).
 - Wiring: `Popups.incomingOverview`, `AppActions.openIncomingOverview`, `installIncomingOverviewHooks()`, 13 new keys `incoming_*` in `i18n_bn.json`.
