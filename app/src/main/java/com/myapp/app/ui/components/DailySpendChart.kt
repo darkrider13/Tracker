@@ -353,9 +353,10 @@ private fun DayBarsPage(
         val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
         val centerY = bottom + 10f * dp
         val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
-        // today (weekday name in Week, date number in Month): same size as the others, white text on a soft red pill
-        val stToday = textStyle(if (isWeek) 10f else 9f, true, Color.White).copy(fontWeight = FontWeight.Black)
-        val pillColor = Brand.red.copy(alpha = if (isDark) 0.38f else 0.9f)
+        // today (weekday name in Week, date number in Month): same look as the category icon box next to the title
+        // (black box + red mark; white box in light mode), here as a pill with red text
+        val stToday = textStyle(if (isWeek) 10f else 9f, true, Brand.red).copy(fontWeight = FontWeight.Black)
+        val pillColor = if (isDark) Color.Black else Color.White
         for (i in 0 until pn) {
             val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
             if (label.isEmpty()) continue
