@@ -127,8 +127,8 @@ import com.myapp.app.ui.components.SoftGlass
 private const val FUNDS_STAGGER_MAX = 6
 
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
-private const val PANEL_OPEN_MS = 320
-private const val PANEL_CLOSE_MS = 220
+private const val PANEL_OPEN_MS = 560
+private const val PANEL_CLOSE_MS = 300
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
@@ -505,22 +505,10 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // A soft, light open / close: ONLY the panel height + one fade, driven by a single value that is read in the
-            // layout / draw phase (no recomposition per frame). No per-card or per-button motion any more, so there is
-            // almost nothing to stall on; the cards and buttons simply ride along inside the growing panel.
-            val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
-            val clockState = remember { mutableStateOf(1f) }   // children are static (always fully shown)
-            LaunchedEffect(panelOpen) {
-                // first tap right after launch: let the panel be composed + measured at 0 first (two quiet frames)
-                if (panelOpen && progress.value == 0f) {
-                    androidx.compose.runtime.withFrameNanos { }
-                    androidx.compose.runtime.withFrameNanos { }
-                }
-                progress.animateTo(
-                    if (panelOpen) 1f else 0f,
-                    tween(if (panelOpen) PANEL_OPEN_MS else PANEL_CLOSE_MS, easing = PanelEase),
-                )
-            }
+            // No animation on the funds panel: it opens / closes instantly (cards, buttons and the "spent" line included).
+            // 1f = open, 0f = closed; the children read it as a plain State.
+            val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
+            val clockState = progress
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
                 Box(
