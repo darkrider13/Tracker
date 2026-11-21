@@ -532,56 +532,27 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 }
                 append(" " + tr("home_spent_from_fund", "spent from this fund"))
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            if (panelOpen) {
+                // funds list expanded: the "spent" line is replaced by the Incoming Overview button
+                // (same look as the Transfer / Add New Fund buttons)
+                PanelButton(
+                    icon = "fa-hand-holding-dollar",
+                    label = tr("incoming_overview", "Incoming Overview"),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                ) { AppActions.openIncomingOverview() }
+            } else {
                 AppRichText(
                     text = spentText,
                     size = 12f,
                     lineHeight = 16f,
                     weight = FontWeight.Medium,
                     color = c.textGray500,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
+                    modifier = Modifier.padding(top = 12.dp),
                 )
-                IncomingOverviewButton { AppActions.openIncomingOverview() }
             }
         }
-    }
-}
-
-/** Small green pill under the funds panel: opens the "Incoming Overview" sheet (money received in all funds). */
-@Composable
-private fun IncomingOverviewButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
-    Row(
-        modifier = Modifier
-            .clip(shape)
-            .background(Brand.green.copy(alpha = 0.10f), shape)
-            .border(BorderStroke(1.dp, Brand.green.copy(alpha = 0.35f)), shape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 9.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        FaIcon("fa-hand-holding-dollar", 10.dp, Brand.green)
-        AppText(
-            text = tr("incoming_overview", "Incoming Overview"),
-            size = 10f,
-            lineHeight = 14f,
-            weight = FontWeight.ExtraBold,
-            color = Brand.green,
-            noWrap = true,
-        )
     }
 }
 
