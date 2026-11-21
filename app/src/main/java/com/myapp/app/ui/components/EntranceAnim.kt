@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -129,5 +130,33 @@ fun Modifier.replayEntrance(
     return this.graphicsLayer {
         alpha = p.value
         translationY = (1f - p.value) * risePx
+    }
+}
+
+/**
+ * Fade + rise + settle driven by ONE shared clock ([clock], 0..1) instead of a timer of its own: the item plays its
+ * motion while the clock moves from [start] to [end]. Several items with different windows therefore come in one after
+ * another AND all finish together with the clock (no late pop-in after the container stopped growing). Read only in the
+ * graphics layer, so nothing recomposes while it runs; closing simply plays the same motion backwards.
+ */
+@Composable
+fun Modifier.staggeredReveal(
+    clock: State<Float>,
+    start: Float,
+    end: Float,
+    rise: Dp = 14.dp,
+    scaleFrom: Float = 1f,
+): Modifier {
+    val risePx = with(LocalDensity.current) { rise.toPx() }
+    val span = (end - start).coerceAtLeast(0.001f)
+    return this.graphicsLayer {
+        val p = EntranceEase.transform(((clock.value - start) / span).coerceIn(0f, 1f))
+        alpha = p
+        translationY = (1f - p) * risePx
+        if (scaleFrom != 1f) {
+            val sc = scaleFrom + (1f - scaleFrom) * p
+            scaleX = sc
+            scaleY = sc
+        }
     }
 }
