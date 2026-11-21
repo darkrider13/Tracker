@@ -258,6 +258,6 @@ This is a personal project, but issues and suggestions are welcome. For code cha
 
 <div align="center">
 
-.Made with ❤️ by [**darkrider13**](https://github.com/darkrider13)
+Made with ❤️ by [**darkrider13**](https://github.com/darkrider13)
 
 </div>
