@@ -90,7 +90,7 @@ private fun switchActiveFund(name: String) {
  *  - more than 4 funds: scrolls a whole page of 4 at a time
  */
 @Composable
-fun FundList(state: AppState) {
+fun FundList(state: AppState, open: Boolean = true) {
     // Same AppState object is passed every time, so Compose would skip this list; reading the revision here makes it redraw right after a commit.
     AppStore.observe()
     val names = state.funds.keys.toList()
@@ -159,7 +159,7 @@ fun FundList(state: AppState) {
 
     // Jump to the page that holds the ACTIVE fund (instantly) when the list opens / the fund changes.
     val ready = names.size <= FUNDS_VISIBLE_COUNT || paged.viewportMax(names.size) != null
-    LaunchedEffect(state.activeFund, ready) {
+    LaunchedEffect(state.activeFund, ready, open) {
         if (ready) {
             val idx = names.indexOf(state.activeFund)
             paged.scroll.scrollTo(if (idx > 0) paged.pageOffsetOfItem(idx) else 0)
@@ -259,10 +259,17 @@ fun FundList(state: AppState) {
                 for ((index, name) in order.withIndex()) key(name) {
                     val isDragged = dragging == name
                     // staggered entrance: each card rises, fades in and settles, one after the other
+                    // The list stays composed while the panel is closed, so the entrance replays each time it opens.
                     val enter = remember { Animatable(0f) }
-                    LaunchedEffect(Unit) {
-                        delay(60L + index.coerceAtMost(6) * 70L)
-                        enter.animateTo(1f, tween(460, easing = EnterEase))
+                    LaunchedEffect(open) {
+                        if (open) {
+                            enter.snapTo(0f)
+                            delay(30L + index.coerceAtMost(6) * 55L)
+                            enter.animateTo(1f, tween(440, easing = EnterEase))
+                        } else {
+                            delay(360)   // the panel is still shrinking: keep the cards as they are until it is gone
+                            enter.snapTo(0f)
+                        }
                     }
                     Box(
                         modifier = Modifier
@@ -287,6 +294,7 @@ fun FundList(state: AppState) {
                             state = state,
                             name = name,
                             isActive = state.activeFund == name,
+                            live = open,
                         )
                     }
                 }
@@ -299,7 +307,7 @@ private val EnterEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val PulseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
 
 @Composable
-private fun FundCard(state: AppState, name: String, isActive: Boolean) {
+private fun FundCard(state: AppState, name: String, isActive: Boolean, live: Boolean) {
     AppStore.observe()
     val c = AppTheme.colors
     val meta = ensureFundMeta(name)
@@ -377,13 +385,17 @@ private fun FundCard(state: AppState, name: String, isActive: Boolean) {
                 )
             }
             if (isActive) {
-                val pulse = rememberInfiniteTransition(label = "fundPulse")
-                val a by pulse.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 0.5f,
-                    animationSpec = infiniteRepeatable(tween(1000, easing = PulseEase), RepeatMode.Reverse),
-                    label = "fundPulseAlpha",
-                )
+                // the dot only pulses while the panel is open (a hidden, composed list must not animate every frame)
+                val a = if (live) {
+                    val pulse = rememberInfiniteTransition(label = "fundPulse")
+                    val pulseAlpha by pulse.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 0.5f,
+                        animationSpec = infiniteRepeatable(tween(1000, easing = PulseEase), RepeatMode.Reverse),
+                        label = "fundPulseAlpha",
+                    )
+                    pulseAlpha
+                } else 1f
                 Box(
                     modifier = Modifier
                         .size(8.dp)

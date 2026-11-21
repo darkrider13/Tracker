@@ -43,7 +43,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.myapp.app.ui.popup.HOME_REVEAL_MS
 import com.myapp.app.ui.popup.LOCK_HOME_REVEAL_DELAY_MS
+import com.myapp.app.ui.components.CHART_GROW_TOTAL_MS
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -60,6 +64,10 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
+import com.myapp.app.ui.components.replayEntrance
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -114,6 +122,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import com.myapp.app.ui.components.SoftGlass
 
+private const val FUNDS_STAGGER_MAX = 6
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
@@ -476,53 +485,93 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 ChevronToggle(open = panelOpen) { AppUi.toggleFundsPanel() }
             }
 
-            AnimatedVisibility(
-                visible = panelOpen,
-                enter = expandVertically(tween(340, easing = PanelEase), expandFrom = Alignment.Top) +
-                    fadeIn(tween(240, delayMillis = 70, easing = PanelEase)),
-                exit = shrinkVertically(tween(260, easing = PanelEase), shrinkTowards = Alignment.Top) +
-                    fadeOut(tween(140, easing = PanelEase)),
-            ) {
+            // The funds panel. It is built once (when Home is idle, or on the first tap) and then only SHOWN / HIDDEN:
+            // opening no longer has to compose + measure four fund cards in the very frame the animation starts
+            // (that long first frame ate the fast start of the motion and made the panel look stuck).
+            // Height + fade are driven by one progress value read in the layout / draw phase (no recomposition per frame).
+            var mounted by remember { mutableStateOf(false) }
+            LaunchedEffect(panelOpen) { if (panelOpen) mounted = true }
+            LaunchedEffect(Unit) {
+                if (!mounted) {
+                    delay(1200)
+                    com.myapp.app.ui.components.awaitIntroIdle()
+                    delay(300)
+                    mounted = true
+                }
+            }
+            val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
+            LaunchedEffect(panelOpen) {
+                progress.animateTo(
+                    if (panelOpen) 1f else 0f,
+                    tween(if (panelOpen) 400 else 280, easing = PanelEase),
+                )
+            }
+            if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
-                Column(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .fillMaxWidth()
-                        .drawBehind {
-                            drawLine(lineColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+                Box(
+                    Modifier
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            val h = (placeable.height * progress.value).roundToInt()
+                            layout(placeable.width, h) { placeable.place(0, 0) }
                         }
-                        .padding(top = 13.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .clipToBounds()
+                        .graphicsLayer { alpha = (progress.value * 1.6f).coerceIn(0f, 1f) },
                 ) {
-                    AppText(
-                        text = tr("home_tap_fund", "Tap Fund to Switch"),
-                        size = 10f,
-                        weight = FontWeight.Bold,
-                        letterSpacingEm = 0.05f,
-                        color = c.textGray400,
-                        uppercase = true,
-                    )
-                    FundList(state)
-                    val borderTop = c.borderGray100
-                    Row(
+                    Column(
                         modifier = Modifier
+                            .padding(top = 8.dp)
                             .fillMaxWidth()
                             .drawBehind {
-                                drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+                                drawLine(lineColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
                             }
-                            .padding(top = 9.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            .padding(top = 13.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        AppText(
+                            text = tr("home_tap_fund", "Tap Fund to Switch"),
+                            size = 10f,
+                            weight = FontWeight.Bold,
+                            letterSpacingEm = 0.05f,
+                            color = c.textGray400,
+                            uppercase = true,
+                            modifier = Modifier.replayEntrance(panelOpen, delayMs = 0, rise = 6.dp, durationMs = 360),
+                        )
+                        FundList(state, open = panelOpen)
+                        val borderTop = c.borderGray100
+                        // the buttons come in after the fund cards (same motion, one after another)
+                        val afterCards = 60 + state.funds.size.coerceAtMost(FUNDS_STAGGER_MAX) * 55
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .replayEntrance(panelOpen, delayMs = afterCards, rise = 10.dp, durationMs = 400)
+                                .drawBehind {
+                                    drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+                                }
+                                .padding(top = 9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            PanelButton(
+                                icon = "fa-right-left",
+                                label = tr("home_transfer", "Transfer"),
+                                modifier = Modifier.weight(1f),
+                            ) { AppActions.openTransferFund() }
+                            PanelButton(
+                                icon = "fa-plus",
+                                label = tr("home_add_new_account", "Add New Fund"),
+                                modifier = Modifier.weight(1f),
+                            ) { AppActions.openAddFund() }
+                        }
+                        // funds list expanded: the "spent" line is replaced by the Incoming Overview button
+                        // (same look as the Transfer / Add New Fund buttons). It lives INSIDE the panel now, so it
+                        // grows and fades in with it instead of popping in at once.
                         PanelButton(
-                            icon = "fa-right-left",
-                            label = tr("home_transfer", "Transfer"),
-                            modifier = Modifier.weight(1f),
-                        ) { AppActions.openTransferFund() }
-                        PanelButton(
-                            icon = "fa-plus",
-                            label = tr("home_add_new_account", "Add New Fund"),
-                            modifier = Modifier.weight(1f),
-                        ) { AppActions.openAddFund() }
+                            icon = "fa-hand-holding-dollar",
+                            label = tr("incoming_overview", "Incoming Overview"),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .replayEntrance(panelOpen, delayMs = afterCards + 60, rise = 10.dp, durationMs = 400),
+                        ) { AppActions.openIncomingOverview() }
                     }
                 }
             }
@@ -533,17 +582,14 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 }
                 append(" " + tr("home_spent_from_fund", "spent from this fund"))
             }
-            if (panelOpen) {
-                // funds list expanded: the "spent" line is replaced by the Incoming Overview button
-                // (same look as the Transfer / Add New Fund buttons)
-                PanelButton(
-                    icon = "fa-hand-holding-dollar",
-                    label = tr("incoming_overview", "Incoming Overview"),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                ) { AppActions.openIncomingOverview() }
-            } else {
+            // the "spent" line leaves quickly while the panel opens and comes back after it has closed
+            AnimatedVisibility(
+                visible = !panelOpen,
+                enter = fadeIn(tween(220, delayMillis = 160, easing = Ease200)) +
+                    expandVertically(tween(280, easing = PanelEase), expandFrom = Alignment.Top),
+                exit = fadeOut(tween(100, easing = Ease200)) +
+                    shrinkVertically(tween(280, easing = PanelEase), shrinkTowards = Alignment.Top),
+            ) {
                 AppRichText(
                     text = spentText,
                     size = 12f,
@@ -694,8 +740,12 @@ private fun DebtsCard(state: AppState) {
 
 // ------------------------------------------------------------------ category card
 
-/** Wait after the lock goes away before the chart starts (the unlock reveal itself lasts 450 ms). */
-private const val UNLOCK_CHART_START_MS = LOCK_HOME_REVEAL_DELAY_MS + 280L   // Home starts to appear, then ~90 % of its reveal
+/**
+ * Wait after the lock goes away before the chart starts: Home's reveal starts LOCK_HOME_REVEAL_DELAY_MS after the lock
+ * begins to dissolve and lasts HOME_REVEAL_MS. The bars begin only when it is completely over, so the two animations
+ * never share frames (that overlap was what made the bars stutter).
+ */
+private const val UNLOCK_CHART_START_MS = LOCK_HOME_REVEAL_DELAY_MS + HOME_REVEAL_MS + 40L
 
 /** No-lock launch: wait this long after the first frame (splash gone, Home faded in) before the bars grow. */
 private const val LAUNCH_CHART_START_MS = 260L
@@ -703,45 +753,56 @@ private const val LAUNCH_CHART_START_MS = 260L
 /** true once the chart has played its first time in this app process (later opens use the normal timing). */
 private object ChartLaunch { var done = false }
 
+private fun anyLockUp(): Boolean = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
+    com.myapp.app.ui.popup.LockState.biometricVisible
+
 @Composable
 private fun CategoryCard(state: AppState) {
     // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
     AppStore.observe()
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
-    // built ONCE per change of data / range / language / day, not on every recomposition (the chart's start flips
-    // `lockSettled`, and rebuilding the whole month right there caused a hitch exactly when the bars begin to grow)
+    // built ONCE per change of data / range / language / day, not on every recomposition
     val dayKey = Calendar.getInstance().let { it.get(Calendar.YEAR) * 1000 + it.get(Calendar.DAY_OF_YEAR) }
     val chart = remember(AppStore.revision, range, AppSession.lang, state.activeFund, dayKey) { buildHomeChart(state, range) }
-    // Order: the lock dissolves and Home starts to appear a moment later (cross-fade), and the chart starts when that
-    // reveal is ~90 % done (frame fades in first, bars grow after): no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
-    val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
-        com.myapp.app.ui.popup.LockState.biometricVisible
-    // First launch WITHOUT a lock: the splash is still leaving and the first frames are busy, so the bars used to
-    // start in the middle of that and looked jerky. Now they wait until the splash is gone and Home has settled.
-    var lockSettled by remember { mutableStateOf(!lockUp && ChartLaunch.done) }
-    var sawLock by remember { mutableStateOf(lockUp) }
-    // first run: the bars wait until the Welcome screen has been dismissed (it dissolves over LOCK_EXIT_MS)
-    val onboarded = AppStore.observe().onboardingComplete
-    val startSettled = com.myapp.app.ui.components.rememberUiSettled()
-    LaunchedEffect(lockUp, onboarded, startSettled) {
-        if (!onboarded) {
-            lockSettled = false
-        } else if (lockUp) {
-            sawLock = true
-            lockSettled = false
-        } else {
-            if (!lockSettled) {
-                if (ChartLaunch.done || sawLock) {
-                    delay(UNLOCK_CHART_START_MS)
+    // Order: the lock dissolves, Home fades in after it, and the chart starts only when that reveal is over (frame fades
+    // in first, bars grow after): no overlap, so every animation has the frames to itself. With no lock (or when only
+    // switching tabs) there is no wait.
+    // IMPORTANT: lock / onboarding / start-up state is read in a snapshotFlow (not during composition) and `lockSettled`
+    // is only read inside the chart's own lambda, so this whole card is NOT recomposed at the moment the bars start
+    // (that recomposition used to eat the first frames of the grow-up and looked like a stuck chart).
+    var lockSettled by remember { mutableStateOf(!anyLockUp() && ChartLaunch.done) }
+    LaunchedEffect(Unit) {
+        var sawLock = anyLockUp()
+        snapshotFlow { Triple(anyLockUp(), AppStore.observe().onboardingComplete, com.myapp.app.ui.components.UiSettleState.settled) }
+            .collectLatest { (lockUp, onboarded, startSettled) ->
+                val busy = com.myapp.app.ui.components.UiSettleState
+                if (!onboarded) {
+                    lockSettled = false
+                    busy.introBusy = false
+                } else if (lockUp) {
+                    sawLock = true
+                    lockSettled = false
+                    busy.introBusy = false
                 } else {
-                    if (!startSettled) return@LaunchedEffect   // start-up still busy: wait (this effect re-runs when it is calm)
-                    delay(LAUNCH_CHART_START_MS)
+                    if (!lockSettled) {
+                        // from here until the bars have landed, background work (tab warm-up, alarms) is held back
+                        busy.introBusy = true
+                        if (ChartLaunch.done || sawLock) {
+                            delay(UNLOCK_CHART_START_MS)
+                        } else {
+                            if (!startSettled) return@collectLatest   // start-up still busy: wait (this runs again when it is calm)
+                            delay(LAUNCH_CHART_START_MS)
+                        }
+                        ChartLaunch.done = true
+                        lockSettled = true
+                        delay(CHART_GROW_TOTAL_MS)
+                        busy.introBusy = false
+                    } else {
+                        ChartLaunch.done = true
+                    }
                 }
             }
-            ChartLaunch.done = true
-            lockSettled = true
-        }
     }
     val shape = RoundedCornerShape(if (c.isLight) 28.dp else SoftGlass.radius)
     val borderColor = if (c.isLight) c.categoryCardBorder else SoftGlass.border
@@ -806,7 +867,7 @@ private fun CategoryCard(state: AppState) {
             data = chart.data,
             isDark = !c.isLight,
             // the bars grow up again every time the Home tab is opened (and not while a lock screen is up)
-            play = AppUi.tab == Tab.Home && lockSettled,
+            play = { AppUi.tab == Tab.Home && lockSettled },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(112.dp),
