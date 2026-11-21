@@ -6,6 +6,20 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -36,6 +50,7 @@ import com.myapp.app.ui.theme.AppFont
 import com.myapp.app.ui.theme.Brand
 import com.myapp.app.util.localizeDigits
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -52,7 +67,15 @@ class DailySpendChartData(
     val tipTitles: List<String>,    // tooltip title per day, e.g. "Mon, Nov 16"
     val tipBodies: List<String>,    // tooltip text per day, e.g. "৳1,200"
     val isWeek: Boolean,
+    val todayIndex: Int = -1,       // month: 0-based index of today (the slide that holds today opens first)
 )
+
+private const val MONTH_PAGES = 3
+private const val DAYS_PER_PAGE = 10
+
+/** Month slides: 1-10, 11-20, 21-end (28/29/30/31 days: last slide shows 8/9/10/11 days). */
+private fun pageStart(page: Int): Int = page * DAYS_PER_PAGE
+private fun pageEnd(page: Int, dim: Int): Int = if (page >= MONTH_PAGES - 1) dim else (page + 1) * DAYS_PER_PAGE
 
 private class YScale(val max: Double, val step: Double)
 
@@ -112,7 +135,11 @@ fun DailySpendChart(
     // A NEW Animatable (starting at 0) is created in the SAME composition as the new data, so the new
     // week/month bars are never drawn once at full height before the animation restarts (that flash was
     // what made the week -> month switch look like a clash).
-    val contentKey = remember(data) { data.totals to data.isWeek }   // compared by content, not by object
+    val n0 = data.totals.size
+    var page by remember(data.isWeek, n0) {
+        mutableStateOf(if (data.isWeek || data.todayIndex < 0) 0 else (data.todayIndex / DAYS_PER_PAGE).coerceIn(0, MONTH_PAGES - 1))
+    }
+    val contentKey = remember(data, page) { Triple(data.totals, data.isWeek, page) }   // compared by content, not by object
     val grow = remember(play, contentKey) { Animatable(0f) }
     LaunchedEffect(grow) {
         if (play) {
@@ -125,7 +152,7 @@ fun DailySpendChart(
     val barPath = remember { Path() }
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    var selected by remember(data) { mutableStateOf<Int?>(null) }
+    var selected by remember(data, page) { mutableStateOf<Int?>(null) }   // GLOBAL day index (0-based)
 
     val gridColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.10f)
     val tickColor = if (isDark) Color(0xFFA1A1AA) else Color(0xFF52525B)
@@ -135,7 +162,9 @@ fun DailySpendChart(
     val padTop = 8f * dp
     val xAxisH = 16f * dp
     val yPad = 2f * dp
-    val n = data.totals.size
+    // visible slice: week = everything, month = one 10-day slide
+    val off = if (data.isWeek) 0 else pageStart(page)
+    val n = if (data.isWeek) n0 else (pageEnd(page, n0) - off)
 
     // y tick values and their text
     val ticks = remember(yScale) {
@@ -153,8 +182,9 @@ fun DailySpendChart(
     for (l in yLabels) if (l.isNotEmpty()) widest = max(widest, measureW(measurer, l, yLabelStyle))
     val yAxisW = widest + yPad
 
+    Column(modifier = modifier) {
     Canvas(
-        modifier = modifier.pointerInput(data) {
+        modifier = Modifier.fillMaxWidth().weight(1f).pointerInput(data, page) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val w = size.width.toFloat()
@@ -169,13 +199,30 @@ fun DailySpendChart(
                         return
                     }
                     val idx = ((p.x - left) / slot).toInt().coerceIn(0, n - 1)
-                    selected = if (data.totals[idx] > 0) idx else null
+                    selected = if (data.totals[off + idx] > 0) off + idx else null
                 }
                 pick(down.position)
-                do {
-                    val event = awaitPointerEvent()
-                    event.changes.forEach { if (it.pressed && !it.isConsumed) pick(it.position) }
-                } while (event.changes.any { it.pressed })
+                if (data.isWeek) {
+                    do {
+                        val event = awaitPointerEvent()
+                        event.changes.forEach { if (it.pressed && !it.isConsumed) pick(it.position) }
+                    } while (event.changes.any { it.pressed })
+                } else {
+                    // month: tap = tooltip, swipe left/right = next/previous 10-day slide
+                    var dx = 0f
+                    val threshold = 36.dp.toPx()
+                    do {
+                        val event = awaitPointerEvent()
+                        val ch = event.changes.firstOrNull() ?: break
+                        dx += ch.positionChange().x
+                        if (abs(dx) > threshold) {
+                            ch.consume()
+                            selected = null
+                            page = (page + (if (dx < 0) 1 else -1)).coerceIn(0, MONTH_PAGES - 1)
+                            break
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
             }
         },
     ) {
@@ -213,13 +260,13 @@ fun DailySpendChart(
         // ---- bars ----
         val slot = areaW / n
         val isWeek = data.isWeek
-        val barPct = if (isWeek) 0.6f else (if (n >= 31) 0.68f else 0.75f)
-        val maxThick = (if (isWeek) 30f else 12f) * dp
-        val radius = (if (isWeek) 8f else 4f) * dp
+        val barPct = if (isWeek) 0.6f else 0.55f
+        val maxThick = (if (isWeek) 30f else 18f) * dp
+        val radius = (if (isWeek) 8f else 5f) * dp
         val barW = min(slot * barPct, maxThick)
         val minBar = 4f * dp
         for (i in 0 until n) {
-            val v = data.totals[i]
+            val v = data.totals[off + i]
             if (v <= 0) continue
             val cx = left + slot * (i + 0.5f)
             val fullH = max((v / yScale.max).toFloat() * plotH, minBar)
@@ -259,30 +306,23 @@ fun DailySpendChart(
                 drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
             }
         } else {
-            val slotDp = slot / dp
-            val fs = max(7f, min(9f, slotDp * 1.02f))
-            val dotR = max(0.8f, min(1.1f, slotDp * 0.12f)) * dp
-            val st = textStyle(fs, true, tickColor)
+            val st = textStyle(9f, true, tickColor)
             for (i in 0 until n) {
                 val cx = left + slot * (i + 0.5f)
-                if (isLabeledMonthDay(i, n)) {
-                    val label = localizeDigits((i + 1).toString())
-                    val layout = measurer.measure(label, st, softWrap = false, maxLines = 1)
-                    drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
-                } else {
-                    drawCircle(tickColor, radius = dotR, center = Offset(cx, centerY), alpha = frameA)
-                }
+                val label = localizeDigits((off + i + 1).toString())   // every day of the slide is labelled
+                val layout = measurer.measure(label, st, softWrap = false, maxLines = 1)
+                drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
             }
         }
 
         // ---- tooltip for the tapped day ----
         val sel = selected
-        if (sel != null && sel in 0 until n && data.totals[sel] > 0) {
+        if (sel != null && sel >= off && sel < off + n && data.totals[sel] > 0) {
             drawTooltip(
                 measurer = measurer,
                 title = data.tipTitles.getOrNull(sel) ?: "",
                 body = data.tipBodies.getOrNull(sel) ?: "",
-                posX = left + slot * (sel + 0.5f),
+                posX = left + slot * ((sel - off) + 0.5f),
                 posY = (bottom - max((data.totals[sel] / yScale.max).toFloat() * plotH, minBar) + bottom) / 2f,
                 chartLeft = left,
                 chartRight = w,
@@ -291,6 +331,35 @@ fun DailySpendChart(
                 dp = dp,
             )
         }
+    }
+
+    // ---- month slide switcher: 1-10 | 11-20 | 21-end (tap or swipe) ----
+    if (!data.isWeek) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(22.dp).padding(top = 6.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for (pg in 0 until MONTH_PAGES) {
+                val active = pg == page
+                val label = localizeDigits("${pageStart(pg) + 1}-${pageEnd(pg, n0)}")
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 3.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (active) Brand.red.copy(alpha = 0.18f) else Color.Transparent)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { page = pg }
+                        .padding(horizontal = 10.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.foundation.text.BasicText(
+                        text = label,
+                        style = textStyle(9f, active, if (active) Brand.red else tickColor),
+                    )
+                }
+            }
+        }
+    }
     }
 }
 
