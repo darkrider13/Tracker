@@ -226,6 +226,7 @@ private fun DailySpendChartBody(
                 contentKey = contentKey,
                 yScale = yScale,
                 tickColor = tickColor,
+                todayColor = if (isDark) Color.White else Color.Black,   // today's label: pure white (black in light mode)
                 measurer = measurer,
                 selected = selected,
                 onSelect = { selected = it },
@@ -247,6 +248,7 @@ private fun DayBarsPage(
     contentKey: Any,
     yScale: YScale,
     tickColor: Color,
+    todayColor: Color,
     measurer: TextMeasurer,
     selected: Int?,
     onSelect: (Int?) -> Unit,
@@ -345,13 +347,16 @@ private fun DayBarsPage(
             drawPath(path, Brand.red, alpha = (local * 4f).coerceIn(0f, 1f))
         }
 
-        // x labels: week = weekday names, month = every date of the slide
+        // x labels: week = weekday names, month = every date of the slide.
+        // Today's label (the last bar of the week, or today's date in the month) is bold pure white.
+        val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
         val centerY = bottom + 10f * dp
         val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
+        val stToday = textStyle(if (isWeek) 10f else 9f, true, todayColor).copy(fontWeight = FontWeight.Black)
         for (i in 0 until pn) {
             val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
             if (label.isEmpty()) continue
-            val layout = measurer.measure(label, st, softWrap = false, maxLines = 1)
+            val layout = measurer.measure(label, if (off + i == todayIdx) stToday else st, softWrap = false, maxLines = 1)
             drawText(layout, topLeft = Offset(slot * (i + 0.5f) - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
         }
 
