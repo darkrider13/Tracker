@@ -148,7 +148,8 @@ private fun DailySpendChartBody(
     val isWeek = data.isWeek
     val pageCount = if (isWeek) 1 else MONTH_PAGES
     val contentKey = remember(data) { data.totals to data.isWeek }   // compared by content, not by object
-    val measurer = rememberTextMeasurer()
+    // bigger cache: the default (8) is far smaller than the ~40 labels drawn every frame, so every frame re-measured text and the bars stuttered
+    val measurer = rememberTextMeasurer(cacheSize = 96)
     val density = LocalDensity.current
     var selected by remember(data) { mutableStateOf<Int?>(null) }   // GLOBAL day index (0-based)
 
@@ -174,7 +175,7 @@ private fun DailySpendChartBody(
 
     val dp = density.density
     val padTop = 8f * dp
-    val xAxisH = 16f * dp
+    val xAxisH = 22f * dp   // room for the bigger "today" label
     val yPad = 2f * dp
 
     val ticks = remember(yScale) {
@@ -350,9 +351,10 @@ private fun DayBarsPage(
         // x labels: week = weekday names, month = every date of the slide.
         // Today's label (the last bar of the week, or today's date in the month) is bold pure white.
         val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
-        val centerY = bottom + 10f * dp
+        val centerY = bottom + xAxisH / 2f
         val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
-        val stToday = textStyle(if (isWeek) 10f else 9f, true, todayColor).copy(fontWeight = FontWeight.Black)
+        // today (weekday name in Week, date number in Month) is clearly larger + heavier than the other labels
+        val stToday = textStyle(if (isWeek) 14f else 13f, true, todayColor).copy(fontWeight = FontWeight.Black)
         for (i in 0 until pn) {
             val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
             if (label.isEmpty()) continue
