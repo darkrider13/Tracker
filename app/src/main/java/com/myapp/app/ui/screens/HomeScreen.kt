@@ -74,6 +74,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myapp.app.data.AppSession
@@ -625,6 +626,48 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 )
             }
         }
+    }
+}
+
+// =============================================================================================
+// Warm-up: the three buttons under the fund list (Transfer / Add New Fund / Incoming Overview) have alpha 0 until the
+// very end of the opening motion, and a layer with alpha 0 is never drawn. So on a fresh start their icon glyphs, the
+// Bengali label glyphs and the soft-alpha layers were drawn for the FIRST time exactly in the last part of the first
+// opening, which is where it used to stall. A real, invisible (1 %) copy is drawn once shortly after start-up, so the
+// first real opening is as smooth as every later one. Runs once per app process.
+// =============================================================================================
+
+private object PanelWarmState {
+    var done by mutableStateOf(false)
+}
+
+@Composable
+fun PanelButtonsWarmUp() {
+    if (PanelWarmState.done) return
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(900)   // let the first frame and the unlock reveal finish first
+        com.myapp.app.ui.components.awaitIntroIdle()
+        show = true
+        delay(600)   // a few frames are enough to fill the glyph / layer caches
+        PanelWarmState.done = true
+    }
+    if (!show) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .graphicsLayer { alpha = 0.01f }
+            .clearAndSetSemantics { },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PanelButton(icon = "fa-right-left", label = tr("home_transfer", "Transfer"), modifier = Modifier.weight(1f)) {}
+        PanelButton(icon = "fa-plus", label = tr("home_add_new_account", "Add New Fund"), modifier = Modifier.weight(1f)) {}
+        PanelButton(
+            icon = "fa-hand-holding-dollar",
+            label = tr("incoming_overview", "Incoming Overview"),
+            modifier = Modifier.weight(1f),
+        ) {}
     }
 }
 
