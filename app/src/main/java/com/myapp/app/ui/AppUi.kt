@@ -117,6 +117,9 @@ object AppActions {
     var openAddDebt: (String) -> Unit = {}
     var openHomeCategoryDetails: () -> Unit = {}
 
+    /** Home > "Incoming Overview" button: the sheet with all money received in every fund. */
+    var openIncomingOverview: () -> Unit = {}
+
     /** openSectionNoteModal(section) - built with the Profile/notes work (Step 9). */
     var openSectionNote: (String) -> Unit = {}
 
