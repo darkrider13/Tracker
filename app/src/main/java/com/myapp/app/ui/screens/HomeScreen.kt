@@ -680,6 +680,9 @@ private fun DebtsCard(state: AppState) {
 
 // ------------------------------------------------------------------ category card
 
+/** Wait after the lock goes away before the chart starts (the unlock reveal itself lasts 450 ms). */
+private const val UNLOCK_CHART_START_MS = 230L
+
 @Composable
 private fun CategoryCard(state: AppState) {
     // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
@@ -687,15 +690,15 @@ private fun CategoryCard(state: AppState) {
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
     val chart = buildHomeChart(state, range)
-    // One thing at a time: the unlock reveal (lock dissolves, Home fades in, ~450 ms) plays first; the chart
-    // bars only start growing once it has settled. With no lock (or when only switching tabs) there is no wait.
+    // The unlock reveal (lock dissolves, Home fades in, 450 ms) is already ~80 % done after UNLOCK_CHART_START_MS;
+    // the chart starts then (frame fades in first, bars grow after), so there is no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
     val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
         com.myapp.app.ui.popup.LockState.biometricVisible
     var lockSettled by remember { mutableStateOf(!lockUp) }
     LaunchedEffect(lockUp) {
         if (lockUp) lockSettled = false
         else {
-            if (!lockSettled) delay(450)
+            if (!lockSettled) delay(UNLOCK_CHART_START_MS)
             lockSettled = true
         }
     }
