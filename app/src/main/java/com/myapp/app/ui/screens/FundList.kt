@@ -389,19 +389,6 @@ private fun FundCard(state: AppState, name: String, isActive: Boolean, live: Sta
                 // The dot pulses only while the panel is open, and only after it has finished opening (nothing extra animates
                 // during the open motion). Driven by one Animatable read in the draw phase: no recomposition per frame.
                 val pulse = remember { Animatable(1f) }
-                LaunchedEffect(Unit) {
-                    snapshotFlow { live.value }.collectLatest { on ->
-                        if (on) {
-                            delay(700)
-                            while (true) {
-                                pulse.animateTo(0.5f, tween(1000, easing = PulseEase))
-                                pulse.animateTo(1f, tween(1000, easing = PulseEase))
-                            }
-                        } else {
-                            pulse.snapTo(1f)
-                        }
-                    }
-                }
                 Box(
                     modifier = Modifier
                         .size(8.dp)

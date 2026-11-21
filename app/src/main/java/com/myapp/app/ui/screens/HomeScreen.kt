@@ -505,24 +505,10 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // ONE clock drives the whole open / close motion: `clock` (linear, 0..1) is what the cards and buttons
-            // stagger on, `progress` (eased) is the panel height. Both run for the same time, so the last card and
-            // the three buttons land exactly when the panel stops growing (no stall at the end, no late pop-in).
-            val clock = remember { Animatable(if (panelOpen) 1f else 0f) }
-            val clockState = clock.asState()   // read-only view for the children (Animatable itself is not a State)
-            val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
-            LaunchedEffect(panelOpen) {
-                // Opened before the panel was pre-built (first tap right after launch): let it be composed + measured at
-                // progress 0 first, so that heavy frame is not counted as animation time and the motion does not stall.
-                if (panelOpen && progress.value == 0f) {
-                    androidx.compose.runtime.withFrameNanos { }
-                    androidx.compose.runtime.withFrameNanos { }
-                }
-                val ms = if (panelOpen) PANEL_OPEN_MS else PANEL_CLOSE_MS
-                val target = if (panelOpen) 1f else 0f
-                launch { clock.animateTo(target, tween(ms, easing = LinearEasing)) }
-                progress.animateTo(target, tween(ms, easing = PanelEase))
-            }
+            // No animation on the funds panel: it opens / closes instantly (cards, buttons and the "spent" line included).
+            // 1f = open, 0f = closed; the children read it as a plain State.
+            val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
+            val clockState = progress
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
                 Box(
@@ -626,48 +612,6 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 )
             }
         }
-    }
-}
-
-// =============================================================================================
-// Warm-up: the three buttons under the fund list (Transfer / Add New Fund / Incoming Overview) have alpha 0 until the
-// very end of the opening motion, and a layer with alpha 0 is never drawn. So on a fresh start their icon glyphs, the
-// Bengali label glyphs and the soft-alpha layers were drawn for the FIRST time exactly in the last part of the first
-// opening, which is where it used to stall. A real, invisible (1 %) copy is drawn once shortly after start-up, so the
-// first real opening is as smooth as every later one. Runs once per app process.
-// =============================================================================================
-
-private object PanelWarmState {
-    var done by mutableStateOf(false)
-}
-
-@Composable
-fun PanelButtonsWarmUp() {
-    if (PanelWarmState.done) return
-    var show by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(900)   // let the first frame and the unlock reveal finish first
-        com.myapp.app.ui.components.awaitIntroIdle()
-        show = true
-        delay(600)   // a few frames are enough to fill the glyph / layer caches
-        PanelWarmState.done = true
-    }
-    if (!show) return
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .graphicsLayer { alpha = 0.01f }
-            .clearAndSetSemantics { },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        PanelButton(icon = "fa-right-left", label = tr("home_transfer", "Transfer"), modifier = Modifier.weight(1f)) {}
-        PanelButton(icon = "fa-plus", label = tr("home_add_new_account", "Add New Fund"), modifier = Modifier.weight(1f)) {}
-        PanelButton(
-            icon = "fa-hand-holding-dollar",
-            label = tr("incoming_overview", "Incoming Overview"),
-            modifier = Modifier.weight(1f),
-        ) {}
     }
 }
 
