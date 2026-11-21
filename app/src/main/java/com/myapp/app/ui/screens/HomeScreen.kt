@@ -43,7 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.myapp.app.ui.popup.LOCK_EXIT_MS
+import com.myapp.app.ui.popup.LOCK_HOME_REVEAL_DELAY_MS
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -695,10 +695,10 @@ private fun DebtsCard(state: AppState) {
 // ------------------------------------------------------------------ category card
 
 /** Wait after the lock goes away before the chart starts (the unlock reveal itself lasts 450 ms). */
-private const val UNLOCK_CHART_START_MS = LOCK_EXIT_MS + 40L + 150L   // lock dissolve, then ~90 % of the Home fade-in
+private const val UNLOCK_CHART_START_MS = LOCK_HOME_REVEAL_DELAY_MS + 280L   // Home starts to appear, then ~90 % of its reveal
 
 /** No-lock launch: wait this long after the first frame (splash gone, Home faded in) before the bars grow. */
-private const val LAUNCH_CHART_START_MS = 380L
+private const val LAUNCH_CHART_START_MS = 260L
 
 /** true once the chart has played its first time in this app process (later opens use the normal timing). */
 private object ChartLaunch { var done = false }
@@ -709,9 +709,12 @@ private fun CategoryCard(state: AppState) {
     AppStore.observe()
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
-    val chart = buildHomeChart(state, range)
-    // Order: the lock dissolves (LOCK_EXIT_MS), Home fades in (380 ms, ease-out), and the chart starts when that
-    // fade-in is ~90 % done (frame fades in first, bars grow after): no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
+    // built ONCE per change of data / range / language / day, not on every recomposition (the chart's start flips
+    // `lockSettled`, and rebuilding the whole month right there caused a hitch exactly when the bars begin to grow)
+    val dayKey = Calendar.getInstance().let { it.get(Calendar.YEAR) * 1000 + it.get(Calendar.DAY_OF_YEAR) }
+    val chart = remember(AppStore.revision, range, AppSession.lang, state.activeFund, dayKey) { buildHomeChart(state, range) }
+    // Order: the lock dissolves and Home starts to appear a moment later (cross-fade), and the chart starts when that
+    // reveal is ~90 % done (frame fades in first, bars grow after): no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
     val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
         com.myapp.app.ui.popup.LockState.biometricVisible
     // First launch WITHOUT a lock: the splash is still leaving and the first frames are busy, so the bars used to
@@ -720,7 +723,8 @@ private fun CategoryCard(state: AppState) {
     var sawLock by remember { mutableStateOf(lockUp) }
     // first run: the bars wait until the Welcome screen has been dismissed (it dissolves over LOCK_EXIT_MS)
     val onboarded = AppStore.observe().onboardingComplete
-    LaunchedEffect(lockUp, onboarded) {
+    val startSettled = com.myapp.app.ui.components.rememberUiSettled()
+    LaunchedEffect(lockUp, onboarded, startSettled) {
         if (!onboarded) {
             lockSettled = false
         } else if (lockUp) {
@@ -731,7 +735,7 @@ private fun CategoryCard(state: AppState) {
                 if (ChartLaunch.done || sawLock) {
                     delay(UNLOCK_CHART_START_MS)
                 } else {
-                    while (!AppSession.uiReady) androidx.compose.runtime.withFrameNanos { }
+                    if (!startSettled) return@LaunchedEffect   // start-up still busy: wait (this effect re-runs when it is calm)
                     delay(LAUNCH_CHART_START_MS)
                 }
             }
