@@ -152,7 +152,7 @@ fun TrackerRoot(activity: Activity) {
                         val settle = 0.97f + 0.03f * reveal
                         scaleX = settle
                         scaleY = settle
-                        val r = blurDp * density
+                        val r = maxOf(blurDp, Popups.sheetBlurDp) * density
                         renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
                     },
             ) {
