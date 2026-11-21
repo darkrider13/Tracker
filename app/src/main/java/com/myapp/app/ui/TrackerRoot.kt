@@ -63,13 +63,20 @@ fun TrackerRoot(activity: Activity) {
         // The startup lock is already raised by MainActivity before the first frame. While it is up at
         // launch the app screens stay hidden underneath (they are shown again once it is unlocked).
         var startupGuard by remember { mutableStateOf(lockUp) }
-        LaunchedEffect(lockUp) { if (!lockUp) startupGuard = false }
-        // Unlock reveal: the app fades in (and settles from 97 % to 100 %) while the lock screen dissolves.
+        // One thing at a time: the lock screen finishes its own dissolve FIRST; only then does Home start
+        // to fade in. (Starting both together made Home push in while the lock was still on screen.)
+        LaunchedEffect(lockUp) {
+            if (!lockUp && startupGuard) {
+                delay(com.myapp.app.ui.popup.LOCK_EXIT_MS + 40L)
+                startupGuard = false
+            }
+        }
+        // Unlock reveal: once the lock screen has fully dissolved, the app fades in (settling from 97 % to 100 %).
         // With no lock at launch it starts at 1f, so nothing animates.
         val reveal by animateFloatAsState(
             targetValue = if (startupGuard) 0f else 1f,
             // ease-OUT (starts quickly, lands softly): FastOutSlowIn started slowly, which felt laggy
-            animationSpec = tween(420, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
+            animationSpec = tween(380, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
             label = "unlockReveal",
         )
         // Tell the native launch screen the first frame is ready (it then goes away with no flash).
