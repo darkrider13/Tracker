@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
@@ -75,10 +76,25 @@ object Popups {
     var reminders by mutableStateOf(false)
     var allCatMonthPicker by mutableStateOf(false)
 
-    /** true while the Incoming Overview sheet is still sliding up: the frosted blur waits until it has landed. */
+    /** true while the Incoming Overview sheet is on screen: its blur is then driven by the sheet's own progress. */
     var sheetSliding by mutableStateOf(false)
 
-    /** the blur behind that sheet fades in gently (after the slide) instead of snapping on in 60 ms. */
+    /** 0..1 slide progress of that sheet (written every frame by the sheet, read only in the draw phase of the root). */
+    var sheetProgress by mutableFloatStateOf(0f)
+
+    /**
+     * Blur radius (dp) behind the Incoming Overview sheet. It does not snap on and it does not wait for the landing:
+     * it grows together with the slide (starting after the sheet is about a third of the way up and reaching full
+     * strength exactly when it lands), so the frosted look arrives as part of one motion. Rounded to 2 dp steps so the
+     * GPU does not have to rebuild the blur for every tiny change.
+     */
+    val sheetBlurDp: Float
+        get() {
+            val t = ((sheetProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
+            val eased = t * t * (3f - 2f * t)
+            return Math.round(20f * eased / 2f) * 2f
+        }
+
     var sheetBlurSoft by mutableStateOf(false)
     private val fadeHandler = Handler(Looper.getMainLooper())
 

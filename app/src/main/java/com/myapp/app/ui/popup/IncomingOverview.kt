@@ -96,15 +96,13 @@ object IncomingOverview {
         filter = "month"
         tab = "fund"
         skipCloseAnim = false
-        // the frosted blur behind must not run while the sheet is sliding (both on the GPU in the same frames made it shake)
+        // the frosted blur behind is driven by the sheet's own slide progress (see Popups.sheetBlurDp)
         Popups.sheetSliding = true
-        Popups.sheetBlurSoft = true
         Popups.incomingOverview = true
     }
 
     fun close(instant: Boolean = false) {
         skipCloseAnim = instant
-        Popups.sheetSliding = false
         Popups.incomingOverview = false
     }
 }
@@ -164,6 +162,10 @@ fun IncomingOverviewSheet() {
     // [0] = sheet height, [1] = screen height (px), filled in by the layout below
     val geo = remember { FloatArray(2) }
     val closeNow = !open && IncomingOverview.skipCloseAnim
+    // publish the slide progress for the blur behind (written per frame, read only in the draw phase of the root)
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { progress.value }.collect { Popups.sheetProgress = it }
+    }
     LaunchedEffect(open) {
         if (open) {
             mounted = true
@@ -176,7 +178,6 @@ fun IncomingOverviewSheet() {
             val frac = if (geo[1] > 0f) geo[0] / geo[1] else 0.45f
             val openMs = (SHEET_OPEN_MS * frac / 0.45f).coerceIn(SHEET_OPEN_MS.toFloat(), 600f).toInt()
             progress.animateTo(1f, tween(openMs, easing = SheetEase))
-            Popups.sheetSliding = false   // landed: now the blur fades in behind it
             listReady = true
         } else if (mounted) {
             if (IncomingOverview.skipCloseAnim) progress.snapTo(0f)
@@ -188,7 +189,6 @@ fun IncomingOverviewSheet() {
             mounted = false
             listReady = false
             Popups.sheetSliding = false
-            Popups.sheetBlurSoft = false
             IncomingOverview.skipCloseAnim = false
         }
     }
