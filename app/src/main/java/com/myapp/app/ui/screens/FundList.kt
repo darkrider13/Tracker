@@ -264,8 +264,8 @@ fun FundList(state: AppState, open: Boolean = true) {
                     LaunchedEffect(open) {
                         if (open) {
                             enter.snapTo(0f)
-                            delay(30L + index.coerceAtMost(6) * 55L)
-                            enter.animateTo(1f, tween(440, easing = EnterEase))
+                            delay(25L + index.coerceAtMost(6) * 28L)
+                            enter.animateTo(1f, tween(380, easing = EnterEase))
                         } else {
                             delay(360)   // the panel is still shrinking: keep the cards as they are until it is gone
                             enter.snapTo(0f)

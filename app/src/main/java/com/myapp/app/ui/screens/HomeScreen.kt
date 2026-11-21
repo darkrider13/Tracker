@@ -123,6 +123,9 @@ import kotlin.math.sin
 import com.myapp.app.ui.components.SoftGlass
 
 private const val FUNDS_STAGGER_MAX = 6
+
+/** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
+private const val PANEL_OPEN_MS = 560
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
@@ -501,9 +504,15 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
             }
             val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
             LaunchedEffect(panelOpen) {
+                // Opened before the panel was pre-built (first tap right after launch): let it be composed + measured at
+                // progress 0 first, so that heavy frame is not counted as animation time and the motion does not stall at the end.
+                if (panelOpen && progress.value == 0f) {
+                    androidx.compose.runtime.withFrameNanos { }
+                    androidx.compose.runtime.withFrameNanos { }
+                }
                 progress.animateTo(
                     if (panelOpen) 1f else 0f,
-                    tween(if (panelOpen) 400 else 280, easing = PanelEase),
+                    tween(if (panelOpen) PANEL_OPEN_MS else 280, easing = PanelEase),
                 )
             }
             if (mounted || panelOpen) {
@@ -535,16 +544,17 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             letterSpacingEm = 0.05f,
                             color = c.textGray400,
                             uppercase = true,
-                            modifier = Modifier.replayEntrance(panelOpen, delayMs = 0, rise = 6.dp, durationMs = 360),
+                            modifier = Modifier.replayEntrance(panelOpen, delayMs = 0, rise = 6.dp, durationMs = 300),
                         )
                         FundList(state, open = panelOpen)
                         val borderTop = c.borderGray100
                         // the buttons come in after the fund cards (same motion, one after another)
-                        val afterCards = 60 + state.funds.size.coerceAtMost(FUNDS_STAGGER_MAX) * 55
+                        // the buttons start while the last cards are still arriving and finish with the panel height
+                        val afterCards = 40 + state.funds.size.coerceAtMost(FUNDS_STAGGER_MAX) * 30
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .replayEntrance(panelOpen, delayMs = afterCards, rise = 10.dp, durationMs = 400)
+                                .replayEntrance(panelOpen, delayMs = afterCards, rise = 10.dp, durationMs = PANEL_OPEN_MS - afterCards)
                                 .drawBehind {
                                     drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
                                 }
@@ -570,7 +580,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             label = tr("incoming_overview", "Incoming Overview"),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .replayEntrance(panelOpen, delayMs = afterCards + 60, rise = 10.dp, durationMs = 400),
+                                .replayEntrance(panelOpen, delayMs = afterCards + 40, rise = 10.dp, durationMs = PANEL_OPEN_MS - afterCards - 40),
                         ) { AppActions.openIncomingOverview() }
                     }
                 }
