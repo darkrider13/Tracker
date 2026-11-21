@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -90,7 +94,7 @@ private fun switchActiveFund(name: String) {
  *  - more than 4 funds: scrolls a whole page of 4 at a time
  */
 @Composable
-fun FundList(state: AppState, open: Boolean = true) {
+fun FundList(state: AppState, open: Boolean = true, clock: State<Float> = remember { mutableStateOf(1f) }) {
     // Same AppState object is passed every time, so Compose would skip this list; reading the revision here makes it redraw right after a commit.
     AppStore.observe()
     val names = state.funds.keys.toList()
@@ -98,6 +102,8 @@ fun FundList(state: AppState, open: Boolean = true) {
     val paged = rememberPagedState(visible = FUNDS_VISIBLE_COUNT, gap = 8.dp)
     val gapPx = with(density) { 8.dp.toPx() }
 
+    // read lazily by the cards (a State, not a Boolean): opening the panel must not recompose every card
+    val liveState = rememberUpdatedState(open)
     var order by remember(names) { mutableStateOf(names) }
     val heightsByName = remember { mutableStateMapOf<String, Int>() }
     var dragging by remember { mutableStateOf<String?>(null) }
@@ -258,19 +264,10 @@ fun FundList(state: AppState, open: Boolean = true) {
             ) {
                 for ((index, name) in order.withIndex()) key(name) {
                     val isDragged = dragging == name
-                    // staggered entrance: each card rises, fades in and settles, one after the other
-                    // The list stays composed while the panel is closed, so the entrance replays each time it opens.
-                    val enter = remember { Animatable(0f) }
-                    LaunchedEffect(open) {
-                        if (open) {
-                            enter.snapTo(0f)
-                            delay(25L + index.coerceAtMost(6) * 28L)
-                            enter.animateTo(1f, tween(380, easing = EnterEase))
-                        } else {
-                            delay(360)   // the panel is still shrinking: keep the cards as they are until it is gone
-                            enter.snapTo(0f)
-                        }
-                    }
+                    // Staggered entrance: every card plays its part of ONE shared clock (see staggeredReveal), so the cards,
+                    // the buttons below them and the panel height all finish together. No per-card timers.
+                    val cardStart = fundCardStart(index)
+                    val cardEnd = cardStart + FUND_CARD_SPAN
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -278,7 +275,7 @@ fun FundList(state: AppState, open: Boolean = true) {
                             .onSizeChanged { heightsByName[name] = it.height }
                             .zIndex(if (isDragged) 50f else 0f)
                             .graphicsLayer {
-                                val p = enter.value
+                                val p = EnterEase.transform(((clock.value - cardStart) / (cardEnd - cardStart)).coerceIn(0f, 1f))
                                 alpha = p
                                 translationY = (1f - p) * 18.dp.toPx()
                                 val sc = 0.94f + 0.06f * p
@@ -294,7 +291,7 @@ fun FundList(state: AppState, open: Boolean = true) {
                             state = state,
                             name = name,
                             isActive = state.activeFund == name,
-                            live = open,
+                            live = liveState,
                         )
                     }
                 }
@@ -304,10 +301,14 @@ fun FundList(state: AppState, open: Boolean = true) {
 }
 
 private val EnterEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+
+/** Where on the shared panel clock (0..1) card [i] starts its entrance; the buttons under the cards use the same scale. */
+internal fun fundCardStart(i: Int): Float = 0.03f + i.coerceIn(0, 6) * 0.055f
+internal const val FUND_CARD_SPAN = 0.5f
 private val PulseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
 
 @Composable
-private fun FundCard(state: AppState, name: String, isActive: Boolean, live: Boolean) {
+private fun FundCard(state: AppState, name: String, isActive: Boolean, live: State<Boolean>) {
     AppStore.observe()
     val c = AppTheme.colors
     val meta = ensureFundMeta(name)
@@ -385,21 +386,26 @@ private fun FundCard(state: AppState, name: String, isActive: Boolean, live: Boo
                 )
             }
             if (isActive) {
-                // the dot only pulses while the panel is open (a hidden, composed list must not animate every frame)
-                val a = if (live) {
-                    val pulse = rememberInfiniteTransition(label = "fundPulse")
-                    val pulseAlpha by pulse.animateFloat(
-                        initialValue = 1f,
-                        targetValue = 0.5f,
-                        animationSpec = infiniteRepeatable(tween(1000, easing = PulseEase), RepeatMode.Reverse),
-                        label = "fundPulseAlpha",
-                    )
-                    pulseAlpha
-                } else 1f
+                // The dot pulses only while the panel is open, and only after it has finished opening (nothing extra animates
+                // during the open motion). Driven by one Animatable read in the draw phase: no recomposition per frame.
+                val pulse = remember { Animatable(1f) }
+                LaunchedEffect(Unit) {
+                    snapshotFlow { live.value }.collectLatest { on ->
+                        if (on) {
+                            delay(700)
+                            while (true) {
+                                pulse.animateTo(0.5f, tween(1000, easing = PulseEase))
+                                pulse.animateTo(1f, tween(1000, easing = PulseEase))
+                            }
+                        } else {
+                            pulse.snapTo(1f)
+                        }
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .graphicsLayer { alpha = a }
+                        .graphicsLayer { alpha = pulse.value }
                         .background(metaColor, CircleShape),
                 )
             }

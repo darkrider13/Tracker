@@ -49,6 +49,7 @@ import com.myapp.app.ui.components.CHART_GROW_TOTAL_MS
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -64,7 +65,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
-import com.myapp.app.ui.components.replayEntrance
+import com.myapp.app.ui.components.staggeredReveal
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.Animatable
@@ -126,6 +127,7 @@ private const val FUNDS_STAGGER_MAX = 6
 
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
 private const val PANEL_OPEN_MS = 560
+private const val PANEL_CLOSE_MS = 300
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val Ease200 = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
@@ -502,18 +504,22 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
+            // ONE clock drives the whole open / close motion: `clock` (linear, 0..1) is what the cards and buttons
+            // stagger on, `progress` (eased) is the panel height. Both run for the same time, so the last card and
+            // the three buttons land exactly when the panel stops growing (no stall at the end, no late pop-in).
+            val clock = remember { Animatable(if (panelOpen) 1f else 0f) }
             val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
             LaunchedEffect(panelOpen) {
                 // Opened before the panel was pre-built (first tap right after launch): let it be composed + measured at
-                // progress 0 first, so that heavy frame is not counted as animation time and the motion does not stall at the end.
+                // progress 0 first, so that heavy frame is not counted as animation time and the motion does not stall.
                 if (panelOpen && progress.value == 0f) {
                     androidx.compose.runtime.withFrameNanos { }
                     androidx.compose.runtime.withFrameNanos { }
                 }
-                progress.animateTo(
-                    if (panelOpen) 1f else 0f,
-                    tween(if (panelOpen) PANEL_OPEN_MS else 280, easing = PanelEase),
-                )
+                val ms = if (panelOpen) PANEL_OPEN_MS else PANEL_CLOSE_MS
+                val target = if (panelOpen) 1f else 0f
+                launch { clock.animateTo(target, tween(ms, easing = LinearEasing)) }
+                progress.animateTo(target, tween(ms, easing = PanelEase))
             }
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
@@ -525,7 +531,11 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             layout(placeable.width, h) { placeable.place(0, 0) }
                         }
                         .clipToBounds()
-                        .graphicsLayer { alpha = (progress.value * 1.6f).coerceIn(0f, 1f) },
+                        .graphicsLayer {
+                            alpha = (progress.value * 1.6f).coerceIn(0f, 1f)
+                            // one soft layer for the whole panel: no extra off-screen buffer while it fades
+                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+                        },
                 ) {
                     Column(
                         modifier = Modifier
@@ -544,17 +554,17 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             letterSpacingEm = 0.05f,
                             color = c.textGray400,
                             uppercase = true,
-                            modifier = Modifier.replayEntrance(panelOpen, delayMs = 0, rise = 6.dp, durationMs = 300),
+                            modifier = Modifier.staggeredReveal(clock, start = 0f, end = 0.45f, rise = 6.dp),
                         )
-                        FundList(state, open = panelOpen)
+                        FundList(state, open = panelOpen, clock = clock)
                         val borderTop = c.borderGray100
                         // the buttons come in after the fund cards (same motion, one after another)
-                        // the buttons start while the last cards are still arriving and finish with the panel height
-                        val afterCards = 40 + state.funds.size.coerceAtMost(FUNDS_STAGGER_MAX) * 30
+                        // the buttons start while the last cards are still arriving and finish with the panel
+                        val buttonsStart = fundCardStart(state.funds.size)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .replayEntrance(panelOpen, delayMs = afterCards, rise = 10.dp, durationMs = PANEL_OPEN_MS - afterCards)
+                                .staggeredReveal(clock, start = buttonsStart, end = 1f, rise = 10.dp)
                                 .drawBehind {
                                     drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
                                 }
@@ -580,7 +590,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             label = tr("incoming_overview", "Incoming Overview"),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .replayEntrance(panelOpen, delayMs = afterCards + 40, rise = 10.dp, durationMs = PANEL_OPEN_MS - afterCards - 40),
+                                .staggeredReveal(clock, start = buttonsStart + 0.06f, end = 1f, rise = 10.dp),
                         ) { AppActions.openIncomingOverview() }
                     }
                 }
@@ -592,13 +602,17 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                 }
                 append(" " + tr("home_spent_from_fund", "spent from this fund"))
             }
-            // the "spent" line leaves quickly while the panel opens and comes back after it has closed
-            AnimatedVisibility(
-                visible = !panelOpen,
-                enter = fadeIn(tween(220, delayMillis = 160, easing = Ease200)) +
-                    expandVertically(tween(280, easing = PanelEase), expandFrom = Alignment.Top),
-                exit = fadeOut(tween(100, easing = Ease200)) +
-                    shrinkVertically(tween(280, easing = PanelEase), shrinkTowards = Alignment.Top),
+            // The "spent" line gives its space to the panel with the SAME progress value (no second, differently timed
+            // height animation): the card height is one smooth blend instead of two animations fighting each other.
+            Box(
+                Modifier
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val h = (placeable.height * (1f - progress.value)).roundToInt()
+                        layout(placeable.width, h) { placeable.place(0, 0) }
+                    }
+                    .clipToBounds()
+                    .graphicsLayer { alpha = ((1f - progress.value * 2.2f)).coerceIn(0f, 1f) },
             ) {
                 AppRichText(
                     text = spentText,
