@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.animation.animateContentSize
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
@@ -161,6 +165,13 @@ fun IncomingOverviewSheet() {
             .sortedByDescending { it.total }
     }
 
+    // the rows are mounted a moment after the sheet has slid in, so the slide itself runs on a light frame
+    var listReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(260)
+        listReady = true
+    }
+
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -169,12 +180,19 @@ fun IncomingOverviewSheet() {
         contentAlignment = Alignment.BottomCenter,
     ) {
         val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        // The sheet is only as tall as its content (no empty space under the last card), up to 88 % of the screen.
+        // It slides by a FIXED distance (the tallest it can be), not by its own height: its height changes while the
+        // rows are measured, and sliding by that moving height is what made the opening look like it was shaking.
+        val maxSheetH = maxHeight * 0.88f
+        val slidePx = with(androidx.compose.ui.platform.LocalDensity.current) { maxSheetH.toPx() }
+        // 4 whole rows when the screen is tall enough, fewer on a small one (so nothing below needs an outer scroll)
+        val visibleRows = (((maxSheetH.value - INCOMING_CHROME_DP + 8f) / (INCOMING_ROW_DP + 8f)).toInt()).coerceIn(2, INCOMING_VISIBLE)
         Column(
             Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .height(maxHeight * 0.88f)
-                .graphicsLayer { translationY = (1f - progress) * size.height }
+                .heightIn(max = maxSheetH)
+                .graphicsLayer { translationY = (1f - progress) * slidePx }
                 .clip(sheetShape)
                 .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
                 // taps on the sheet itself must not close it
@@ -214,10 +232,14 @@ fun IncomingOverviewSheet() {
                 FilterChip(tr("incoming_filter_all", "All Time"), filter == "all", Modifier.weight(1f)) { IncomingOverview.filter = "all" }
             }
 
-            // ---- total + the two tabs. Each tab shows exactly 3 whole rows; the rest scrolls a row at a time (no cut-off row).
+            // ---- total + the two tabs. Each tab shows exactly 4 whole rows; the rest scrolls a row at a time (no cut-off row).
             // The outer scroll only matters on a very small screen, where the sheet itself is shorter than its content.
             Column(
-                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .fillMaxWidth()
+                    // the sheet glides to its new height when the tab / period changes the number of rows
+                    .animateContentSize(tween(240, easing = DropdownEase)),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 TotalCard(
@@ -247,10 +269,14 @@ fun IncomingOverviewSheet() {
                     TabSwitch(tab)
                     // a fresh list (new measuring, new entrance) whenever the tab or the period changes
                     key(tab, filter) {
-                        if (tab == "fund") {
-                            IncomingPagedList(count = perFund.size) { i -> FundRow(perFund[i], total) }
+                        if (!listReady) {
+                            // placeholder of about the final size while the sheet slides in (the rows come in right after)
+                            val n = minOf(if (tab == "fund") perFund.size else list.size, visibleRows)
+                            Spacer(Modifier.fillMaxWidth().height(INCOMING_ROW_DP.dp * n + 8.dp * (n - 1)))
+                        } else if (tab == "fund") {
+                            IncomingPagedList(count = perFund.size, visible = visibleRows) { i -> FundRow(perFund[i], total) }
                         } else {
-                            IncomingPagedList(count = list.size) { i -> IncomingRow(list[i]) }
+                            IncomingPagedList(count = list.size, visible = visibleRows) { i -> IncomingRow(list[i]) }
                         }
                     }
                 }
@@ -261,15 +287,19 @@ fun IncomingOverviewSheet() {
 }
 
 /** How many rows are visible at once in each tab. */
-private const val INCOMING_VISIBLE = 3
+private const val INCOMING_VISIBLE = 4
+
+/** Height of the sheet above the list (header, chips, total, tabs, paddings) and of one row, in dp: used to pick how many rows fit. */
+private const val INCOMING_CHROME_DP = 320f
+private const val INCOMING_ROW_DP = 78f
 
 /**
  * Exactly [INCOMING_VISIBLE] whole rows, the rest scrolls one row at a time (same viewport as the Home fund list).
  * The first rows come in one after another (fade + rise + settle), like the fund list does when it opens.
  */
 @Composable
-private fun IncomingPagedList(count: Int, row: @Composable (Int) -> Unit) {
-    val paged = rememberPagedState(visible = INCOMING_VISIBLE, gap = 8.dp)
+private fun IncomingPagedList(count: Int, visible: Int, row: @Composable (Int) -> Unit) {
+    val paged = rememberPagedState(visible = visible, gap = 8.dp)
     PagedViewport(
         state = paged,
         count = count,
@@ -284,7 +314,7 @@ private fun IncomingPagedList(count: Int, row: @Composable (Int) -> Unit) {
                         .fillMaxWidth()
                         .pagedItem(paged, i)
                         .then(
-                            if (i < 6) Modifier.entrance(go = true, delayMs = 90 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
+                            if (i < visible + 1) Modifier.entrance(go = true, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
                             else Modifier,
                         ),
                 ) { row(i) }
@@ -453,9 +483,12 @@ private fun IncomingRow(t: Transaction) {
             .clip(shape)
             .background(if (c.isLight) c.bgWhite else SoftGlass.bg, shape)
             .border(1.dp, if (c.isLight) c.homeCardBorder else SoftGlass.border, shape)
+            // every row has the same height (with or without the "from whom" line), so a snapped page is always exactly
+            // 4 whole rows and the next row never peeks in at the bottom
+            .heightIn(min = 78.dp)
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Box(
