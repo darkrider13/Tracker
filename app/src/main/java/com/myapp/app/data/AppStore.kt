@@ -57,9 +57,27 @@ object AppStore {
         initialized = true
         file = File(context.applicationContext.filesDir, FILE_NAME)
         state = loadFromDisk()
+        resetViewStateForFreshLaunch()
         ensureActiveFundValid()
         purgeOldTransactionHistory()
         purgeOldDebtHistory()
+    }
+
+    /**
+     * The app was closed (swiped out of Recents) and is now starting fresh: the screen state starts from
+     * the defaults again - the FIRST fund is selected and the Logs filters (sort / time / price / custom
+     * date / custom month) are cleared. Runs once per process (init() is guarded), so it never touches
+     * anything while the app is in use, and the saved money data is not changed.
+     */
+    private fun resetViewStateForFreshLaunch() {
+        val s = state
+        s.funds.keys.firstOrNull()?.let { s.activeFund = it }
+        val f = s.filters
+        f.sort = "newest"
+        f.time = "month"
+        f.price = "all"
+        f.customDate = null
+        f.customMonth = null
     }
 
     // ---------- load ----------
