@@ -49,7 +49,12 @@ Track expenses across funds, manage debts, see where your money goes, and keep i
 - Multiple funds (accounts) with their own type, icon and colour. Reorder them by long-press and drag.
 - Add, edit and delete expenses; add money to a fund; transfer between funds.
 - Custom categories with a large icon set, plus a category slider with drag-to-reorder.
-- Daily spending chart (week / month view) with a per-day tooltip.
+- **Incoming Overview** on Home: everything that came in (money added, receivables collected, money borrowed) with This Month / Last Month / All Time filters, a per-fund summary and a full list. Fund transfers are not counted.
+- Daily spending chart on Home with a **Week** and a **Month** view and a tooltip for each day:
+  - Week shows the last 7 days (never before the 1st of the month), one bar per day.
+  - Month is split into three swipeable slides (1-10, 11-20, 21-end); the slide that holds today opens first.
+  - Today's weekday name (Week) or date number (Month) is shown in bold red, so the present day is easy to spot.
+  - The bars grow up one after another every time the Home tab is opened. On launch the animation waits until the splash (and the lock screen, if one is set) is gone, so it runs smoothly.
 - Balance checks and a one-day amount lock on edits to protect your history.
 
 </details>
@@ -101,7 +106,7 @@ Track expenses across funds, manage debts, see where your money goes, and keep i
 
 - Four daily expense reminders (morning, afternoon, evening, night) with editable times.
 - A due-date reminder for every pending debt or receivable.
-- Scheduled with `Notificaton` and restored after reboot or app update.
+- Scheduled with Android `AlarmManager` and restored after reboot or app update.
 
 </details>
 
