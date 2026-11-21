@@ -2,7 +2,9 @@ package com.myapp.app.ui.popup
 
 import android.content.ContentValues
 import android.content.Context
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -48,6 +50,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.myapp.app.data.AppSession
 import com.myapp.app.data.AppStore
@@ -83,6 +86,9 @@ import java.util.Calendar
 object BackupUi {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var picker: ActivityResultLauncher<Array<String>>? = null
+    /** Android 9 and older: saving into Documents needs the storage permission asked at run time. */
+    private var storagePermission: ActivityResultLauncher<String>? = null
+    private var afterStoragePermission: (() -> Unit)? = null
     private var appContext: Context? = null
 
     /** Message of the full-screen "please wait" card (null = hidden). */
@@ -93,6 +99,12 @@ object BackupUi {
         appContext = activity.applicationContext
         picker = activity.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) handlePicked(activity.applicationContext, uri)
+        }
+        storagePermission = activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            // granted or not, carry on: a refusal makes the save fail and the share sheet opens instead
+            val next = afterStoragePermission
+            afterStoragePermission = null
+            next?.invoke()
         }
     }
 
@@ -153,6 +165,7 @@ object BackupUi {
         ) { choice ->
             if (choice == null) return@confirm
             val saveMode = choice == true
+            val go: () -> Unit = {
             busy = if (saveMode) tr("busy_saving", "Saving file...") else tr("busy_exporting", "Preparing backup...")
             scope.launch {
                 var result: String? = null
@@ -201,6 +214,19 @@ object BackupUi {
                     }
                 }
             }
+            }
+            val needsPermission = saveMode && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                ContextCompat.checkSelfPermission(app, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+            val launcher = storagePermission
+            if (needsPermission && launcher != null) {
+                afterStoragePermission = go
+                try {
+                    launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                } catch (_: Exception) {
+                    afterStoragePermission = null
+                    go()
+                }
+            } else go()
         }
     }
 
