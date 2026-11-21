@@ -500,5 +500,18 @@
 "update_unit_mb": "এমবি",
 "update_unit_mbps": "এমবি/সে.",
 "update_eta_sec": "{s} সেকেন্ড বাকি",
-"update_eta_min": "{m} মিনিট {s} সেকেন্ড বাকি"
+"update_eta_min": "{m} মিনিট {s} সেকেন্ড বাকি",
+"incoming_overview": "আয়ের সারসংক্ষেপ",
+"incoming_total_month": "এই মাসে মোট প্রাপ্তি",
+"incoming_total_last": "গত মাসে মোট প্রাপ্তি",
+"incoming_total_all": "মোট প্রাপ্তি (সব সময়)",
+"incoming_filter_month": "এই মাস",
+"incoming_filter_last": "গত মাস",
+"incoming_filter_all": "সব সময়",
+"incoming_this_month_pill": "এই মাসে: ৳{amt}",
+"incoming_by_fund": "ফান্ড অনুযায়ী",
+"incoming_list_title": "প্রাপ্তির তালিকা",
+"incoming_empty": "এই সময়ে কোনো প্রাপ্তির লেনদেন নেই।",
+"incoming_from_fund": "{name} থেকে",
+"incoming_all_funds": "সব ফান্ড মিলিয়ে"
 }
