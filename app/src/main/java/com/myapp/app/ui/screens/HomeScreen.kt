@@ -508,6 +508,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
             // stagger on, `progress` (eased) is the panel height. Both run for the same time, so the last card and
             // the three buttons land exactly when the panel stops growing (no stall at the end, no late pop-in).
             val clock = remember { Animatable(if (panelOpen) 1f else 0f) }
+            val clockState = clock.asState()   // read-only view for the children (Animatable itself is not a State)
             val progress = remember { Animatable(if (panelOpen) 1f else 0f) }
             LaunchedEffect(panelOpen) {
                 // Opened before the panel was pre-built (first tap right after launch): let it be composed + measured at
@@ -554,9 +555,9 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             letterSpacingEm = 0.05f,
                             color = c.textGray400,
                             uppercase = true,
-                            modifier = Modifier.staggeredReveal(clock, start = 0f, end = 0.45f, rise = 6.dp),
+                            modifier = Modifier.staggeredReveal(clockState, start = 0f, end = 0.45f, rise = 6.dp),
                         )
-                        FundList(state, open = panelOpen, clock = clock)
+                        FundList(state, open = panelOpen, clock = clockState)
                         val borderTop = c.borderGray100
                         // the buttons come in after the fund cards (same motion, one after another)
                         // the buttons start while the last cards are still arriving and finish with the panel
@@ -564,7 +565,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .staggeredReveal(clock, start = buttonsStart, end = 1f, rise = 10.dp)
+                                .staggeredReveal(clockState, start = buttonsStart, end = 1f, rise = 10.dp)
                                 .drawBehind {
                                     drawLine(borderTop, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
                                 }
@@ -590,7 +591,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                             label = tr("incoming_overview", "Incoming Overview"),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .staggeredReveal(clock, start = buttonsStart + 0.06f, end = 1f, rise = 10.dp),
+                                .staggeredReveal(clockState, start = buttonsStart + 0.06f, end = 1f, rise = 10.dp),
                         ) { AppActions.openIncomingOverview() }
                     }
                 }
