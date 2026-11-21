@@ -99,6 +99,8 @@ fun TrackerRoot(activity: Activity) {
         ) {
             // the page background fills the WHOLE window, also under the status / navigation bar
             AppBackdrop()
+            // invisible one-time warm-up of the category chip row (smooth first swipe after install)
+            com.myapp.app.ui.popup.CategoryWarmUp()
 
             // everything else sits between the bars (and above the keyboard), where it always was
             Box(
