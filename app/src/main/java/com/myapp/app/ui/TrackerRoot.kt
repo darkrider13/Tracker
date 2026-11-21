@@ -19,6 +19,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
@@ -79,6 +80,11 @@ fun TrackerRoot(activity: Activity) {
             animationSpec = tween(com.myapp.app.ui.popup.HOME_REVEAL_MS, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
             label = "unlockReveal",
         )
+        // The native launch screen is plain white (day) / #05070A (night). While the startup lock is up the app
+        // behind it stays exactly that colour with NO glow backdrop, so the lock fades in straight from the launch
+        // screen (no "glow screen" flashing first). Colour and backdrop fade to the normal page together with `reveal`.
+        val launchBg = androidx.compose.ui.res.colorResource(com.myapp.app.R.color.app_splash_bg)
+        val pageBg = AppTheme.colors.bodyBg
         // Tell the native launch screen the first frame is ready (it then goes away with no flash).
         LaunchedEffect(Unit) {
             androidx.compose.runtime.withFrameNanos { }
@@ -94,24 +100,28 @@ fun TrackerRoot(activity: Activity) {
         LaunchedEffect(settled) {
             if (!settled) return@LaunchedEffect
             delay(900)   // not in the middle of the entrance animation
+            com.myapp.app.ui.components.awaitIntroIdle()
             com.myapp.app.ui.popup.ReminderPanel.requestAtLaunch()
             delay(1500)   // keep the first frames free: alarm registration is not urgent
+            com.myapp.app.ui.components.awaitIntroIdle()   // never while the Home chart is growing
             com.myapp.app.reminder.Reminders.scheduleAll(appContext)
         }
         // A new / edited / settled / deleted debt changes its reminder: re-register shortly after the change.
         val revision = com.myapp.app.data.AppStore.revision
         LaunchedEffect(revision) {
             delay(800)
+            com.myapp.app.ui.components.awaitIntroIdle()
             com.myapp.app.reminder.Reminders.scheduleDebts(appContext)
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppTheme.colors.bodyBg),
+                .drawBehind { drawRect(androidx.compose.ui.graphics.lerp(launchBg, pageBg, reveal)) },
         ) {
             // the page background fills the WHOLE window, also under the status / navigation bar
-            AppBackdrop()
+            // (fades in with the unlock reveal; at launch behind the lock it is not drawn at all)
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = reveal }) { AppBackdrop() }
             // invisible one-time warm-up of the category chip row (smooth first swipe after install)
             com.myapp.app.ui.popup.CategoryWarmUp()
 
@@ -156,6 +166,7 @@ fun TrackerRoot(activity: Activity) {
                     // not while the Home chart is growing: building 3 screens on the main thread made its bars stutter
                     delay(2200)
                     for (t in listOf(Tab.Logs, Tab.Stats, Tab.Profile)) {
+                        com.myapp.app.ui.components.awaitIntroIdle()
                         delay(350)
                         warm = warm + t
                     }
