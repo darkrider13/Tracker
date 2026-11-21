@@ -11,13 +11,24 @@ import java.util.Locale
 enum class ImportError {
     EMPTY,          // file is 0 bytes
     TOO_BIG,        // bigger than Backup.MAX_IMPORT_BYTES
-    ZIP,            // zip / Excel file
+    ZIP,            // zip file that is not a Tracker Excel backup
     NOT_JSON,       // does not start like JSON
     TRUNCATED,      // cut off during download / transfer
     CORRUPT,        // damaged JSON
     STRUCTURE,      // required data has the wrong shape ([reason] = transactions / funds / debts)
     INVALID_FORMAT, // JSON but not a Tracker backup
     MEMORY,         // out of memory while reading
+
+    // ---- Excel (.xlsx) backups: [reason] says where, e.g. "Transactions · row 5 · Amount = abc"
+    EXCEL_SHEET,    // a sheet is missing ([reason] = sheet name)
+    EXCEL_COLUMN,   // a key column is missing ([reason] = "Sheet › Column")
+    EXCEL_EMPTY,    // a required cell is empty
+    EXCEL_NUMBER,   // a cell that must be a (whole) number is not
+    EXCEL_BOOL,     // a cell that must be true / false is not
+    EXCEL_VALUE,    // a cell has a value that is not allowed
+    EXCEL_LINK,     // a debt payment points to a debt that is not in the Debts sheet
+    EXCEL_DUP,      // the same fund name appears twice
+    EXCEL_JSON,     // an "Extra" / settings cell holds damaged JSON text
 }
 
 /** What the apply step can run into (disk full, permission, ...). */
@@ -88,7 +99,8 @@ object Backup {
     // ---------------------------------------------------------------- import (check only, changes nothing)
 
     /**
-     * Reads and checks a backup file. Nothing is changed here: the caller shows the summary,
+     * Reads and checks a backup file (.json or the Excel .xlsx the app exports - told apart by the
+     * file's first bytes). Nothing is changed here: the caller shows the summary,
      * asks the user to confirm, then calls [applyFull] / [applyTransactionsOnly].
      */
     fun parse(bytes: ByteArray): ImportResult {
@@ -96,9 +108,9 @@ object Backup {
         if (size == 0L) return ImportResult.Failure(ImportError.EMPTY, sizeBytes = size)
         if (size > MAX_IMPORT_BYTES) return ImportResult.Failure(ImportError.TOO_BIG, sizeBytes = size)
 
-        // A zip/xlsx starts with the bytes "PK" - not something this app writes.
+        // A zip / .xlsx starts with the bytes "PK": that is the Excel backup (Export -> Excel).
         if (bytes.size >= 2 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()) {
-            return ImportResult.Failure(ImportError.ZIP, sizeBytes = size)
+            return ExcelImport.parse(bytes)
         }
 
         var text: String
