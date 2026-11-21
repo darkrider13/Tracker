@@ -4,9 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -599,18 +601,28 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
 }
 
 /**
- * Unlock reveal: a lock screen no longer vanishes in one frame. It appears at once (nothing of the app
- * is ever exposed), and when it closes it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06)
- * over 380 ms, so the Home screen underneath is revealed smoothly.
+ * Lock screen motion, in and out:
+ *  IN  : it no longer pops up. It waits until the launch screen is gone, then fades in while settling from
+ *        94 % to 100 % (soft ease-out). Nothing of the app is ever exposed meanwhile (Home stays hidden).
+ *  OUT : it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06) over 380 ms, so the Home screen
+ *        underneath is revealed smoothly.
  */
 /** Length of the lock screen's dissolve. The Home reveal and the chart wait for it (see TrackerRoot). */
 const val LOCK_EXIT_MS = 380
 
+/** Length of the lock screen's entrance. */
+const val LOCK_ENTER_MS = 420
+
 @Composable
 private fun LockExit(visible: Boolean, content: @Composable () -> Unit) {
+    val splashGone = com.myapp.app.ui.components.rememberSplashGone()
+    // starts hidden, so a lock that is already up on the first frame still plays its entrance
+    val shown = remember { MutableTransitionState(false) }
+    shown.targetState = visible && splashGone
     AnimatedVisibility(
-        visible = visible,
-        enter = EnterTransition.None,
+        visibleState = shown,
+        enter = fadeIn(tween(LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)) +
+            scaleIn(initialScale = 0.94f, animationSpec = tween(LOCK_ENTER_MS + 80, easing = com.myapp.app.ui.components.EntranceEase)),
         exit = fadeOut(tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) +
             scaleOut(targetScale = 1.06f, animationSpec = tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)),
     ) { content() }

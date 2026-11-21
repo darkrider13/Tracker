@@ -55,6 +55,7 @@ import com.myapp.app.ui.components.FaIcon
 import com.myapp.app.ui.components.FinanceDecor
 import com.myapp.app.ui.components.NoteGlyph
 import com.myapp.app.ui.components.appTextStyle
+import com.myapp.app.ui.components.entrance
 import com.myapp.app.ui.screens.pullUp
 import com.myapp.app.ui.theme.AppTheme
 import com.myapp.app.ui.theme.Brand
@@ -68,10 +69,26 @@ import kotlin.math.roundToInt
 // Welcome / onboarding (screen-onboarding)
 // =============================================================================================
 
+/**
+ * Welcome screen. It comes in softly (background first, then the title, the profile card and the button one after
+ * another) once the launch screen is gone, and when "Get Started" is tapped it dissolves like the lock screen does
+ * (fade + slight zoom-out) so Home is revealed smoothly instead of the screen vanishing in one frame.
+ */
 @Composable
 fun OnboardingScreen() {
-    if (AppStore.observe().onboardingComplete) return
+    val done = AppStore.observe().onboardingComplete
+    androidx.compose.animation.AnimatedVisibility(
+        visible = !done,
+        enter = androidx.compose.animation.EnterTransition.None,
+        exit = androidx.compose.animation.fadeOut(tween(LOCK_EXIT_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+            androidx.compose.animation.scaleOut(targetScale = 1.06f, animationSpec = tween(LOCK_EXIT_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
+    ) { OnboardingContent() }
+}
+
+@Composable
+private fun OnboardingContent() {
     val c = AppTheme.colors
+    val go = com.myapp.app.ui.components.rememberSplashGone()
     val haptic = LocalHapticFeedback.current
 
     var name by remember {
@@ -118,7 +135,7 @@ fun OnboardingScreen() {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
         if (c.isLight) com.myapp.app.ui.components.AppBackdrop(extend = true)
-        FinanceDecor(accent = Brand.green)
+        Box(Modifier.fillMaxSize().entrance(go, delayMs = 0, rise = 0.dp, durationMs = 700)) { FinanceDecor(accent = Brand.green) }
         Column(
             Modifier
                 .fillMaxSize()
@@ -128,7 +145,7 @@ fun OnboardingScreen() {
         ) {
             Column {
                 Column(
-                    Modifier.fillMaxWidth().padding(top = 56.dp),
+                    Modifier.fillMaxWidth().padding(top = 56.dp).entrance(go, delayMs = 60),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -151,6 +168,7 @@ fun OnboardingScreen() {
                 Column(
                     Modifier
                         .padding(top = 40.dp)
+                        .entrance(go, delayMs = 200)
                         .fillMaxWidth()
                         .clip(cardShape)
                         .background(c.bgGray200a60, cardShape)
@@ -204,6 +222,7 @@ fun OnboardingScreen() {
             Row(
                 Modifier
                     .padding(top = 32.dp)
+                    .entrance(go, delayMs = 340)
                     .fillMaxWidth()
                     .shadow(8.dp, btnShape)
                     .clip(btnShape)
