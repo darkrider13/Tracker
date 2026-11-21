@@ -58,6 +58,7 @@ import androidx.core.content.FileProvider
 import com.myapp.app.data.AppSession
 import com.myapp.app.data.AppStore
 import com.myapp.app.data.Backup
+import com.myapp.app.data.ExcelBackup
 import com.myapp.app.data.ImportError
 import com.myapp.app.data.ImportResult
 import com.myapp.app.data.ApplyErrorKind
@@ -125,8 +126,11 @@ object BackupUi {
 
     // ============================================================================ export
 
-    /** "Tracker_21_Aug_2026_03.45_PM.json" / "ট্র্যাকার_২১_আগ._২০২৬_০৩.৪৫_পিএম.json" */
-    private fun exportFileName(): String {
+    private const val MIME_JSON = "application/json"
+    private const val MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    /** "Tracker_21_Aug_2026_03.45_PM.xlsx" / "ট্র্যাকার_২১_আগ._২০২৬_০৩.৪৫_পিএম.json" ([ext] = "xlsx" or "json") */
+    private fun exportFileName(ext: String): String {
         val now = Calendar.getInstance()
         val day = now.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
         val year = now.get(Calendar.YEAR).toString()
@@ -138,21 +142,43 @@ object BackupUi {
         val mm = now.get(Calendar.MINUTE).toString().padStart(2, '0')
         return if (getLang() == "bn") {
             val ampm = if (isPm) tr("reminder_pm", "PM") else tr("reminder_am", "AM")
-            "ট্র্যাকার_${toBnDigits(day)}_${BN_MONTHS_SHORT[now.get(Calendar.MONTH)]}_${toBnDigits(year)}_${toBnDigits(hh)}.${toBnDigits(mm)}_$ampm.json"
+            "ট্র্যাকার_${toBnDigits(day)}_${BN_MONTHS_SHORT[now.get(Calendar.MONTH)]}_${toBnDigits(year)}_${toBnDigits(hh)}.${toBnDigits(mm)}_$ampm.$ext"
         } else {
             val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-            "Tracker_${day}_${months[now.get(Calendar.MONTH)]}_${year}_$hh.${mm}_${if (isPm) "PM" else "AM"}.json"
+            "Tracker_${day}_${months[now.get(Calendar.MONTH)]}_${year}_$hh.${mm}_${if (isPm) "PM" else "AM"}.$ext"
         }
     }
 
+    /** Export: first asks Excel or JSON, then (as before) Save File or Share. */
     fun export(context: Context) {
+        AppDialogs.confirm(
+            message = tr(
+                "export_format_message",
+                "Excel (.xlsx) opens in Excel / Google Sheets, so you can read and check your data. JSON (.json) is the plain app backup. Import brings back either one.",
+            ),
+            title = tr("export_format_title", "Choose backup format"),
+            okLabel = tr("export_format_excel", "Excel"),
+            cancelLabel = tr("export_format_json", "JSON"),
+            icon = "fa-file-export",
+            showClose = true,
+        ) { choice ->
+            if (choice == null) return@confirm
+            exportAs(context, excel = choice == true)
+        }
+    }
+
+    private fun exportAs(context: Context, excel: Boolean) {
         val app = context.applicationContext
-        val json: String
+        val payload: ByteArray
+        val mime = if (excel) MIME_XLSX else MIME_JSON
         try {
-            json = Backup.buildExportJson(
-                AppStore.state, ReminderSettings.load(app),
-                if (AppSession.isLight) "light" else "dark", AppSession.lang,
-            )
+            val theme = if (AppSession.isLight) "light" else "dark"
+            val reminders = ReminderSettings.load(app)
+            payload = if (excel) {
+                ExcelBackup.build(AppStore.state, reminders, theme, AppSession.lang)
+            } else {
+                Backup.buildExportJson(AppStore.state, reminders, theme, AppSession.lang).toByteArray(Charsets.UTF_8)
+            }
         } catch (e: Throwable) {
             AppDialogs.alert(
                 trf("export_err_build", "Couldn't create the backup (${errorWord(e)}).", "reason" to errorWord(e)),
@@ -160,7 +186,7 @@ object BackupUi {
             )
             return
         }
-        val fileName = exportFileName()
+        val fileName = exportFileName(if (excel) "xlsx" else "json")
         AppDialogs.confirm(
             message = tr("export_choose_message", "Save the file straight into your Documents folder, or send it using your phone's share menu."),
             title = tr("export_choose_title", "Export backup"),
@@ -177,11 +203,11 @@ object BackupUi {
                 var result: String? = null
                 var failure: Throwable? = null
                 try {
-                    val bytes = withContext(Dispatchers.Default) { json.toByteArray(Charsets.UTF_8) }
+                    val bytes = payload
                     result = withContext(Dispatchers.IO) {
                         if (saveMode) {
                             try {
-                                saveToDocuments(app, fileName, bytes)
+                                saveToDocuments(app, fileName, bytes, mime)
                                 "documents"
                             } catch (e: Throwable) {
                                 failure = e
@@ -192,7 +218,7 @@ object BackupUi {
                     }
                     if (result == null) {
                         val uri = withContext(Dispatchers.IO) { writeCacheCopy(app, fileName, bytes) }
-                        val armed = withContext(Dispatchers.Main) { launchShare(app, uri, fileName) }
+                        val armed = withContext(Dispatchers.Main) { launchShare(app, uri, fileName, mime) }
                         // armed = the "shared" popup comes later, once the user has really picked an app
                         result = if (armed) "share_pending" else "share"
                     }
@@ -242,12 +268,12 @@ object BackupUi {
     }
 
     /** Writes into Documents/ (MediaStore on Android 10+, the public folder before that) and re-reads the size. */
-    private fun saveToDocuments(context: Context, fileName: String, bytes: ByteArray) {
+    private fun saveToDocuments(context: Context, fileName: String, bytes: ByteArray, mime: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS)
             }
             val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values)
@@ -304,9 +330,9 @@ object BackupUi {
      * after the user has picked an app in the sheet (the system reports that choice). Closing the sheet
      * without choosing shows nothing. Returns false if the choice report is not available (old behaviour).
      */
-    private fun launchShare(context: Context, uri: Uri, fileName: String): Boolean {
+    private fun launchShare(context: Context, uri: Uri, fileName: String, mime: String): Boolean {
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = "application/json"
+            type = mime
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_SUBJECT, fileName)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -438,13 +464,31 @@ object BackupUi {
                     "import_err_too_big", "The file is too large ($size).",
                     "size" to size, "max" to Backup.formatBytesNice(Backup.MAX_IMPORT_BYTES),
                 )
-                ImportError.ZIP -> tr("import_err_zip", "This looks like a zip/Excel file, not a Tracker .json backup.")
-                ImportError.NOT_JSON -> tr("import_err_not_json", "This doesn't look like a Tracker backup. Pick the .json file that Export created.")
+                ImportError.ZIP -> tr("import_err_zip", "This file couldn't be opened as a Tracker Excel backup. Pick the .xlsx or .json file that Export created.")
+                ImportError.NOT_JSON -> tr("import_err_not_json", "This doesn't look like a Tracker backup. Pick the .xlsx or .json file that Export created.")
                 ImportError.TRUNCATED -> trf("import_err_truncated", "The backup file looks incomplete. (${f.reason})", "reason" to f.reason)
                 ImportError.CORRUPT -> trf("import_err_corrupt", "The backup file is damaged. (${f.reason})", "reason" to f.reason)
                 ImportError.STRUCTURE -> trf("import_err_structure", "The backup is missing required data (${f.reason}).", "reason" to f.reason)
                 ImportError.INVALID_FORMAT -> tr("alert_invalid_backup_format", "Invalid backup file format!")
                 ImportError.MEMORY -> trf("import_err_memory", "Not enough free memory to open a file this big ($size).", "size" to size)
+                ImportError.EXCEL_SHEET -> trf(
+                    "import_err_excel_sheet", "The Excel file is missing the \"${f.reason}\" sheet. Please don't delete or rename the sheets.",
+                    "reason" to f.reason,
+                )
+                ImportError.EXCEL_COLUMN -> trf(
+                    "import_err_excel_column", "A column is missing: ${f.reason}. Please don't delete or rename the header row.",
+                    "reason" to f.reason,
+                )
+                ImportError.EXCEL_EMPTY -> trf("import_err_excel_empty", "A required cell is empty: ${f.reason}.", "reason" to f.reason)
+                ImportError.EXCEL_NUMBER -> trf("import_err_excel_number", "This cell must hold a number but doesn't: ${f.reason}.", "reason" to f.reason)
+                ImportError.EXCEL_BOOL -> trf("import_err_excel_bool", "This cell must be true or false: ${f.reason}.", "reason" to f.reason)
+                ImportError.EXCEL_VALUE -> trf("import_err_excel_value", "This cell has a value the app can't accept: ${f.reason}.", "reason" to f.reason)
+                ImportError.EXCEL_LINK -> trf(
+                    "import_err_excel_link", "This payment doesn't belong to any debt in the Debts sheet: ${f.reason}.",
+                    "reason" to f.reason,
+                )
+                ImportError.EXCEL_DUP -> trf("import_err_excel_dup", "The same fund name appears twice: ${f.reason}.", "reason" to f.reason)
+                ImportError.EXCEL_JSON -> trf("import_err_excel_json", "The data in this cell is damaged: ${f.reason}.", "reason" to f.reason)
             },
         )
     }
