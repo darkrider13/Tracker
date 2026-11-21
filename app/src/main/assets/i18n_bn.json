@@ -510,6 +510,7 @@
 "incoming_filter_all": "সব সময়",
 "incoming_this_month_pill": "এই মাসে: ৳{amt}",
 "incoming_by_fund": "ফান্ড অনুযায়ী",
+"incoming_tab_received": "প্রাপ্তি অনুযায়ী",
 "incoming_list_title": "প্রাপ্তির তালিকা",
 "incoming_empty": "এই সময়ে কোনো প্রাপ্তির লেনদেন নেই।",
 "incoming_from_fund": "{name} থেকে",
