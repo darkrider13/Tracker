@@ -101,7 +101,7 @@ Track expenses across funds, manage debts, see where your money goes, and keep i
 
 - Four daily expense reminders (morning, afternoon, evening, night) with editable times.
 - A due-date reminder for every pending debt or receivable.
-- Scheduled with `AlarmManager` (exact alarms where the device allows) and restored after reboot or app update.
+- Scheduled with `Notificaton` and restored after reboot or app update.
 
 </details>
 
