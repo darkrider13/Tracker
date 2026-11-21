@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,8 +57,8 @@ private val POSITIVE_MODAL_ICONS = listOf("fa-check-circle", "fa-circle-check")
  * to a callback). Confirm answers true (OK), false (Cancel) or null (the X in the corner).
  */
 object AppDialogs {
-    internal var lastAlert: AlertRequest? = null
-    internal var lastConfirm: ConfirmRequest? = null
+    internal var lastAlert: AlertRequest? by mutableStateOf(null)
+    internal var lastConfirm: ConfirmRequest? by mutableStateOf(null)
 
     fun alert(
         message: String,
