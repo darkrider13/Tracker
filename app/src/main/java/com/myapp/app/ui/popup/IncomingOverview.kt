@@ -65,7 +65,7 @@ import java.util.Calendar
 
 // =============================================================================================
 // Incoming Overview: every money-in line of every fund, in one combined list
-// (Money Added, Fund Transfer in, Receivable Collected, Money Borrowed)
+// (Money Added, Receivable Collected, Money Borrowed - fund transfers are NOT counted)
 // =============================================================================================
 
 object IncomingOverview {
@@ -86,9 +86,9 @@ fun installIncomingOverviewHooks() {
     AppActions.openIncomingOverview = { IncomingOverview.open() }
 }
 
-/** A line that brings money INTO a fund (same lines the Logs list draws with a green "+"). */
+/** A line that brings new money INTO a fund. Fund transfers (transfer_in) are not new money, so they are left out. */
 private fun isIncomingTx(t: Transaction): Boolean =
-    (t.type == "add_money" || t.type == "transfer_in") && t.historyHidden != true
+    t.type == "add_money" && t.historyHidden != true
 
 private fun monthIndexOf(ms: Long): Int {
     val cal = Calendar.getInstance()
@@ -112,15 +112,8 @@ private fun incomingFor(state: AppState, filter: String): List<Transaction> {
         .sortedWith(compareByDescending<Transaction> { ms(it) }.thenByDescending { it.id })
 }
 
-/** "From whom": the person of a debt line, the source fund of a transfer, or the note of added money. */
+/** "From whom": the person of a debt line, or the note of added money. */
 private fun incomingSourceText(t: Transaction): String? {
-    if (t.type == "transfer_in") {
-        val from = t.linkedFund
-        if (!from.isNullOrEmpty()) {
-            return trf("incoming_from_fund", "From {name}", "name" to fundDisplayName(from))
-        }
-        return t.description.ifEmpty { null }
-    }
     debtPaymentNoteText(t)?.let { return it }
     return t.description.ifEmpty { null }
 }
@@ -366,7 +359,6 @@ private fun FundRow(f: FundTotal, total: Double) {
 @Composable
 private fun IncomingRow(t: Transaction) {
     val c = AppTheme.colors
-    val isTransfer = t.type == "transfer_in"
     val shape = RoundedCornerShape(if (c.isLight) 12.dp else SoftGlass.radius)
     val source = incomingSourceText(t)
     val meta = ensureFundMeta(t.fund)
@@ -385,8 +377,7 @@ private fun IncomingRow(t: Transaction) {
                 Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(c.bgGray100, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isTransfer) FaIcon("fa-right-left", 14.dp, Brand.green)
-                else CategoryIcon(t.category, 14.dp, Brand.green)
+                CategoryIcon(t.category, 14.dp, Brand.green)
             }
             Column(Modifier.padding(start = 10.dp).weight(1f)) {
                 AppText(
