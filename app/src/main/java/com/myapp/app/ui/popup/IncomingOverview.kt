@@ -150,9 +150,6 @@ private fun incomingSourceText(t: Transaction): String? {
 
 private class FundTotal(val fund: String, val total: Double, val count: Int)
 
-/** How many of the first rows play the staggered entrance (the rest simply scroll in). */
-private const val INCOMING_ENTRANCE_ROWS = 8
-
 /**
  * Incoming Overview as a FULL PAGE (it used to be a bottom sheet / popup): the page glides in from the right, the
  * header, filters and total sit at the top and everything scrolls together. The rows come in one after another
@@ -203,7 +200,7 @@ fun IncomingOverviewSheet() {
             .sortedByDescending { it.total }
     }
 
-    Box(
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .graphicsLayer { translationX = (1f - progress.value) * size.width }
@@ -213,103 +210,121 @@ fun IncomingOverviewSheet() {
     ) {
         // the same page background as Home / Fund Details
         AppBackdrop(extend = true)
-        LazyColumn(
-            modifier = Modifier.widthIn(max = 448.dp).fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 40.dp),
+        // 4 whole rows when the screen is tall enough, fewer on a small one (so the page itself never needs to scroll)
+        val visibleRows = (((maxHeight.value - INCOMING_CHROME_DP + 8f) / (INCOMING_ROW_DP + 8f)).toInt()).coerceIn(2, INCOMING_VISIBLE)
+        Column(
+            modifier = Modifier
+                .widthIn(max = 448.dp)
+                .fillMaxSize()
+                .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // ---- top bar: back arrow + title
-            item(key = "top") {
-                Row(
-                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(c.bgWhite80, CircleShape)
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
-                        contentAlignment = Alignment.Center,
-                    ) { FaIcon("fa-arrow-left", 16.dp, c.textGray500) }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        AppText(
-                            text = tr("incoming_overview", "Incoming Overview"), size = 18f, lineHeight = 28f,
-                            weight = FontWeight.Bold, color = c.textGray900,
-                        )
-                        AppText(
-                            text = tr("incoming_all_funds", "All funds combined"), size = 10f, lineHeight = 15f,
-                            weight = FontWeight.Bold, color = c.textGray400,
-                        )
-                    }
-                    Spacer(Modifier.size(40.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(c.bgWhite80, CircleShape)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
+                    contentAlignment = Alignment.Center,
+                ) { FaIcon("fa-arrow-left", 16.dp, c.textGray500) }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AppText(
+                        text = tr("incoming_overview", "Incoming Overview"), size = 18f, lineHeight = 28f,
+                        weight = FontWeight.Bold, color = c.textGray900,
+                    )
+                    AppText(
+                        text = tr("incoming_all_funds", "All funds combined"), size = 10f, lineHeight = 15f,
+                        weight = FontWeight.Bold, color = c.textGray400,
+                    )
                 }
+                Spacer(Modifier.size(40.dp))
             }
 
             // ---- filter chips
-            item(key = "chips") {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(tr("incoming_filter_month", "This Month"), filter == "month", Modifier.weight(1f)) { IncomingOverview.filter = "month" }
-                    FilterChip(tr("incoming_filter_last", "Last Month"), filter == "last", Modifier.weight(1f)) { IncomingOverview.filter = "last" }
-                    FilterChip(tr("incoming_filter_all", "All Time"), filter == "all", Modifier.weight(1f)) { IncomingOverview.filter = "all" }
-                }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(tr("incoming_filter_month", "This Month"), filter == "month", Modifier.weight(1f)) { IncomingOverview.filter = "month" }
+                FilterChip(tr("incoming_filter_last", "Last Month"), filter == "last", Modifier.weight(1f)) { IncomingOverview.filter = "last" }
+                FilterChip(tr("incoming_filter_all", "All Time"), filter == "all", Modifier.weight(1f)) { IncomingOverview.filter = "all" }
             }
 
             // ---- total
-            item(key = "total") {
-                TotalCard(
-                    label = when (filter) {
-                        "last" -> tr("incoming_total_last", "Total Received Last Month")
-                        "all" -> tr("incoming_total_all", "Total Received (All Time)")
-                        else -> tr("incoming_total_month", "Total Received This Month")
-                    },
-                    total = total,
-                    count = list.size,
-                    monthTotal = if (filter == "month") null else monthTotal,
-                )
-            }
+            TotalCard(
+                label = when (filter) {
+                    "last" -> tr("incoming_total_last", "Total Received Last Month")
+                    "all" -> tr("incoming_total_all", "Total Received (All Time)")
+                    else -> tr("incoming_total_month", "Total Received This Month")
+                },
+                total = total,
+                count = list.size,
+                monthTotal = if (filter == "month") null else monthTotal,
+            )
 
             if (list.isEmpty()) {
-                item(key = "empty") {
-                    val shape = RoundedCornerShape(16.dp)
-                    Box(
-                        Modifier.fillMaxWidth().clip(shape).background(c.bgWhite70, shape).padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        AppText(
-                            text = tr("incoming_empty", "No incoming transactions in this period."),
-                            size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold,
-                            color = c.textGray500, align = TextAlign.Center,
-                        )
-                    }
+                val shape = RoundedCornerShape(16.dp)
+                Box(
+                    Modifier.fillMaxWidth().clip(shape).background(c.bgWhite70, shape).padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppText(
+                        text = tr("incoming_empty", "No incoming transactions in this period."),
+                        size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold,
+                        color = c.textGray500, align = TextAlign.Center,
+                    )
                 }
             } else {
-                item(key = "tabs") { TabSwitch(tab) }
-                // new keys whenever the tab or the period changes: a fresh list with its own entrance
-                if (tab == "fund") {
-                    items(count = perFund.size, key = { "f_" + filter + "_" + perFund[it].fund }) { i ->
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (i < INCOMING_ENTRANCE_ROWS) Modifier.entrance(go = listReady, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
-                                    else Modifier,
-                                ),
-                        ) { FundRow(perFund[i], total) }
-                    }
-                } else {
-                    items(count = list.size, key = { "r_" + filter + "_" + list[it].id }) { i ->
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (i < INCOMING_ENTRANCE_ROWS) Modifier.entrance(go = listReady, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
-                                    else Modifier,
-                                ),
-                        ) { IncomingRow(list[i]) }
+                TabSwitch(tab)
+                // a fresh list (new measuring, new entrance) whenever the tab or the period changes.
+                // BOTH tabs show exactly [visibleRows] whole rows; the rest scrolls one row at a time (same as the history lists).
+                key(tab, filter) {
+                    if (tab == "fund") {
+                        IncomingPagedList(count = perFund.size, visible = visibleRows, go = listReady) { i -> FundRow(perFund[i], total) }
+                    } else {
+                        IncomingPagedList(count = list.size, visible = visibleRows, go = listReady) { i -> IncomingRow(list[i]) }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** How many rows are visible at once in each tab. */
+private const val INCOMING_VISIBLE = 4
+
+/** Height of the page above the list (top bar, chips, total, tabs, paddings) and of one row, in dp: used to pick how many rows fit. */
+private const val INCOMING_CHROME_DP = 350f
+private const val INCOMING_ROW_DP = 78f
+
+/**
+ * Exactly [visible] whole rows, the rest scrolls one row at a time (same snapping viewport as the history lists).
+ * The first rows come in one after another (fade + rise + settle).
+ */
+@Composable
+private fun IncomingPagedList(count: Int, visible: Int, go: Boolean, row: @Composable (Int) -> Unit) {
+    val paged = rememberPagedState(visible = visible, gap = 8.dp)
+    PagedViewport(
+        state = paged,
+        count = count,
+        modifier = Modifier.fillMaxWidth(),
+        animateSize = false,
+        smoothSnap = true,
+    ) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (i in 0 until count) key(i) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .pagedItem(paged, i)
+                        .then(
+                            if (i < visible + 1) Modifier.entrance(go = go, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
+                            else Modifier,
+                        ),
+                ) { row(i) }
             }
         }
     }
