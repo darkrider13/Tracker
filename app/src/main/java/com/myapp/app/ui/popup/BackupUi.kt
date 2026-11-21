@@ -3,7 +3,10 @@ package com.myapp.app.ui.popup
 import android.content.ContentValues
 import android.content.Context
 import android.Manifest
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -93,6 +96,9 @@ object BackupUi {
 
     /** Message of the full-screen "please wait" card (null = hidden). */
     var busy by mutableStateOf<String?>(null)
+
+    /** false = no "Saving / Reading / Restoring..." card is drawn. */
+    const val SHOW_BUSY_CARD = false
 
     /** Call once from MainActivity.onCreate (the launcher must be registered before the activity starts). */
     fun attach(activity: ComponentActivity) {
@@ -186,8 +192,9 @@ object BackupUi {
                     }
                     if (result == null) {
                         val uri = withContext(Dispatchers.IO) { writeCacheCopy(app, fileName, bytes) }
-                        withContext(Dispatchers.Main) { launchShare(app, uri, fileName) }
-                        result = "share"
+                        val armed = withContext(Dispatchers.Main) { launchShare(app, uri, fileName) }
+                        // armed = the "shared" popup comes later, once the user has really picked an app
+                        result = if (armed) "share_pending" else "share"
                     }
                 } catch (e: Throwable) {
                     failure = failure ?: e
@@ -195,6 +202,7 @@ object BackupUi {
                 }
                 busy = null
                 when (result) {
+                    "share_pending" -> Unit
                     "share" -> AppDialogs.alert(
                         trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
                     )
@@ -278,14 +286,54 @@ object BackupUi {
         return FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
     }
 
-    private fun launchShare(context: Context, uri: Uri, fileName: String) {
+    private const val ACTION_SHARE_DONE = "com.myapp.app.BACKUP_SHARE_DONE"
+    private var shareReceiver: BroadcastReceiver? = null
+
+    private fun dropShareReceiver(context: Context) {
+        shareReceiver?.let { try { context.unregisterReceiver(it) } catch (_: Throwable) {} }
+        shareReceiver = null
+    }
+
+    /**
+     * Opens the share sheet. Returns true when the "Backup ... shared" popup is armed: it is then shown only
+     * after the user has picked an app in the sheet (the system reports that choice). Closing the sheet
+     * without choosing shows nothing. Returns false if the choice report is not available (old behaviour).
+     */
+    private fun launchShare(context: Context, uri: Uri, fileName: String): Boolean {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_SUBJECT, fileName)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, fileName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        var armed = false
+        var chooser: Intent? = null
+        try {
+            dropShareReceiver(context)
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, intent: Intent) {
+                    dropShareReceiver(context)
+                    AppDialogs.alert(
+                        trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
+                    )
+                }
+            }
+            ContextCompat.registerReceiver(
+                context, receiver, IntentFilter(ACTION_SHARE_DONE), ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            shareReceiver = receiver
+            val callback = Intent(ACTION_SHARE_DONE).setPackage(context.packageName)
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+            val pi = PendingIntent.getBroadcast(context, 7701, callback, flags)
+            chooser = Intent.createChooser(send, fileName, pi.intentSender)
+            armed = true
+        } catch (_: Throwable) {
+            dropShareReceiver(context)
+            armed = false
+        }
+        context.startActivity((chooser ?: Intent.createChooser(send, fileName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return armed
     }
 
     // ============================================================================ import
@@ -412,6 +460,8 @@ object BackupUi {
 
 @Composable
 fun BusyOverlay() {
+    // The "please wait" card is switched off (import / export are quick): it only flashed on screen.
+    if (!BackupUi.SHOW_BUSY_CARD) return
     val message = BackupUi.busy ?: return
     val c = AppTheme.colors
     val dark = !c.isLight
