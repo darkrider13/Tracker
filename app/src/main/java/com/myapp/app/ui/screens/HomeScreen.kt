@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.myapp.app.ui.popup.LOCK_EXIT_MS
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -681,7 +682,7 @@ private fun DebtsCard(state: AppState) {
 // ------------------------------------------------------------------ category card
 
 /** Wait after the lock goes away before the chart starts (the unlock reveal itself lasts 450 ms). */
-private const val UNLOCK_CHART_START_MS = 170L
+private const val UNLOCK_CHART_START_MS = LOCK_EXIT_MS + 40L + 150L   // lock dissolve, then ~90 % of the Home fade-in
 
 @Composable
 private fun CategoryCard(state: AppState) {
@@ -690,8 +691,8 @@ private fun CategoryCard(state: AppState) {
     val c = AppTheme.colors
     val range = AppUi.homeChartRange
     val chart = buildHomeChart(state, range)
-    // The unlock reveal (lock dissolves, Home fades in, 420 ms, ease-out) is already ~90 % done after UNLOCK_CHART_START_MS;
-    // the chart starts then (frame fades in first, bars grow after), so there is no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
+    // Order: the lock dissolves (LOCK_EXIT_MS), Home fades in (380 ms, ease-out), and the chart starts when that
+    // fade-in is ~90 % done (frame fades in first, bars grow after): no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
     val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
         com.myapp.app.ui.popup.LockState.biometricVisible
     var lockSettled by remember { mutableStateOf(!lockUp) }
