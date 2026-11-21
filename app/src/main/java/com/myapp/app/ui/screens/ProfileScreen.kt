@@ -432,7 +432,8 @@ private fun NameBox() {
                     field = TextFieldValue(v)
                 }
                 // greeting follows the time of day: 5-12 morning, 12-15 noon, 15-17 afternoon, 17-19 evening, else night
-                val greeting = remember { timeGreeting() }
+                // remember(lang): the tab stays alive, so without the key the greeting kept the language it was first built in
+                val greeting = remember(AppSession.lang) { timeGreeting() }
                 AppText(
                     text = "$greeting,",
                     size = 13f, lineHeight = 18f, weight = FontWeight.Bold, color = c.textGray500,
