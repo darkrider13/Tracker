@@ -603,13 +603,16 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
  * is ever exposed), and when it closes it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06)
  * over 380 ms, so the Home screen underneath is revealed smoothly.
  */
+/** Length of the lock screen's dissolve. The Home reveal and the chart wait for it (see TrackerRoot). */
+const val LOCK_EXIT_MS = 380
+
 @Composable
 private fun LockExit(visible: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
         visible = visible,
         enter = EnterTransition.None,
-        exit = fadeOut(tween(380, easing = FastOutSlowInEasing)) +
-            scaleOut(targetScale = 1.06f, animationSpec = tween(380, easing = FastOutSlowInEasing)),
+        exit = fadeOut(tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) +
+            scaleOut(targetScale = 1.06f, animationSpec = tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)),
     ) { content() }
 }
 
