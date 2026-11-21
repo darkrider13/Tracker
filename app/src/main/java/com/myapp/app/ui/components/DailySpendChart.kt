@@ -175,7 +175,7 @@ private fun DailySpendChartBody(
 
     val dp = density.density
     val padTop = 8f * dp
-    val xAxisH = 22f * dp   // room for the bigger "today" label
+    val xAxisH = 18f * dp   // room for today's pill
     val yPad = 2f * dp
 
     val ticks = remember(yScale) {
@@ -227,7 +227,7 @@ private fun DailySpendChartBody(
                 contentKey = contentKey,
                 yScale = yScale,
                 tickColor = tickColor,
-                todayColor = if (isDark) Color.White else Color.Black,   // today's label: pure white (black in light mode)
+                isDark = isDark,
                 measurer = measurer,
                 selected = selected,
                 onSelect = { selected = it },
@@ -249,7 +249,7 @@ private fun DayBarsPage(
     contentKey: Any,
     yScale: YScale,
     tickColor: Color,
-    todayColor: Color,
+    isDark: Boolean,
     measurer: TextMeasurer,
     selected: Int?,
     onSelect: (Int?) -> Unit,
@@ -351,14 +351,27 @@ private fun DayBarsPage(
         // x labels: week = weekday names, month = every date of the slide.
         // Today's label (the last bar of the week, or today's date in the month) is bold pure white.
         val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
-        val centerY = bottom + xAxisH / 2f
+        val centerY = bottom + 10f * dp
         val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
-        // today (weekday name in Week, date number in Month) is clearly larger + heavier than the other labels
-        val stToday = textStyle(if (isWeek) 14f else 13f, true, todayColor).copy(fontWeight = FontWeight.Black)
+        // today (weekday name in Week, date number in Month): same size as the others, white text on a soft red pill
+        val stToday = textStyle(if (isWeek) 10f else 9f, true, Color.White).copy(fontWeight = FontWeight.Black)
+        val pillColor = Brand.red.copy(alpha = if (isDark) 0.38f else 0.9f)
         for (i in 0 until pn) {
             val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
             if (label.isEmpty()) continue
-            val layout = measurer.measure(label, if (off + i == todayIdx) stToday else st, softWrap = false, maxLines = 1)
+            val isToday = off + i == todayIdx
+            val layout = measurer.measure(label, if (isToday) stToday else st, softWrap = false, maxLines = 1)
+            if (isToday) {
+                val pw = layout.size.width + 12f * dp
+                val ph = 14f * dp
+                drawRoundRect(
+                    color = pillColor,
+                    topLeft = Offset(slot * (i + 0.5f) - pw / 2f, centerY - ph / 2f),
+                    size = androidx.compose.ui.geometry.Size(pw, ph),
+                    cornerRadius = CornerRadius(ph / 2f, ph / 2f),
+                    alpha = frameA,
+                )
+            }
             drawText(layout, topLeft = Offset(slot * (i + 0.5f) - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
         }
 
