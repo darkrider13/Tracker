@@ -91,9 +91,11 @@ object XlsxWriter {
                     "<fills count=\"2\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill></fills>" +
                     "<borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders>" +
                     "<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>" +
-                    "<cellXfs count=\"2\">" +
+                    "<cellXfs count=\"4\">" +
                     "<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/>" +
                     "<xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/>" +
+                    "<xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
+                    "<xf numFmtId=\"1\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
                     "</cellXfs>" +
                     "<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>" +
                     "</styleSheet>",
@@ -109,6 +111,8 @@ object XlsxWriter {
         val sb = StringBuilder()
         sb.append(XML_HEAD)
         sb.append("<worksheet xmlns=\"$NS_MAIN\">")
+        val lastCol = XlsxWriter.colName(maxOf(s.headers.size, 1) - 1)
+        sb.append("<dimension ref=\"A1:").append(lastCol).append(s.rows.size + 1).append("\"/>")
         sb.append("<sheetViews><sheetView workbookViewId=\"0\">")
         sb.append("<pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/>")
         sb.append("</sheetView></sheetViews>")
@@ -136,9 +140,9 @@ object XlsxWriter {
                     return@forEachIndexed
                 }
                 if (v is Int || v is Long) {
-                    appendNumber(sb, cellRef, v.toString())
+                    appendNumber(sb, cellRef, v.toString(), 3)
                 } else if (v is Number) {
-                    appendNumber(sb, cellRef, plainNumber(v.toDouble()))
+                    appendNumber(sb, cellRef, plainNumber(v.toDouble()), 2)
                 } else {
                     appendString(sb, cellRef, v.toString(), 0)
                 }
@@ -158,8 +162,9 @@ object XlsxWriter {
         sb.append("><is><t xml:space=\"preserve\">").append(esc(text)).append("</t></is></c>")
     }
 
-    private fun appendNumber(sb: StringBuilder, ref: String, value: String) {
-        sb.append("<c r=\"").append(ref).append("\"><v>").append(value).append("</v></c>")
+    private fun appendNumber(sb: StringBuilder, ref: String, value: String, style: Int) {
+        // explicit type + number style, so every viewer (Excel, Sheets, phone viewers) shows the number
+        sb.append("<c r=\"").append(ref).append("\" s=\"").append(style).append("\" t=\"n\"><v>").append(value).append("</v></c>")
     }
 
     /** 12.5 -> "12.5", 100.0 -> "100", 1.0E12 -> "1000000000000" (never scientific notation). */
