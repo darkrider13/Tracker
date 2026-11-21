@@ -81,6 +81,7 @@ fun Modifier.entrance(
     delayMs: Int = 0,
     rise: Dp = 22.dp,
     durationMs: Int = 560,
+    scaleFrom: Float = 1f,
 ): Modifier {
     val p = remember { Animatable(0f) }
     LaunchedEffect(go) {
@@ -93,6 +94,11 @@ fun Modifier.entrance(
     return this.graphicsLayer {
         alpha = p.value
         translationY = (1f - p.value) * risePx
+        if (scaleFrom != 1f) {
+            val sc = scaleFrom + (1f - scaleFrom) * p.value
+            scaleX = sc
+            scaleY = sc
+        }
     }
 }
 
