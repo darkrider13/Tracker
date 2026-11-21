@@ -88,13 +88,18 @@ object IncomingOverview {
     /** "fund" = list by fund (first tab), "received" = list of the received transactions. Resets to "fund" on every open. */
     var tab by mutableStateOf("fund")
 
+    /** true = the sheet vanishes in the same frame (cross icon); false = it glides down (back / tap outside). */
+    internal var skipCloseAnim by mutableStateOf(false)
+
     fun open() {
         filter = "month"
         tab = "fund"
+        skipCloseAnim = false
         Popups.incomingOverview = true
     }
 
-    fun close() {
+    fun close(instant: Boolean = false) {
+        skipCloseAnim = instant
         Popups.incomingOverview = false
     }
 }
@@ -144,16 +149,20 @@ fun IncomingOverviewSheet() {
     // recomposed on every frame of the animation. `mounted` keeps it on screen until the slide-out has finished.
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     var mounted by remember { mutableStateOf(false) }
+    val closeNow = !open && IncomingOverview.skipCloseAnim
     LaunchedEffect(open) {
         if (open) {
             mounted = true
             progress.animateTo(1f, tween(SHEET_OPEN_MS, easing = SheetEase))
         } else if (mounted) {
-            progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
+            if (IncomingOverview.skipCloseAnim) progress.snapTo(0f)
+            else progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
             mounted = false
+            IncomingOverview.skipCloseAnim = false
         }
     }
-    if (!mounted) return
+    // cross icon: leave composition in the very frame of the tap, no slide-out
+    if (!mounted || closeNow) return
     val c = AppTheme.colors
     val state = AppStore.observe()
     val revision = AppStore.revision
@@ -224,7 +233,7 @@ fun IncomingOverviewSheet() {
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(c.bgWhite80, CircleShape)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close(instant = true) },
                     contentAlignment = Alignment.Center,
                 ) { FaIcon("fa-xmark", 14.dp, c.textGray500) }
             }

@@ -76,12 +76,23 @@ private val MONTHS_SHORT = listOf("Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.",
 // =============================================================================================
 
 object AllCategoriesSheet {
-    fun open() { Popups.allCategories = true }
-    fun close() {
+    /** true = the sheet vanishes in the same frame (cross icon); false = it glides down (back / tap outside). */
+    internal var skipCloseAnim by mutableStateOf(false)
+
+    fun open() {
+        skipCloseAnim = false
+        Popups.allCategories = true
+    }
+
+    fun close(instant: Boolean = false) {
         AllCatMonthPicker.close()
+        skipCloseAnim = instant
         Popups.allCategories = false
     }
 }
+
+/** Height of one category row (12 + 36 + 8 + 6 + 12 dp): the placeholder must match it, or the sheet jumps when the rows arrive. */
+private const val ALL_CAT_ROW_DP = 74
 
 @Composable
 fun AllCategoriesSheetOverlay() {
@@ -90,22 +101,28 @@ fun AllCategoriesSheetOverlay() {
     // One Animatable read only in the draw / layer phase: the sheet is not recomposed on every frame of the slide.
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     var mounted by remember { mutableStateOf(false) }
+    // the rows are built only once the slide-in has fully finished, so the slide runs on light frames
+    var rowsReady by remember { mutableStateOf(false) }
+    val closeNow = !open && AllCategoriesSheet.skipCloseAnim
     LaunchedEffect(open) {
         if (open) {
             mounted = true
+            // let the sheet be composed + measured at progress 0 first (the heaviest frame), so that frame
+            // is not counted as animation time and the slide does not start with a jump
+            androidx.compose.runtime.withFrameNanos { }
+            androidx.compose.runtime.withFrameNanos { }
             progress.animateTo(1f, androidx.compose.animation.core.tween(SHEET_OPEN_MS, easing = SheetEase))
+            rowsReady = true
         } else if (mounted) {
-            progress.animateTo(0f, androidx.compose.animation.core.tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
+            if (AllCategoriesSheet.skipCloseAnim) progress.snapTo(0f)
+            else progress.animateTo(0f, androidx.compose.animation.core.tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
             mounted = false
+            rowsReady = false
+            AllCategoriesSheet.skipCloseAnim = false
         }
     }
-    if (!mounted) return
-    // the rows are built right after the slide-in has finished (the slide itself runs on light frames)
-    var rowsReady by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(SHEET_ROWS_DELAY_MS)
-        rowsReady = true
-    }
+    // cross icon: leave composition in the very frame of the tap, no slide-out
+    if (!mounted || closeNow) return
     val c = AppTheme.colors
     val state = AppStore.observe()
     BackHandler(enabled = open && !Popups.allCatMonthPicker) { AllCategoriesSheet.close() }
@@ -156,7 +173,7 @@ fun AllCategoriesSheetOverlay() {
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(c.bgWhite80, CircleShape)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AllCategoriesSheet.close() },
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AllCategoriesSheet.close(instant = true) },
                     contentAlignment = Alignment.Center,
                 ) { FaIcon("fa-xmark", 14.dp, c.textGray500) }
             }
@@ -172,11 +189,11 @@ fun AllCategoriesSheetOverlay() {
             } else if (!rowsReady) {
                 // about the final size while the sheet slides in; the rows follow one after another
                 val n = minOf(groups.size, 3)
-                Spacer(Modifier.fillMaxWidth().height(80.dp * n + 8.dp * (n - 1)))
+                Spacer(Modifier.fillMaxWidth().height(ALL_CAT_ROW_DP.dp * n + 8.dp * (n - 1)))
             } else {
                 // exactly 3 categories visible; one swipe moves one page
                 val paged = rememberPagedState(visible = 3, gap = 8.dp)
-                PagedViewport(state = paged, count = groups.size, animateSize = false, modifier = Modifier.fillMaxWidth()) {
+                PagedViewport(state = paged, count = groups.size, animateSize = false, defaultItemDp = ALL_CAT_ROW_DP.dp, modifier = Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         groups.forEachIndexed { i, g ->
                             key(g.label) {
