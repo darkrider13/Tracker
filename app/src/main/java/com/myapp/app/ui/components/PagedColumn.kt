@@ -95,18 +95,24 @@ class PagedState(val scroll: ScrollState, val visible: Int, val gapPx: Int, val 
         return offsetOf(groupStart)
     }
 
-    /** Nearest item start (every item is a snap point). */
+    /**
+     * Nearest item start (every item is a snap point).
+     * One pass over the items (running offset) instead of re-adding all earlier heights for every item,
+     * so a very long list (hundreds of cards) settles after a fling without a hitch.
+     */
     fun nearestPageOffset(count: Int): Int {
         var best = 0
         var bestDist = Int.MAX_VALUE
+        var off = 0
         for (i in 0 until count) {
-            if (i % snapStep != 0) continue
-            val off = offsetOf(i)
-            val d = abs(off - scroll.value)
-            if (d < bestDist) {
-                bestDist = d
-                best = off
+            if (i % snapStep == 0) {
+                val d = abs(off - scroll.value)
+                if (d < bestDist) {
+                    bestDist = d
+                    best = off
+                }
             }
+            off += (heights[i] ?: 0) + gapPx
         }
         return minOf(best, scroll.maxValue)
     }
