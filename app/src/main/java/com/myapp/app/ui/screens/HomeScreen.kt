@@ -220,7 +220,8 @@ private fun buildHomeChart(state: AppState, range: String): HomeChart {
         )
         bodies.add("৳" + fmtMoney(jsRound(v), 0))
     }
-    return HomeChart(DailySpendChartData(xLabels, totals, titles, bodies, isWeek), groups, totalSpent)
+    val todayIdx = if (isWeek) -1 else nowCal.get(Calendar.DAY_OF_MONTH) - 1
+    return HomeChart(DailySpendChartData(xLabels, totals, titles, bodies, isWeek, todayIdx), groups, totalSpent)
 }
 
 // ------------------------------------------------------------------ screen
@@ -781,7 +782,7 @@ private fun CategoryCard(state: AppState) {
             play = AppUi.tab == Tab.Home && lockSettled,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(112.dp),
+                .height(if (chart.data.isWeek) 112.dp else 136.dp),
         )
         Spacer(Modifier.height(16.dp))
 
