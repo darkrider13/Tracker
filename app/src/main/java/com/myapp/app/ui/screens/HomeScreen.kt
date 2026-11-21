@@ -718,8 +718,12 @@ private fun CategoryCard(state: AppState) {
     // start in the middle of that and looked jerky. Now they wait until the splash is gone and Home has settled.
     var lockSettled by remember { mutableStateOf(!lockUp && ChartLaunch.done) }
     var sawLock by remember { mutableStateOf(lockUp) }
-    LaunchedEffect(lockUp) {
-        if (lockUp) {
+    // first run: the bars wait until the Welcome screen has been dismissed (it dissolves over LOCK_EXIT_MS)
+    val onboarded = AppStore.observe().onboardingComplete
+    LaunchedEffect(lockUp, onboarded) {
+        if (!onboarded) {
+            lockSettled = false
+        } else if (lockUp) {
             sawLock = true
             lockSettled = false
         } else {
