@@ -203,9 +203,12 @@ object BackupUi {
                 busy = null
                 when (result) {
                     "share_pending" -> Unit
-                    "share" -> AppDialogs.alert(
-                        trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
-                    )
+                    "share" -> {
+                        delay(SHARE_POPUP_DELAY_MS)
+                        AppDialogs.alert(
+                            trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
+                        )
+                    }
                     "documents" -> AppDialogs.alert(
                         trf("alert_backup_saved_to_documents", "Backup saved to Documents/$fileName", "filename" to fileName),
                         icon = "fa-circle-check",
@@ -286,6 +289,8 @@ object BackupUi {
         return FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
     }
 
+    /** Delay between choosing an app in the share sheet and the "Backup shared" success popup. */
+    private const val SHARE_POPUP_DELAY_MS = 6000L
     private const val ACTION_SHARE_DONE = "com.myapp.app.BACKUP_SHARE_DONE"
     private var shareReceiver: BroadcastReceiver? = null
 
@@ -313,9 +318,13 @@ object BackupUi {
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, intent: Intent) {
                     dropShareReceiver(context)
-                    AppDialogs.alert(
-                        trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
-                    )
+                    // user picked an app: the success popup comes SHARE_POPUP_DELAY_MS later
+                    scope.launch {
+                        delay(SHARE_POPUP_DELAY_MS)
+                        AppDialogs.alert(
+                            trf("alert_backup_shared", "Backup $fileName shared", "filename" to fileName), icon = "fa-circle-check",
+                        )
+                    }
                 }
             }
             ContextCompat.registerReceiver(
