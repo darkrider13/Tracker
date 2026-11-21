@@ -204,3 +204,10 @@ Not ported because they can never be opened in the old app (no code ever shows t
 6. Profile: avatar, name, day mode, language, export -> import the same file, lock PIN / pattern / fingerprint (close app, reopen -> lock shows).
 7. Bell: set a reminder two minutes ahead -> notification arrives (also with the app closed); a debt due today with a time.
 8. Notes: fund note, Logs / Debts / Receivables section notes (dot appears).
+
+---
+## NEW FEATURE - Incoming Overview (Home, written, NOT yet compiled)
+- Home: small green "Incoming Overview" / "আয়ের সারসংক্ষেপ" pill at the right end of the "spent from this fund" line (`HomeScreen.kt`, `IncomingOverviewButton`).
+- `ui/popup/IncomingOverview.kt`: bottom sheet - filter chips (This Month / Last Month / All Time), Total Received card (+ "This month" pill when another filter is on), By Fund summary, combined list (category, from whom, fund, date/time, amount).
+- Counted as incoming: Money Added, Fund Transfer (in), Receivable Collected, Money Borrowed (all `add_money` / `transfer_in` lines, history-hidden lines skipped).
+- Wiring: `Popups.incomingOverview`, `AppActions.openIncomingOverview`, `installIncomingOverviewHooks()`, 13 new keys `incoming_*` in `i18n_bn.json`.
