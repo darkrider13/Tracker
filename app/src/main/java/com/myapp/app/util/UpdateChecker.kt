@@ -31,7 +31,7 @@ import java.net.URL
  * anonymous phones with HTTP 403 once the shared IP address hits its hourly limit.)
  */
 object UpdateChecker {
-    private const val BASE = "https://github.com/darkrider13/Tracker-V2/releases/download/latest/"
+    private const val BASE = "https://github.com/darkrider13/Tracker/releases/download/latest/"
     private const val VERSION_URL = BASE + "version.json"
     private const val APK_URL = BASE + "Tracker.apk"
 
