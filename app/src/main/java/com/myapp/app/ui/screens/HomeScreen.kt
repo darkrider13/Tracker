@@ -697,6 +697,12 @@ private fun DebtsCard(state: AppState) {
 /** Wait after the lock goes away before the chart starts (the unlock reveal itself lasts 450 ms). */
 private const val UNLOCK_CHART_START_MS = LOCK_EXIT_MS + 40L + 150L   // lock dissolve, then ~90 % of the Home fade-in
 
+/** No-lock launch: wait this long after the first frame (splash gone, Home faded in) before the bars grow. */
+private const val LAUNCH_CHART_START_MS = 380L
+
+/** true once the chart has played its first time in this app process (later opens use the normal timing). */
+private object ChartLaunch { var done = false }
+
 @Composable
 private fun CategoryCard(state: AppState) {
     // Same AppState object every time -> Compose would skip this function; reading the revision makes it redraw after a commit.
@@ -708,11 +714,24 @@ private fun CategoryCard(state: AppState) {
     // fade-in is ~90 % done (frame fades in first, bars grow after): no dead gap and no overlap. With no lock (or when only switching tabs) there is no wait.
     val lockUp = com.myapp.app.ui.popup.LockState.pinVisible || com.myapp.app.ui.popup.LockState.patternVisible ||
         com.myapp.app.ui.popup.LockState.biometricVisible
-    var lockSettled by remember { mutableStateOf(!lockUp) }
+    // First launch WITHOUT a lock: the splash is still leaving and the first frames are busy, so the bars used to
+    // start in the middle of that and looked jerky. Now they wait until the splash is gone and Home has settled.
+    var lockSettled by remember { mutableStateOf(!lockUp && ChartLaunch.done) }
+    var sawLock by remember { mutableStateOf(lockUp) }
     LaunchedEffect(lockUp) {
-        if (lockUp) lockSettled = false
-        else {
-            if (!lockSettled) delay(UNLOCK_CHART_START_MS)
+        if (lockUp) {
+            sawLock = true
+            lockSettled = false
+        } else {
+            if (!lockSettled) {
+                if (ChartLaunch.done || sawLock) {
+                    delay(UNLOCK_CHART_START_MS)
+                } else {
+                    while (!AppSession.uiReady) androidx.compose.runtime.withFrameNanos { }
+                    delay(LAUNCH_CHART_START_MS)
+                }
+            }
+            ChartLaunch.done = true
             lockSettled = true
         }
     }
