@@ -124,8 +124,6 @@ fun TrackerRoot(activity: Activity) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = reveal }) { AppBackdrop() }
             // invisible one-time warm-up of the category chip row (smooth first swipe after install)
             com.myapp.app.ui.popup.CategoryWarmUp()
-            // same idea for the Home funds panel buttons (smooth first opening after a fresh start)
-            com.myapp.app.ui.screens.PanelButtonsWarmUp()
 
             // everything else sits between the bars (and above the keyboard), where it always was
             Box(
