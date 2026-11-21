@@ -141,7 +141,12 @@ fun PagedViewport(
     val density = LocalDensity.current
     val maxPx = state.viewportMax(count)
     val shownPx = maxPx ?: if (count > state.visible) state.provisionalMax(with(density) { defaultItemDp.roundToPx() }) else null
-    val clamp = if (shownPx != null) Modifier.heightIn(max = with(density) { shownPx.toDp() }) else Modifier.heightIn(max = 100000.dp)
+    val clamp = if (shownPx != null) Modifier.heightIn(max = with(density) { shownPx.toDp() }) else Modifier.heightIn(
+        // Compose can only hold a size up to ~262,000 px. 100000.dp is more than that on phones with a high
+        // screen density (about 2.6x and up) and crashes the moment a list opens, so the cap is given in px.
+        // 100,000 px is still far taller than any list here, so nothing changes on other phones.
+        max = with(density) { 100_000.toDp() },
+    )
 
     // smoothSnap: the fling itself glides onto the nearest card in ONE continuous motion
     // (no separate "stop, then jump-animate" step after the list has already come to rest).
