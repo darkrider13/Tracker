@@ -149,15 +149,23 @@ fun IncomingOverviewSheet() {
     // recomposed on every frame of the animation. `mounted` keeps it on screen until the slide-out has finished.
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     var mounted by remember { mutableStateOf(false) }
+    // the rows are built only once the slide-in has fully finished (same as the All Categories Summary sheet)
+    var listReady by remember { mutableStateOf(false) }
     val closeNow = !open && IncomingOverview.skipCloseAnim
     LaunchedEffect(open) {
         if (open) {
             mounted = true
+            // let the sheet be composed + measured at progress 0 first (the heaviest frame), so that frame
+            // is not counted as animation time and the slide does not start with a jump / rush up
+            androidx.compose.runtime.withFrameNanos { }
+            androidx.compose.runtime.withFrameNanos { }
             progress.animateTo(1f, tween(SHEET_OPEN_MS, easing = SheetEase))
+            listReady = true
         } else if (mounted) {
             if (IncomingOverview.skipCloseAnim) progress.snapTo(0f)
             else progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
             mounted = false
+            listReady = false
             IncomingOverview.skipCloseAnim = false
         }
     }
@@ -178,13 +186,6 @@ fun IncomingOverviewSheet() {
         list.groupBy { it.fund }
             .map { (f, rows) -> FundTotal(f, rows.sumOf { it.amount }, rows.size) }
             .sortedByDescending { it.total }
-    }
-
-    // the rows are mounted a moment after the sheet has slid in, so the slide itself runs on a light frame
-    var listReady by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(SHEET_ROWS_DELAY_MS)
-        listReady = true
     }
 
     BoxWithConstraints(
