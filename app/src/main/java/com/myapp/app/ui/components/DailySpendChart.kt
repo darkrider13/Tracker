@@ -175,7 +175,7 @@ private fun DailySpendChartBody(
 
     val dp = density.density
     val padTop = 8f * dp
-    val xAxisH = 18f * dp   // room for today's pill
+    val xAxisH = 16f * dp
     val yPad = 2f * dp
 
     val ticks = remember(yScale) {
@@ -353,26 +353,12 @@ private fun DayBarsPage(
         val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
         val centerY = bottom + 10f * dp
         val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
-        // today (weekday name in Week, date number in Month): same look as the category icon box next to the title
-        // (black box + red mark; white box in light mode), here as a pill with red text
+        // today (weekday name in Week, date number in Month): same size as the others, bold red
         val stToday = textStyle(if (isWeek) 10f else 9f, true, Brand.red).copy(fontWeight = FontWeight.Black)
-        val pillColor = if (isDark) Color.Black else Color.White
         for (i in 0 until pn) {
             val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
             if (label.isEmpty()) continue
-            val isToday = off + i == todayIdx
-            val layout = measurer.measure(label, if (isToday) stToday else st, softWrap = false, maxLines = 1)
-            if (isToday) {
-                val pw = layout.size.width + 12f * dp
-                val ph = 14f * dp
-                drawRoundRect(
-                    color = pillColor,
-                    topLeft = Offset(slot * (i + 0.5f) - pw / 2f, centerY - ph / 2f),
-                    size = androidx.compose.ui.geometry.Size(pw, ph),
-                    cornerRadius = CornerRadius(ph / 2f, ph / 2f),
-                    alpha = frameA,
-                )
-            }
+            val layout = measurer.measure(label, if (off + i == todayIdx) stToday else st, softWrap = false, maxLines = 1)
             drawText(layout, topLeft = Offset(slot * (i + 0.5f) - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
         }
 
