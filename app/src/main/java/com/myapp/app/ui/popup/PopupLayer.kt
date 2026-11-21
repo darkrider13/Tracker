@@ -100,6 +100,17 @@ internal val LocalPopupMaxHeight = compositionLocalOf { 600.dp }
 
 internal val DropdownEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
+/**
+ * Bottom sheets (All Categories Summary, Incoming Overview): one steady glide up (gentle start, long soft landing) and a
+ * quicker, even glide down. The old curve flew up in the first ~100 ms and then crawled, which felt like a hard stop.
+ */
+internal val SheetEase = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+internal val SheetCloseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
+internal const val SHEET_OPEN_MS = 420
+internal const val SHEET_CLOSE_MS = 260
+/** Sheet rows are built just after the slide-in has finished, so the slide runs on light frames. */
+internal const val SHEET_ROWS_DELAY_MS = SHEET_OPEN_MS + 30L
+
 private val PopupEase = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 /**

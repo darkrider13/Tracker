@@ -24,6 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -84,15 +87,25 @@ object AllCategoriesSheet {
 fun AllCategoriesSheetOverlay() {
     val open = Popups.allCategories
     // The sheet glides up together with the dim + blur behind it (same curve), and glides down on close.
-    val progress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (open) 1f else 0f,
-        animationSpec = androidx.compose.animation.core.tween(
-            durationMillis = if (open) 300 else 200,
-            easing = DropdownEase,
-        ),
-        label = "allCatSheet",
-    )
-    if (!open && progress <= 0.001f) return
+    // One Animatable read only in the draw / layer phase: the sheet is not recomposed on every frame of the slide.
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    var mounted by remember { mutableStateOf(false) }
+    LaunchedEffect(open) {
+        if (open) {
+            mounted = true
+            progress.animateTo(1f, androidx.compose.animation.core.tween(SHEET_OPEN_MS, easing = SheetEase))
+        } else if (mounted) {
+            progress.animateTo(0f, androidx.compose.animation.core.tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
+            mounted = false
+        }
+    }
+    if (!mounted) return
+    // the rows are built right after the slide-in has finished (the slide itself runs on light frames)
+    var rowsReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(SHEET_ROWS_DELAY_MS)
+        rowsReady = true
+    }
     val c = AppTheme.colors
     val state = AppStore.observe()
     BackHandler(enabled = open && !Popups.allCatMonthPicker) { AllCategoriesSheet.close() }
@@ -105,7 +118,7 @@ fun AllCategoriesSheetOverlay() {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f * progress))
+            .drawBehind { drawRect(Color.Black.copy(alpha = 0.45f * progress.value)) }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { AllCategoriesSheet.close() },
         contentAlignment = Alignment.BottomCenter,
     ) {
@@ -115,12 +128,11 @@ fun AllCategoriesSheetOverlay() {
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .heightIn(max = maxHeight * 0.88f)
-                .graphicsLayer { translationY = (1f - progress) * size.height }
+                .graphicsLayer { translationY = (1f - progress.value) * size.height }
                 .clip(sheetShape)
                 .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
                 // taps on the sheet itself must not close it
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
-                .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 28.dp),
         ) {
             Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -157,6 +169,10 @@ fun AllCategoriesSheetOverlay() {
                         size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold, color = c.textGray500, align = TextAlign.Center,
                     )
                 }
+            } else if (!rowsReady) {
+                // about the final size while the sheet slides in; the rows follow one after another
+                val n = minOf(groups.size, 3)
+                Spacer(Modifier.fillMaxWidth().height(80.dp * n + 8.dp * (n - 1)))
             } else {
                 // exactly 3 categories visible; one swipe moves one page
                 val paged = rememberPagedState(visible = 3, gap = 8.dp)
@@ -169,7 +185,7 @@ fun AllCategoriesSheetOverlay() {
                                 // staggered entrance (same motion as the fund list): each row rises, fades in and settles in turn
                                 val enter = remember { androidx.compose.animation.core.Animatable(0f) }
                                 LaunchedEffect(Unit) {
-                                    kotlinx.coroutines.delay(120L + i.coerceAtMost(6) * 70L)
+                                    kotlinx.coroutines.delay(20L + i.coerceAtMost(6) * 60L)
                                     enter.animateTo(1f, androidx.compose.animation.core.tween(460, easing = CatEnterEase))
                                 }
                                 Column(

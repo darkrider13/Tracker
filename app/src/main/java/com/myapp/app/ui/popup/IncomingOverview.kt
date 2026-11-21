@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -139,15 +140,20 @@ private class FundTotal(val fund: String, val total: Double, val count: Int)
 @Composable
 fun IncomingOverviewSheet() {
     val open = Popups.incomingOverview
-    val progress by animateFloatAsState(
-        targetValue = if (open) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (open) 300 else 200,
-            easing = DropdownEase,
-        ),
-        label = "incomingSheet",
-    )
-    if (!open && progress <= 0.001f) return
+    // Driven by one Animatable that is read only in the draw / layer phase (scrim + slide), so the sheet is NOT
+    // recomposed on every frame of the animation. `mounted` keeps it on screen until the slide-out has finished.
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    var mounted by remember { mutableStateOf(false) }
+    LaunchedEffect(open) {
+        if (open) {
+            mounted = true
+            progress.animateTo(1f, tween(SHEET_OPEN_MS, easing = SheetEase))
+        } else if (mounted) {
+            progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
+            mounted = false
+        }
+    }
+    if (!mounted) return
     val c = AppTheme.colors
     val state = AppStore.observe()
     val revision = AppStore.revision
@@ -168,23 +174,21 @@ fun IncomingOverviewSheet() {
     // the rows are mounted a moment after the sheet has slid in, so the slide itself runs on a light frame
     var listReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(260)
+        delay(SHEET_ROWS_DELAY_MS)
         listReady = true
     }
 
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f * progress))
+            .drawBehind { drawRect(Color.Black.copy(alpha = 0.45f * progress.value)) }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
         contentAlignment = Alignment.BottomCenter,
     ) {
         val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         // The sheet is only as tall as its content (no empty space under the last card), up to 88 % of the screen.
-        // It slides by a FIXED distance (the tallest it can be), not by its own height: its height changes while the
-        // rows are measured, and sliding by that moving height is what made the opening look like it was shaking.
+        // (The rows are mounted only after the slide-in, so the sheet's height does not change while it moves.)
         val maxSheetH = maxHeight * 0.88f
-        val slidePx = with(androidx.compose.ui.platform.LocalDensity.current) { maxSheetH.toPx() }
         // 4 whole rows when the screen is tall enough, fewer on a small one (so nothing below needs an outer scroll)
         val visibleRows = (((maxSheetH.value - INCOMING_CHROME_DP + 8f) / (INCOMING_ROW_DP + 8f)).toInt()).coerceIn(2, INCOMING_VISIBLE)
         Column(
@@ -192,7 +196,7 @@ fun IncomingOverviewSheet() {
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .heightIn(max = maxSheetH)
-                .graphicsLayer { translationY = (1f - progress) * slidePx }
+                .graphicsLayer { translationY = (1f - progress.value) * size.height }
                 .clip(sheetShape)
                 .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
                 // taps on the sheet itself must not close it
