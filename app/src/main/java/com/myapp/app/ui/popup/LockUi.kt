@@ -542,7 +542,7 @@ object LockState {
 /** The full-screen background of the lock screens: the Home backdrop in day mode, pure black in dark mode. */
 @Composable
 private fun LockBackground(
-    accent: Color = Brand.red,
+    accent: Color = Brand.green,
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
 ) {
     val c = AppTheme.colors
@@ -584,7 +584,7 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
     Box(
         Modifier.size(circle.dp).clip(CircleShape).background(if (AppTheme.colors.isLight) Color.Black.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.10f), CircleShape),
         contentAlignment = Alignment.Center,
-    ) { FaIcon(icon, iconSize.dp, Brand.red) }
+    ) { FaIcon(icon, iconSize.dp, Brand.green) }
     AppText(
         text = title, size = titleSize, lineHeight = titleLine, weight = FontWeight.Bold, color = LockTitleColor(),
         align = TextAlign.Center, modifier = Modifier.padding(top = 20.dp),
@@ -693,8 +693,8 @@ private fun PinPadContent() {
                             Modifier
                                 .size(14.dp)
                                 .clip(CircleShape)
-                                .background(if (showRed) Brand.red else Color.Transparent, CircleShape)
-                                .border(2.dp, if (s.pinErrorState) Brand.red else Color(0xFF991B1B).copy(alpha = 0.40f), CircleShape),
+                                .background(if (s.pinErrorState) Brand.red else if (showRed) Brand.green else Color.Transparent, CircleShape)
+                                .border(2.dp, if (s.pinErrorState) Brand.red else Brand.green.copy(alpha = 0.40f), CircleShape),
                         )
                     }
                 }
@@ -735,7 +735,7 @@ private fun PinKey(label: String?, onClick: () -> Unit) {
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(if (pressed) Brand.red.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.45f), CircleShape)
+            .background(if (pressed) Brand.green.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.45f), CircleShape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -805,18 +805,18 @@ private fun PatternPadContent() {
                         val buf = s.patternBuffer
                         for (i in 0 until buf.size - 1) {
                             val a = pts[buf[i]]; val b = pts[buf[i + 1]]
-                            drawLine(Brand.red, Offset(a.x * k, a.y * k), Offset(b.x * k, b.y * k), strokeWidth = lineStroke.width, cap = StrokeCap.Round)
+                            drawLine(Brand.green, Offset(a.x * k, a.y * k), Offset(b.x * k, b.y * k), strokeWidth = lineStroke.width, cap = StrokeCap.Round)
                         }
                         val live = s.patternLive
                         if (live != null && buf.isNotEmpty()) {
                             val last = pts[buf.last()]
-                            drawLine(Brand.red, Offset(last.x * k, last.y * k), Offset(live.x * k, live.y * k), strokeWidth = lineStroke.width, cap = StrokeCap.Round)
+                            drawLine(Brand.green, Offset(last.x * k, last.y * k), Offset(live.x * k, live.y * k), strokeWidth = lineStroke.width, cap = StrokeCap.Round)
                         }
                         pts.forEachIndexed { i, p ->
                             val active = i in buf
-                            drawCircle(if (active) Brand.red else Color.Black.copy(alpha = 0.45f), radius = 11f * k, center = Offset(p.x * k, p.y * k))
+                            drawCircle(if (active) Brand.green else Color.Black.copy(alpha = 0.45f), radius = 11f * k, center = Offset(p.x * k, p.y * k))
                             drawCircle(
-                                if (active) Brand.red else Color.White.copy(alpha = 0.2f), radius = 11f * k,
+                                if (active) Brand.green else Color.White.copy(alpha = 0.2f), radius = 11f * k,
                                 center = Offset(p.x * k, p.y * k), style = Stroke(width = 2f * k),
                             )
                         }
