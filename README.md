@@ -258,6 +258,6 @@ This is a personal project, but issues and suggestions are welcome. For code cha
 
 <div align="center">
 
-© Md. Insanul Islam Abir. All rights reserved.
+Made with ❤️ by [**darkrider13**](https://github.com/darkrider13)
 
 </div>
