@@ -74,6 +74,12 @@ object Popups {
     var noteModal by mutableStateOf(false)
     var reminders by mutableStateOf(false)
     var allCatMonthPicker by mutableStateOf(false)
+
+    /** true while the Incoming Overview sheet is still sliding up: the frosted blur waits until it has landed. */
+    var sheetSliding by mutableStateOf(false)
+
+    /** the blur behind that sheet fades in gently (after the slide) instead of snapping on in 60 ms. */
+    var sheetBlurSoft by mutableStateOf(false)
     private val fadeHandler = Handler(Looper.getMainLooper())
 
     /** Runs [block] once the close animation (0.15 s) is over, so a popup never changes while it fades out. */
@@ -122,13 +128,24 @@ fun PopupLayer(
     visible: Boolean,
     modifier: Modifier = Modifier,
     scrim: Float = 0.6f,
+    /**
+     * Frames to wait, invisibly at progress 0, before the opening motion starts. A popup with a heavy form (grids that
+     * measure themselves, many fields) is built and laid out in these frames, so the motion never starts on a long first
+     * frame and the card never changes size while it is moving. 0 = start at once (the old behaviour).
+     */
+    settleFrames: Int = 0,
     content: @Composable () -> Unit,
 ) {
-    val progress = animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = if (visible) 274 else 150, easing = PopupEase),
-        label = "popupProgress",
-    )
+    val progressAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+    val progress = progressAnim.asState()
+    androidx.compose.runtime.LaunchedEffect(visible) {
+        if (visible) {
+            repeat(settleFrames) { androidx.compose.runtime.withFrameNanos { } }
+            progressAnim.animateTo(1f, tween(durationMillis = 274, easing = PopupEase))
+        } else {
+            progressAnim.animateTo(0f, tween(durationMillis = 150, easing = PopupEase))
+        }
+    }
     if (!visible && progress.value <= 0.001f) return
     DisposableEffect(Unit) {
         Popups.layersShown++

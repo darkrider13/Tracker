@@ -115,7 +115,7 @@ private fun FieldLabel(text: String, bottom: androidx.compose.ui.unit.Dp) {
 @Composable
 fun AddFundPopup() {
     val c = AppTheme.colors
-    PopupLayer(visible = Popups.addFund, scrim = 0.6f) {
+    PopupLayer(visible = Popups.addFund, scrim = 0.6f, settleFrames = 3) {
         GlassCard(radius = 28.dp, padding = 24.dp) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
