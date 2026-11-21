@@ -135,12 +135,12 @@ fun TrackerRoot(activity: Activity) {
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
             // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
             // blur clears within a moment of the popup closing (no lingering blur).
-            val blurOn = Popups.anyVisible || com.myapp.app.util.UpdateChecker.downloading
+            val blurOn = (Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
                 // Blur comes up at once with the popup / sheet (60 ms) and is removed INSTANTLY the
                 // moment the popup starts to close (no lingering blur behind the fading popup).
-                animationSpec = if (blurOn) tween(durationMillis = 60, easing = LinearEasing) else snap(),
+                animationSpec = if (blurOn) tween(durationMillis = if (Popups.sheetBlurSoft) 260 else 60, easing = LinearEasing) else snap(),
                 label = "popupBlur",
             )
 
