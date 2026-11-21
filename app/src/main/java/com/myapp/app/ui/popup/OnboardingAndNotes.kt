@@ -88,7 +88,7 @@ fun OnboardingScreen() {
 @Composable
 private fun OnboardingContent() {
     val c = AppTheme.colors
-    val go = com.myapp.app.ui.components.rememberSplashGone()
+    val go = com.myapp.app.ui.components.rememberUiSettled()
     val haptic = LocalHapticFeedback.current
 
     var name by remember {
@@ -135,7 +135,7 @@ private fun OnboardingContent() {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
         if (c.isLight) com.myapp.app.ui.components.AppBackdrop(extend = true)
-        Box(Modifier.fillMaxSize().entrance(go, delayMs = 0, rise = 0.dp, durationMs = 700)) { FinanceDecor(accent = Brand.green) }
+        Box(Modifier.fillMaxSize().entrance(go, delayMs = 0, rise = 0.dp, durationMs = 800)) { FinanceDecor(accent = Brand.green) }
         Column(
             Modifier
                 .fillMaxSize()
@@ -145,7 +145,7 @@ private fun OnboardingContent() {
         ) {
             Column {
                 Column(
-                    Modifier.fillMaxWidth().padding(top = 56.dp).entrance(go, delayMs = 60),
+                    Modifier.fillMaxWidth().padding(top = 56.dp).entrance(go, delayMs = 80, rise = 20.dp, durationMs = 640),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -168,7 +168,7 @@ private fun OnboardingContent() {
                 Column(
                     Modifier
                         .padding(top = 40.dp)
-                        .entrance(go, delayMs = 200)
+                        .entrance(go, delayMs = 210, rise = 20.dp, durationMs = 640)
                         .fillMaxWidth()
                         .clip(cardShape)
                         .background(c.bgGray200a60, cardShape)
@@ -222,7 +222,7 @@ private fun OnboardingContent() {
             Row(
                 Modifier
                     .padding(top = 32.dp)
-                    .entrance(go, delayMs = 340)
+                    .entrance(go, delayMs = 340, rise = 20.dp, durationMs = 640)
                     .fillMaxWidth()
                     .shadow(8.dp, btnShape)
                     .clip(btnShape)

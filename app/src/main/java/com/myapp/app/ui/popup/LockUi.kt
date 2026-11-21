@@ -3,12 +3,7 @@ package com.myapp.app.ui.popup
 import androidx.activity.compose.BackHandler
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -602,30 +597,59 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
 
 /**
  * Lock screen motion, in and out:
- *  IN  : it no longer pops up. It waits until the launch screen is gone, then fades in while settling from
- *        94 % to 100 % (soft ease-out). Nothing of the app is ever exposed meanwhile (Home stays hidden).
- *  OUT : it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06) over 380 ms, so the Home screen
- *        underneath is revealed smoothly.
+ *  IN  : the screen is built together with the first frame (behind the launch screen), so nothing has to be
+ *        composed while it animates. Once start-up is calm it fades in while settling from 94 % to 100 %
+ *        (soft ease-out). Nothing of the app is exposed meanwhile (Home stays hidden, touches are blocked).
+ *  OUT : it dissolves (fade) while zooming out a little (scale 1.00 -> 1.06); Home starts to appear after
+ *        [LOCK_HOME_REVEAL_DELAY_MS] and the two overlap like a cross-fade (see TrackerRoot).
  */
-/** Length of the lock screen's dissolve. The Home reveal and the chart wait for it (see TrackerRoot). */
+/** Length of the lock screen's dissolve. */
 const val LOCK_EXIT_MS = 380
 
+/** Home starts to fade in this long after the lock starts to dissolve (the two overlap). */
+const val LOCK_HOME_REVEAL_DELAY_MS = 120L
+
+/** Length of Home's reveal (fade + settle from 97 %). */
+const val HOME_REVEAL_MS = 520
+
 /** Length of the lock screen's entrance. */
-const val LOCK_ENTER_MS = 420
+const val LOCK_ENTER_MS = 460
+private const val LOCK_ENTER_SCALE = 0.94f
 
 @Composable
 private fun LockExit(visible: Boolean, content: @Composable () -> Unit) {
-    val splashGone = com.myapp.app.ui.components.rememberSplashGone()
-    // starts hidden, so a lock that is already up on the first frame still plays its entrance
-    val shown = remember { MutableTransitionState(false) }
-    shown.targetState = visible && splashGone
-    AnimatedVisibility(
-        visibleState = shown,
-        enter = fadeIn(tween(LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)) +
-            scaleIn(initialScale = 0.94f, animationSpec = tween(LOCK_ENTER_MS + 80, easing = com.myapp.app.ui.components.EntranceEase)),
-        exit = fadeOut(tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) +
-            scaleOut(targetScale = 1.06f, animationSpec = tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)),
-    ) { content() }
+    val settled = com.myapp.app.ui.components.rememberUiSettled()
+    val alpha = remember { Animatable(0f) }
+    val scale = remember { Animatable(LOCK_ENTER_SCALE) }
+    var holding by remember { mutableStateOf(false) }   // keeps the content alive while it dissolves
+    LaunchedEffect(visible, settled) {
+        if (visible) {
+            holding = true
+            if (settled) {
+                kotlinx.coroutines.coroutineScope {
+                    launch { alpha.animateTo(1f, tween(LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)) }
+                    launch { scale.animateTo(1f, tween(LOCK_ENTER_MS + 140, easing = com.myapp.app.ui.components.EntranceEase)) }
+                }
+            }
+        } else if (holding) {
+            kotlinx.coroutines.coroutineScope {
+                launch { alpha.animateTo(0f, tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) }
+                launch { scale.animateTo(1.06f, tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) }
+            }
+            holding = false
+            alpha.snapTo(0f)
+            scale.snapTo(LOCK_ENTER_SCALE)
+        }
+    }
+    if (visible || holding) {
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                this.alpha = alpha.value
+                scaleX = scale.value
+                scaleY = scale.value
+            },
+        ) { content() }
+    }
 }
 
 @Composable
@@ -808,7 +832,9 @@ private fun BiometricLockContent() {
     val s = LockState
     BackHandler(enabled = true) { }
     // the system prompt opens by itself shortly after this screen appears
-    LaunchedEffect(s.biometricAutoPromptKey) {
+    val settled = com.myapp.app.ui.components.rememberUiSettled()
+    LaunchedEffect(s.biometricAutoPromptKey, settled) {
+        if (!settled) return@LaunchedEffect
         delay(450)
         if (LockState.biometricVisible) LockState.verifyBiometricUnlock()
     }
