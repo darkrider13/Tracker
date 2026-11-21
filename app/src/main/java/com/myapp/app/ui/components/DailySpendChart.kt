@@ -1,6 +1,7 @@
 package com.myapp.app.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -94,6 +95,9 @@ private fun textStyle(sizeSp: Float, bold: Boolean, color: Color): TextStyle = T
 private fun measureW(m: TextMeasurer, text: String, style: TextStyle): Float =
     m.measure(text = text, style = style, softWrap = false, maxLines = 1).size.width.toFloat()
 
+/** Soft ease-out (fast start, long gentle landing) used by every bar. */
+private val BarEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+
 /** The daily spending bar chart (replaces Chart.js): y-axis numbers, dashed grid, tap a day for a tooltip. */
 @Composable
 fun DailySpendChart(
@@ -112,14 +116,13 @@ fun DailySpendChart(
     val grow = remember(play, contentKey) { Animatable(0f) }
     LaunchedEffect(grow) {
         if (play) {
-            delay(30)
-            grow.animateTo(1f, tween(durationMillis = 700, easing = LinearEasing))
+            delay(20)
+            grow.animateTo(1f, tween(durationMillis = 650, easing = LinearEasing))
         }
     }
-    val growT = grow.value
-    // The frame (grid + axis labels) fades in during the first part, then the bars grow: the old chart
-    // is gone at once and the new one appears calmly instead of the two overlapping.
-    val frameA = (growT / 0.22f).coerceIn(0f, 1f)
+    // [grow] is read ONLY inside the Canvas draw block below, so every animation frame just redraws the
+    // canvas - nothing is re-composed or re-measured per frame (that is what keeps it smooth).
+    val barPath = remember { Path() }
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     var selected by remember(data) { mutableStateOf<Int?>(null) }
@@ -176,6 +179,10 @@ fun DailySpendChart(
             }
         },
     ) {
+        val growT = grow.value
+        // The frame (grid + axis labels) eases in during the first part while the first bars already start
+        // to rise, so the old chart is gone at once and the new one appears calmly instead of overlapping.
+        val frameA = FastOutSlowInEasing.transform((growT / 0.25f).coerceIn(0f, 1f))
         val w = size.width
         val h = size.height
         val left = yAxisW
@@ -218,11 +225,12 @@ fun DailySpendChart(
             val fullH = max((v / yScale.max).toFloat() * plotH, minBar)
             // each bar starts a little after the previous one and eases out (fast start, soft landing)
             val startAt = if (n > 1) 0.30f * i / (n - 1) else 0f
-            val local = FastOutSlowInEasing.transform(((growT - startAt) / 0.70f).coerceIn(0f, 1f))
+            val local = BarEase.transform(((growT - startAt) / 0.70f).coerceIn(0f, 1f))
             val barH = fullH * local
             if (barH < 0.5f) continue
             val r = min(radius, min(barW / 2f, barH / 2f))
-            val path = Path()
+            val path = barPath
+            path.rewind()   // one Path reused for every bar and frame - no allocation while animating
             path.addRoundRect(
                 RoundRect(
                     left = cx - barW / 2f,
@@ -235,7 +243,8 @@ fun DailySpendChart(
                     bottomLeftCornerRadius = CornerRadius.Zero,
                 ),
             )
-            drawPath(path, Brand.red)
+            // a quick fade-in on top of the rise: bars never pop in, they emerge
+            drawPath(path, Brand.red, alpha = (local * 4f).coerceIn(0f, 1f))
         }
 
         // ---- x labels (week: weekday names, month: some dates + dots) ----
