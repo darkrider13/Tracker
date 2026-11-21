@@ -64,11 +64,12 @@ fun TrackerRoot(activity: Activity) {
         // launch the app screens stay hidden underneath (they are shown again once it is unlocked).
         var startupGuard by remember { mutableStateOf(lockUp) }
         LaunchedEffect(lockUp) { if (!lockUp) startupGuard = false }
-        // Unlock reveal: the app fades in (and settles from 96 % to 100 %) while the lock screen dissolves.
+        // Unlock reveal: the app fades in (and settles from 97 % to 100 %) while the lock screen dissolves.
         // With no lock at launch it starts at 1f, so nothing animates.
         val reveal by animateFloatAsState(
             targetValue = if (startupGuard) 0f else 1f,
-            animationSpec = tween(450, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            // ease-OUT (starts quickly, lands softly): FastOutSlowIn started slowly, which felt laggy
+            animationSpec = tween(420, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
             label = "unlockReveal",
         )
         // Tell the native launch screen the first frame is ready (it then goes away with no flash).
@@ -126,7 +127,7 @@ fun TrackerRoot(activity: Activity) {
                     .fillMaxSize()
                     .graphicsLayer {
                         alpha = reveal
-                        val settle = 0.96f + 0.04f * reveal
+                        val settle = 0.97f + 0.03f * reveal
                         scaleX = settle
                         scaleY = settle
                         val r = blurDp * density
