@@ -116,8 +116,11 @@ private fun textStyle(sizeSp: Float, bold: Boolean, color: Color): TextStyle = T
 private fun measureW(m: TextMeasurer, text: String, style: TextStyle): Float =
     m.measure(text = text, style = style, softWrap = false, maxLines = 1).size.width.toFloat()
 
-/** Soft ease-out (fast start, long gentle landing) used by every bar. */
-private val BarEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+/** Soft ease-out (fast start, very long gentle landing) used by every bar. */
+private val BarEase = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+
+/** Whole grow-up of one slide: the bars start one after another and all land together. */
+private const val GROW_MS = 950
 
 /**
  * The daily spending bar chart: y-axis numbers, dashed grid, tap a day for a tooltip.
@@ -165,7 +168,7 @@ private fun DailySpendChartBody(
     LaunchedEffect(frame) {
         if (play) {
             delay(20)
-            frame.animateTo(1f, tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            frame.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
         }
     }
 
@@ -272,7 +275,7 @@ private fun DayBarsPage(
         }.collectLatest { near ->
             if (near && play) {
                 delay(20)
-                grow.animateTo(1f, tween(durationMillis = 650, easing = LinearEasing))
+                grow.animateTo(1f, tween(durationMillis = GROW_MS, easing = LinearEasing))
             } else {
                 grow.snapTo(0f)
             }
@@ -307,7 +310,7 @@ private fun DayBarsPage(
         },
     ) {
         val growT = grow.value
-        val frameA = FastOutSlowInEasing.transform((growT / 0.25f).coerceIn(0f, 1f))
+        val frameA = FastOutSlowInEasing.transform((growT / 0.30f).coerceIn(0f, 1f))
         val w = size.width
         val h = size.height
         val bottom = h - xAxisH
@@ -326,8 +329,8 @@ private fun DayBarsPage(
             val cx = slot * (i + 0.5f)
             val fullH = max((v / yScale.max).toFloat() * plotH, minBar)
             // each bar starts a little after the previous one and eases out (fast start, soft landing)
-            val startAt = if (pn > 1) 0.30f * i / (pn - 1) else 0f
-            val local = BarEase.transform(((growT - startAt) / 0.70f).coerceIn(0f, 1f))
+            val startAt = if (pn > 1) 0.34f * i / (pn - 1) else 0f
+            val local = BarEase.transform(((growT - startAt) / 0.66f).coerceIn(0f, 1f))
             val barH = fullH * local
             if (barH < 0.5f) continue
             val r = min(radius, min(barW / 2f, barH / 2f))
@@ -345,7 +348,7 @@ private fun DayBarsPage(
                     bottomLeftCornerRadius = CornerRadius.Zero,
                 ),
             )
-            drawPath(path, Brand.red, alpha = (local * 4f).coerceIn(0f, 1f))
+            drawPath(path, Brand.red, alpha = (local * 6f).coerceIn(0f, 1f))
         }
 
         // x labels: week = weekday names, month = every date of the slide.

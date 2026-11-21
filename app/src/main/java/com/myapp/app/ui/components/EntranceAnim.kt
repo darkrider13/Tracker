@@ -21,22 +21,40 @@ import kotlinx.coroutines.delay
 /** Soft ease-out (fast start, long gentle landing): the same curve the bars and the unlock reveal use. */
 val EntranceEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
+/** Process-wide: has the app finished its busy start-up (splash gone, first frames calm)? */
+object UiSettleState {
+    var settled by mutableStateOf(false)
+}
+
+/** Waits until the main thread is idle: the splash is gone AND a few frames in a row come on time. */
+private suspend fun awaitCalmFrames() {
+    while (!AppSession.uiReady) withFrameNanos { }
+    val start = withFrameNanos { it }
+    var last = start
+    var calm = 0
+    // 4 on-time frames in a row (< 24 ms apart, so also fine at 90 / 120 Hz); never wait longer than 1 s
+    while (calm < 4 && last - start < 1_000_000_000L && !UiSettleState.settled) {
+        val now = withFrameNanos { it }
+        if (now - last < 24_000_000L) calm++ else calm = 0
+        last = now
+    }
+    delay(50)
+}
+
 /**
- * false while the native launch screen is still on screen, true a moment after it is gone.
- * Screens that animate in at launch (lock screen, Welcome screen) wait for this, so their entrance is
- * actually SEEN instead of happening behind the splash. Once the app is running it is true at once.
+ * false while the app is still starting (native splash on screen, first frames busy), true once it is calm.
+ * Screens that animate in at launch (lock screen, Welcome screen) wait for this, so their entrance starts on a
+ * quiet main thread and is smooth instead of stuttering through the start-up work. After start-up it is true at once.
  */
 @Composable
-fun rememberSplashGone(extraDelayMs: Long = 60L): Boolean {
-    var gone by remember { mutableStateOf(AppSession.uiReady) }
+fun rememberUiSettled(): Boolean {
     LaunchedEffect(Unit) {
-        if (!gone) {
-            while (!AppSession.uiReady) withFrameNanos { }
-            delay(extraDelayMs)
-            gone = true
+        if (!UiSettleState.settled) {
+            awaitCalmFrames()
+            UiSettleState.settled = true
         }
     }
-    return gone
+    return UiSettleState.settled
 }
 
 /**
