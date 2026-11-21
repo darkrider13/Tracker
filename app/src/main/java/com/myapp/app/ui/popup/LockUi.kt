@@ -838,7 +838,7 @@ private fun BiometricLockContent() {
         delay(450)
         if (LockState.biometricVisible) LockState.verifyBiometricUnlock()
     }
-    LockBackground(accent = Brand.green) {
+    LockBackground {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
