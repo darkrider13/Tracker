@@ -21,6 +21,9 @@ class MainActivity : FragmentActivity() {
         // Keep the plain-background launch screen until the first real frame is ready, so the user
         // never sees a blank / half-built screen, and never sees Home before the lock.
         splash.setKeepOnScreenCondition { !AppSession.uiReady }
+        // Remove the launch screen at once (its background equals the app background): the system's own exit
+        // animation would run at the same time as our entrance animation and make it look unsteady.
+        splash.setOnExitAnimationListener { it.remove() }
         super.onCreate(savedInstanceState)
 
         AppSession.init(applicationContext)
