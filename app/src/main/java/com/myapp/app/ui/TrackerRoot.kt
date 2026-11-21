@@ -148,7 +148,8 @@ fun TrackerRoot(activity: Activity) {
                 val alive = warm + current
                 LaunchedEffect(current) { warm = warm + current }
                 LaunchedEffect(Unit) {
-                    delay(600)
+                    // not while the Home chart is growing: building 3 screens on the main thread made its bars stutter
+                    delay(2200)
                     for (t in listOf(Tab.Logs, Tab.Stats, Tab.Profile)) {
                         delay(350)
                         warm = warm + t
