@@ -22,7 +22,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -248,6 +251,7 @@ fun CategoryChips(
     onPick: (String) -> Unit,
     onAddNew: () -> Unit,
     modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
 ) {
     val revision = CategoryUi.revision
     val filter = picker.filterText
@@ -287,7 +291,7 @@ fun CategoryChips(
 
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    val scroll = rememberScrollState()
+    val scroll = scrollState
     var order by remember(revision) { mutableStateOf(QUICK_CATEGORIES.toList()) }
     var dragging by remember { mutableStateOf<String?>(null) }
     var fingerX by remember { mutableFloatStateOf(0f) }
@@ -438,5 +442,46 @@ fun CategoryChips(
                 PlusChip(big = picker.allLarge, modifier = Modifier.width(chipW)) { onAddNew() }
             }
         }
+    }
+}
+
+// =============================================================================================
+// Warm-up: the very first swipe through the chips used to hitch once after a fresh install
+// (glyphs of the off-screen icons are drawn for the first time, scroll / snap code runs cold).
+// A real, invisible chip row is scrolled to the end and back once, shortly after start-up, so
+// the first real swipe is as smooth as every later one. Runs once per app process.
+// =============================================================================================
+
+private object CategoryWarmUpState {
+    var done by mutableStateOf(false)
+}
+
+@Composable
+fun CategoryWarmUp() {
+    if (CategoryWarmUpState.done) return
+    val scroll = rememberScrollState()
+    val picker = remember { CategoryPickerState() }
+    LaunchedEffect(Unit) {
+        delay(900)   // let the first frame and the unlock reveal finish first
+        var tries = 0
+        while (scroll.maxValue == 0 && tries < 10) { delay(100); tries++ }
+        if (scroll.maxValue > 0) {
+            repeat(2) {
+                scroll.animateScrollTo(scroll.maxValue, tween(260, easing = FastOutSlowInEasing))
+                delay(80)
+                scroll.animateScrollTo(0, tween(200, easing = FastOutSlowInEasing))
+                delay(80)
+            }
+        }
+        CategoryWarmUpState.done = true
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .graphicsLayer { alpha = 0.01f }
+            .clearAndSetSemantics { },
+    ) {
+        CategoryChips(picker = picker, onPick = {}, onAddNew = {}, scrollState = scroll)
     }
 }
