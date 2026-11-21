@@ -53,6 +53,7 @@ import com.myapp.app.data.AppStore
 import com.myapp.app.data.JsDate
 import com.myapp.app.data.Transaction
 import com.myapp.app.ui.AppActions
+import com.myapp.app.ui.components.AppBackdrop
 import com.myapp.app.ui.components.AppText
 import com.myapp.app.ui.components.CategoryIcon
 import com.myapp.app.ui.components.FaIcon
@@ -89,14 +90,14 @@ object IncomingOverview {
     /** "fund" = list by fund (first tab), "received" = list of the received transactions. Resets to "fund" on every open. */
     var tab by mutableStateOf("fund")
 
-    /** true = the sheet vanishes in the same frame (cross icon); false = it glides down (back / tap outside). */
+    /** true = the page vanishes in the same frame; false = it glides out to the right (back arrow / system back). */
     internal var skipCloseAnim by mutableStateOf(false)
 
     fun open() {
         filter = "month"
         tab = "fund"
         skipCloseAnim = false
-        // the frosted blur behind is driven by the sheet's own slide progress (see Popups.sheetBlurDp)
+        // a full page: no frosted blur behind it (sheetSliding keeps the root blur off while the page is up)
         Popups.sheetSliding = true
         Popups.incomingOverview = true
     }
@@ -149,55 +150,46 @@ private fun incomingSourceText(t: Transaction): String? {
 
 private class FundTotal(val fund: String, val total: Double, val count: Int)
 
+/** How many of the first rows play the staggered entrance (the rest simply scroll in). */
+private const val INCOMING_ENTRANCE_ROWS = 8
+
+/**
+ * Incoming Overview as a FULL PAGE (it used to be a bottom sheet / popup): the page glides in from the right, the
+ * header, filters and total sit at the top and everything scrolls together. The rows come in one after another
+ * (fade + rise + settle) once the page has landed, exactly like the history lists.
+ */
 @Composable
 fun IncomingOverviewSheet() {
     val open = Popups.incomingOverview
-    // Driven by one Animatable that is read only in the draw / layer phase (scrim + slide), so the sheet is NOT
-    // recomposed on every frame of the animation. `mounted` keeps it on screen until the slide-out has finished.
+    // One Animatable, read only in the layer phase: the page is NOT recomposed on every frame of the slide.
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     var mounted by remember { mutableStateOf(false) }
-    // false until the slide-in has finished: the rows are already built (so the sheet has its FINAL height from the
-    // first frame and nothing jumps when it lands) but stay invisible; they fade in one after another once it has landed.
+    // false until the slide-in has finished: the rows stay invisible and then play their entrance one after another.
     var listReady by remember { mutableStateOf(false) }
-    // [0] = sheet height, [1] = screen height (px), filled in by the layout below
-    val geo = remember { FloatArray(2) }
     val closeNow = !open && IncomingOverview.skipCloseAnim
-    // publish the slide progress for the blur behind (written per frame, read only in the draw phase of the root)
-    LaunchedEffect(Unit) {
-        androidx.compose.runtime.snapshotFlow { progress.value }.collect { Popups.sheetProgress = it }
-    }
     LaunchedEffect(open) {
         if (open) {
             mounted = true
-            // Let the sheet be composed + measured at progress 0 first (the heaviest frames), so they are not counted
-            // as animation time and the slide never starts with a jump / rush. Three frames: composition, then the
-            // follow-up recomposition that settles the list height.
-            repeat(3) { androidx.compose.runtime.withFrameNanos { } }
-            // A tall sheet has further to travel, so it gets proportionally more time: the speed matches the shorter
-            // All Categories sheet instead of racing up.
-            val frac = if (geo[1] > 0f) geo[0] / geo[1] else 0.45f
-            val openMs = (SHEET_OPEN_MS * frac / 0.45f).coerceIn(SHEET_OPEN_MS.toFloat(), 600f).toInt()
-            progress.animateTo(1f, tween(openMs, easing = SheetEase))
+            // let the page be composed + measured at progress 0 first, so the slide never starts with a jump
+            repeat(2) { androidx.compose.runtime.withFrameNanos { } }
+            progress.animateTo(1f, tween(SHEET_OPEN_MS, easing = SheetEase))
             listReady = true
         } else if (mounted) {
             if (IncomingOverview.skipCloseAnim) progress.snapTo(0f)
-            else {
-                val frac = if (geo[1] > 0f) geo[0] / geo[1] else 0.45f
-                val closeMs = (SHEET_CLOSE_MS * frac / 0.45f).coerceIn(SHEET_CLOSE_MS.toFloat(), 380f).toInt()
-                progress.animateTo(0f, tween(closeMs, easing = SheetCloseEase))
-            }
+            else progress.animateTo(0f, tween(SHEET_CLOSE_MS, easing = SheetCloseEase))
             mounted = false
             listReady = false
             Popups.sheetSliding = false
             IncomingOverview.skipCloseAnim = false
         }
     }
-    // cross icon: leave composition in the very frame of the tap, no slide-out
+    // instant close: leave composition in the very frame of the tap, no slide-out
     if (!mounted || closeNow) return
     val c = AppTheme.colors
     val state = AppStore.observe()
     val revision = AppStore.revision
     val filter = IncomingOverview.filter
+    val tab = IncomingOverview.tab
     BackHandler(enabled = open) { IncomingOverview.close() }
 
     val list = remember(state, revision, filter) { incomingFor(state, filter) }
@@ -211,76 +203,61 @@ fun IncomingOverviewSheet() {
             .sortedByDescending { it.total }
     }
 
-    BoxWithConstraints(
+    Box(
         Modifier
             .fillMaxSize()
-            .onSizeChanged { geo[1] = it.height.toFloat() }
-            .drawBehind { drawRect(Color.Black.copy(alpha = 0.45f * progress.value)) }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
-        contentAlignment = Alignment.BottomCenter,
+            .graphicsLayer { translationX = (1f - progress.value) * size.width }
+            .background(c.bodyBg)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }, // swallow taps
+        contentAlignment = Alignment.TopCenter,
     ) {
-        val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-        // The sheet is only as tall as its content (no empty space under the last card), up to 88 % of the screen.
-        // (The rows are mounted only after the slide-in, so the sheet's height does not change while it moves.)
-        val maxSheetH = maxHeight * 0.88f
-        // 4 whole rows when the screen is tall enough, fewer on a small one (so nothing below needs an outer scroll)
-        val visibleRows = (((maxSheetH.value - INCOMING_CHROME_DP + 8f) / (INCOMING_ROW_DP + 8f)).toInt()).coerceIn(2, INCOMING_VISIBLE)
-        Column(
-            Modifier
-                .widthIn(max = 520.dp)
-                .fillMaxWidth()
-                .heightIn(max = maxSheetH)
-                .onSizeChanged { geo[0] = it.height.toFloat() }
-                .graphicsLayer { translationY = (1f - progress.value) * size.height }
-                .clip(sheetShape)
-                .background(if (c.isLight) Color(0xFFF3F4F6) else Color(0xFF131315), sheetShape)
-                // taps on the sheet itself must not close it
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
-                .padding(start = 16.dp, end = 16.dp, top = 20.dp),
+        // the same page background as Home / Fund Details
+        AppBackdrop(extend = true)
+        LazyColumn(
+            modifier = Modifier.widthIn(max = 448.dp).fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // ---- header
-            Row(
-                Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    AppText(
-                        text = tr("incoming_overview", "Incoming Overview"), size = 16f, lineHeight = 24f,
-                        weight = FontWeight.ExtraBold, color = c.textGray900,
-                    )
-                    AppText(
-                        text = tr("incoming_all_funds", "All funds combined"), size = 10f, lineHeight = 15f,
-                        weight = FontWeight.Bold, color = c.textGray400,
-                    )
+            // ---- top bar: back arrow + title
+            item(key = "top") {
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(c.bgWhite80, CircleShape)
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close() },
+                        contentAlignment = Alignment.Center,
+                    ) { FaIcon("fa-arrow-left", 16.dp, c.textGray500) }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AppText(
+                            text = tr("incoming_overview", "Incoming Overview"), size = 18f, lineHeight = 28f,
+                            weight = FontWeight.Bold, color = c.textGray900,
+                        )
+                        AppText(
+                            text = tr("incoming_all_funds", "All funds combined"), size = 10f, lineHeight = 15f,
+                            weight = FontWeight.Bold, color = c.textGray400,
+                        )
+                    }
+                    Spacer(Modifier.size(40.dp))
                 }
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(c.bgWhite80, CircleShape)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { IncomingOverview.close(instant = true) },
-                    contentAlignment = Alignment.Center,
-                ) { FaIcon("fa-xmark", 14.dp, c.textGray500) }
             }
 
             // ---- filter chips
-            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(tr("incoming_filter_month", "This Month"), filter == "month", Modifier.weight(1f)) { IncomingOverview.filter = "month" }
-                FilterChip(tr("incoming_filter_last", "Last Month"), filter == "last", Modifier.weight(1f)) { IncomingOverview.filter = "last" }
-                FilterChip(tr("incoming_filter_all", "All Time"), filter == "all", Modifier.weight(1f)) { IncomingOverview.filter = "all" }
+            item(key = "chips") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(tr("incoming_filter_month", "This Month"), filter == "month", Modifier.weight(1f)) { IncomingOverview.filter = "month" }
+                    FilterChip(tr("incoming_filter_last", "Last Month"), filter == "last", Modifier.weight(1f)) { IncomingOverview.filter = "last" }
+                    FilterChip(tr("incoming_filter_all", "All Time"), filter == "all", Modifier.weight(1f)) { IncomingOverview.filter = "all" }
+                }
             }
 
-            // ---- total + the two tabs. Each tab shows exactly 4 whole rows; the rest scrolls a row at a time (no cut-off row).
-            // The outer scroll only matters on a very small screen, where the sheet itself is shorter than its content.
-            Column(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .fillMaxWidth()
-                    // the sheet glides to its new height when the tab / period changes the number of rows
-                    .animateContentSize(tween(240, easing = DropdownEase)),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            // ---- total
+            item(key = "total") {
                 TotalCard(
                     label = when (filter) {
                         "last" -> tr("incoming_total_last", "Total Received Last Month")
@@ -291,7 +268,10 @@ fun IncomingOverviewSheet() {
                     count = list.size,
                     monthTotal = if (filter == "month") null else monthTotal,
                 )
-                if (list.isEmpty()) {
+            }
+
+            if (list.isEmpty()) {
+                item(key = "empty") {
                     val shape = RoundedCornerShape(16.dp)
                     Box(
                         Modifier.fillMaxWidth().clip(shape).background(c.bgWhite70, shape).padding(16.dp),
@@ -303,56 +283,33 @@ fun IncomingOverviewSheet() {
                             color = c.textGray500, align = TextAlign.Center,
                         )
                     }
+                }
+            } else {
+                item(key = "tabs") { TabSwitch(tab) }
+                // new keys whenever the tab or the period changes: a fresh list with its own entrance
+                if (tab == "fund") {
+                    items(count = perFund.size, key = { "f_" + filter + "_" + perFund[it].fund }) { i ->
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (i < INCOMING_ENTRANCE_ROWS) Modifier.entrance(go = listReady, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
+                                    else Modifier,
+                                ),
+                        ) { FundRow(perFund[i], total) }
+                    }
                 } else {
-                    val tab = IncomingOverview.tab
-                    TabSwitch(tab)
-                    // a fresh list (new measuring, new entrance) whenever the tab or the period changes
-                    key(tab, filter) {
-                        if (tab == "fund") {
-                            IncomingPagedList(count = perFund.size, visible = visibleRows, go = listReady) { i -> FundRow(perFund[i], total) }
-                        } else {
-                            IncomingPagedList(count = list.size, visible = visibleRows, go = listReady) { i -> IncomingRow(list[i]) }
-                        }
+                    items(count = list.size, key = { "r_" + filter + "_" + list[it].id }) { i ->
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (i < INCOMING_ENTRANCE_ROWS) Modifier.entrance(go = listReady, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
+                                    else Modifier,
+                                ),
+                        ) { IncomingRow(list[i]) }
                     }
                 }
-                Spacer(Modifier.height(20.dp))
-            }
-        }
-    }
-}
-
-/** How many rows are visible at once in each tab. */
-private const val INCOMING_VISIBLE = 4
-
-/** Height of the sheet above the list (header, chips, total, tabs, paddings) and of one row, in dp: used to pick how many rows fit. */
-private const val INCOMING_CHROME_DP = 320f
-private const val INCOMING_ROW_DP = 78f
-
-/**
- * Exactly [INCOMING_VISIBLE] whole rows, the rest scrolls one row at a time (same viewport as the Home fund list).
- * The first rows come in one after another (fade + rise + settle), like the fund list does when it opens.
- */
-@Composable
-private fun IncomingPagedList(count: Int, visible: Int, go: Boolean, row: @Composable (Int) -> Unit) {
-    val paged = rememberPagedState(visible = visible, gap = 8.dp)
-    PagedViewport(
-        state = paged,
-        count = count,
-        modifier = Modifier.fillMaxWidth(),
-        animateSize = false,
-        smoothSnap = true,
-    ) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (i in 0 until count) key(i) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .pagedItem(paged, i)
-                        .then(
-                            if (i < visible + 1) Modifier.entrance(go = go, delayMs = 20 + i * 55, rise = 18.dp, durationMs = 440, scaleFrom = 0.94f)
-                            else Modifier,
-                        ),
-                ) { row(i) }
             }
         }
     }
