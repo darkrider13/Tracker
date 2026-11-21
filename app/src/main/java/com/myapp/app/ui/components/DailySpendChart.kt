@@ -122,6 +122,9 @@ private val BarEase = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 /** Whole grow-up of one slide: the bars start one after another and all land together. */
 private const val GROW_MS = 950
 
+/** From the moment `play` turns true until the last bar has landed (start delay + grow-up + a small margin). */
+const val CHART_GROW_TOTAL_MS = 20L + GROW_MS + 150L
+
 /**
  * The daily spending bar chart: y-axis numbers, dashed grid, tap a day for a tooltip.
  * Month = three 10-day slides (1-10, 11-20, 21-end) in the SAME swipe pager as the Stats
@@ -133,8 +136,11 @@ fun DailySpendChart(
     data: DailySpendChartData,
     isDark: Boolean,
     modifier: Modifier = Modifier,
-    /** true while the chart is on screen (Home tab open, no lock screen): each time it turns true the bars grow up again */
-    play: Boolean = true,
+    /**
+     * true while the chart is on screen (Home tab open, no lock screen): each time it turns true the bars grow up again.
+     * A lambda on purpose: it is read only inside the animation effects, so flipping it does not recompose the chart.
+     */
+    play: () -> Boolean = { true },
 ) {
     // a fresh pager when switching Week <-> Month
     key(data.isWeek) { DailySpendChartBody(data, isDark, modifier, play) }
@@ -145,7 +151,7 @@ private fun DailySpendChartBody(
     data: DailySpendChartData,
     isDark: Boolean,
     modifier: Modifier,
-    play: Boolean,
+    play: () -> Boolean,
 ) {
     val n0 = data.totals.size
     val isWeek = data.isWeek
@@ -164,11 +170,14 @@ private fun DailySpendChartBody(
     LaunchedEffect(pagerState.currentPage) { selected = null }
 
     // grid + y labels fade in once; they stay still while the slides move
-    val frame = remember(play, contentKey) { Animatable(0f) }
+    val frame = remember(contentKey) { Animatable(0f) }
     LaunchedEffect(frame) {
-        if (play) {
-            delay(20)
-            frame.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
+        snapshotFlow { play() }.collectLatest { on ->
+            frame.snapTo(0f)
+            if (on) {
+                delay(20)
+                frame.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
+            }
         }
     }
 
@@ -248,7 +257,7 @@ private fun DayBarsPage(
     page: Int,
     pagerState: PagerState,
     data: DailySpendChartData,
-    play: Boolean,
+    play: () -> Boolean,
     contentKey: Any,
     yScale: YScale,
     tickColor: Color,
@@ -269,11 +278,23 @@ private fun DayBarsPage(
     // starts sliding into view they grow up one after another (same look as the very first open).
     val grow = remember(contentKey) { Animatable(0f) }
     val barPath = remember { Path() }
-    LaunchedEffect(grow, play) {
+    // The date / weekday labels never change while a slide is on screen, so they are measured ONCE here instead of
+    // 10-31 times in every frame of the grow-up (that measuring was a big part of the stutter).
+    val labelLayouts = remember(data, page, tickColor, measurer) {
+        // today (weekday name in Week, date number in Month): same size as the others, bold red
+        val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
+        val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
+        val stToday = textStyle(if (isWeek) 10f else 9f, true, Brand.red).copy(fontWeight = FontWeight.Black)
+        List(pn) { i ->
+            val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
+            measurer.measure(label, if (off + i == todayIdx) stToday else st, softWrap = false, maxLines = 1)
+        }
+    }
+    LaunchedEffect(grow) {
         snapshotFlow {
-            abs(pagerState.currentPage + pagerState.currentPageOffsetFraction - page) < 0.995f
+            abs(pagerState.currentPage + pagerState.currentPageOffsetFraction - page) < 0.995f && play()
         }.collectLatest { near ->
-            if (near && play) {
+            if (near) {
                 delay(20)
                 grow.animateTo(1f, tween(durationMillis = GROW_MS, easing = LinearEasing))
             } else {
@@ -351,17 +372,10 @@ private fun DayBarsPage(
             drawPath(path, Brand.red, alpha = (local * 6f).coerceIn(0f, 1f))
         }
 
-        // x labels: week = weekday names, month = every date of the slide.
-        // Today's label (the last bar of the week, or today's date in the month) is bold pure white.
-        val todayIdx = if (isWeek) n0 - 1 else Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1
+        // x labels (measured once, above): week = weekday names, month = every date of the slide.
         val centerY = bottom + 10f * dp
-        val st = textStyle(if (isWeek) 10f else 9f, true, tickColor)
-        // today (weekday name in Week, date number in Month): same size as the others, bold red
-        val stToday = textStyle(if (isWeek) 10f else 9f, true, Brand.red).copy(fontWeight = FontWeight.Black)
         for (i in 0 until pn) {
-            val label = if (isWeek) (data.xLabels.getOrNull(off + i) ?: "") else localizeDigits((off + i + 1).toString())
-            if (label.isEmpty()) continue
-            val layout = measurer.measure(label, if (off + i == todayIdx) stToday else st, softWrap = false, maxLines = 1)
+            val layout = labelLayouts.getOrNull(i) ?: continue
             drawText(layout, topLeft = Offset(slot * (i + 0.5f) - layout.size.width / 2f, centerY - layout.size.height / 2f), alpha = frameA)
         }
 
