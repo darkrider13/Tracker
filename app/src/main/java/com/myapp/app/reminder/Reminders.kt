@@ -48,12 +48,6 @@ object Reminders {
         return granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
-    fun canScheduleExact(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        return am.canScheduleExactAlarms()
-    }
-
     // ------------------------------------------------------------------ notification
 
     private fun ensureChannel(context: Context) {
@@ -106,12 +100,8 @@ object Reminders {
     private fun setAlarm(context: Context, id: Int, triggerAt: Long, intent: Intent) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = pending(context, id, intent)
-        try {
-            if (canScheduleExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        } catch (_: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        }
+        // Inexact + works in Doze: no special permission, allowed by Google Play (a few minutes of drift is fine for reminders)
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
     }
 
     private fun cancelAlarm(context: Context, id: Int) {
@@ -246,12 +236,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         .putExtra("hour", h).putExtra("minute", m)
                     val pi = PendingIntent.getBroadcast(context, id, again, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                     val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                    try {
-                        if (Reminders.canScheduleExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi)
-                        else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi)
-                    } catch (_: SecurityException) {
-                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi)
-                    }
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi)
                 }
             }
             "debt" -> Reminders.markDebtFired(context, id)
