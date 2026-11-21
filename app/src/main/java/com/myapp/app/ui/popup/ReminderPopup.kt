@@ -101,19 +101,6 @@ object ReminderPanel {
         } catch (_: Exception) {}
     }
 
-    /** requestExactAlarmPermission(): the "Enable" button of the amber banner. */
-    fun requestExactAlarm() {
-        val ctx = appContext ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                ctx.startActivity(
-                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + ctx.packageName))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            } catch (_: Exception) {}
-        }
-    }
-
     /** openNotificationsPanel() */
     fun open() {
         val ctx = appContext ?: return
@@ -199,31 +186,6 @@ fun ReminderPopup() {
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) {
                             AppText(text = tr("common_allow", "Allow"), size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                }
-
-                if (active && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !Reminders.canScheduleExact(context)) {
-                    val shape = RoundedCornerShape(12.dp)
-                    Row(
-                        Modifier.fillMaxWidth().clip(shape).background(Color(0xFFFFFBEB), shape).border(1.dp, Color(0xFFFEF3C7), shape).padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AppText(
-                            text = tr("modal_exact_alarm_banner", "Enable exact alarms so reminders arrive exactly on time."),
-                            size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold, color = Color(0xFFB45309), modifier = Modifier.weight(1f),
-                        )
-                        val btn = RoundedCornerShape(8.dp)
-                        Box(
-                            Modifier
-                                .clip(btn)
-                                .background(Color(0xFFD97706), btn)
-                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                    ReminderPanel.requestExactAlarm()
-                                }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            AppText(text = tr("common_enable", "Enable"), size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
