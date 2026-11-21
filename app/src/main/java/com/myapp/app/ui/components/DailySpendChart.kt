@@ -112,8 +112,8 @@ fun DailySpendChart(
     val grow = remember(play, contentKey) { Animatable(0f) }
     LaunchedEffect(grow) {
         if (play) {
-            delay(60)
-            grow.animateTo(1f, tween(durationMillis = 850, easing = LinearEasing))
+            delay(30)
+            grow.animateTo(1f, tween(durationMillis = 700, easing = LinearEasing))
         }
     }
     val growT = grow.value
