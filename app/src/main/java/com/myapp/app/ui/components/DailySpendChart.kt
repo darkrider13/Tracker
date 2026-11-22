@@ -141,9 +141,15 @@ fun DailySpendChart(
      * A lambda on purpose: it is read only inside the animation effects, so flipping it does not recompose the chart.
      */
     play: () -> Boolean = { true },
+    /**
+     * true while the chart should simply be shown in its final state, with no grow-up (the first display after the app
+     * opens / unlocks). When it turns false the chart stays as it is; the animation plays again only for later events
+     * (Week <-> Month, swiping slides, coming back to the Home tab).
+     */
+    skip: () -> Boolean = { false },
 ) {
     // a fresh pager when switching Week <-> Month
-    key(data.isWeek) { DailySpendChartBody(data, isDark, modifier, play) }
+    key(data.isWeek) { DailySpendChartBody(data, isDark, modifier, play, skip) }
 }
 
 @Composable
@@ -152,6 +158,7 @@ private fun DailySpendChartBody(
     isDark: Boolean,
     modifier: Modifier,
     play: () -> Boolean,
+    skip: () -> Boolean,
 ) {
     val n0 = data.totals.size
     val isWeek = data.isWeek
@@ -170,13 +177,20 @@ private fun DailySpendChartBody(
     LaunchedEffect(pagerState.currentPage) { selected = null }
 
     // grid + y labels fade in once; they stay still while the slides move
-    val frame = remember(contentKey) { Animatable(0f) }
+    val frame = remember(contentKey) { Animatable(if (skip()) 1f else 0f) }
     LaunchedEffect(frame) {
-        snapshotFlow { play() }.collectLatest { on ->
-            frame.snapTo(0f)
-            if (on) {
-                delay(20)
-                frame.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
+        var prevSkip = skip()
+        snapshotFlow { skip() to play() }.collectLatest { (sk, on) ->
+            val wasSkip = prevSkip
+            prevSkip = sk
+            if (sk || (on && wasSkip)) {
+                frame.snapTo(1f)   // first display after open / unlock: no animation, the chart is just there
+            } else {
+                frame.snapTo(0f)
+                if (on) {
+                    delay(20)
+                    frame.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
+                }
             }
         }
     }
@@ -236,6 +250,7 @@ private fun DailySpendChartBody(
                 pagerState = pagerState,
                 data = data,
                 play = play,
+                skip = skip,
                 contentKey = contentKey,
                 yScale = yScale,
                 tickColor = tickColor,
@@ -258,6 +273,7 @@ private fun DayBarsPage(
     pagerState: PagerState,
     data: DailySpendChartData,
     play: () -> Boolean,
+    skip: () -> Boolean,
     contentKey: Any,
     yScale: YScale,
     tickColor: Color,
@@ -276,7 +292,7 @@ private fun DayBarsPage(
 
     // Each slide has its own grow-up animation. While the slide is out of sight its bars sit at 0; the moment it
     // starts sliding into view they grow up one after another (same look as the very first open).
-    val grow = remember(contentKey) { Animatable(0f) }
+    val grow = remember(contentKey) { Animatable(if (skip()) 1f else 0f) }
     val barPath = remember { Path() }
     // The date / weekday labels never change while a slide is on screen, so they are measured ONCE here instead of
     // 10-31 times in every frame of the grow-up (that measuring was a big part of the stutter).
@@ -291,10 +307,15 @@ private fun DayBarsPage(
         }
     }
     LaunchedEffect(grow) {
+        var prevSkip = skip()
         snapshotFlow {
-            abs(pagerState.currentPage + pagerState.currentPageOffsetFraction - page) < 0.995f && play()
-        }.collectLatest { near ->
-            if (near) {
+            skip() to (abs(pagerState.currentPage + pagerState.currentPageOffsetFraction - page) < 0.995f && play())
+        }.collectLatest { (sk, near) ->
+            val wasSkip = prevSkip
+            prevSkip = sk
+            if (sk || (near && wasSkip)) {
+                grow.snapTo(1f)   // first display after open / unlock: bars are already full, no grow-up
+            } else if (near) {
                 delay(20)
                 grow.animateTo(1f, tween(durationMillis = GROW_MS, easing = LinearEasing))
             } else {
