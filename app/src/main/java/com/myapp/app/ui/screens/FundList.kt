@@ -237,16 +237,21 @@ fun FundList(state: AppState, open: Boolean = true, clock: State<Float> = rememb
                     grabOffsetY = contentY - acc
                     fingerLocalY = down.position.y
                     down.consume()
+                    // A long press alone never reorders: the card moves only after the finger has really been dragged.
+                    val startY = down.position.y
+                    val moveTol = 16.dp.toPx()
+                    var moved = false
                     while (true) {
                         val ev = awaitPointerEvent(PointerEventPass.Initial)
                         val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
                         ch.consume()
                         if (!ch.pressed) break
                         fingerLocalY = ch.position.y
-                        reorderForDrag()
+                        if (!moved && abs(fingerLocalY - startY) > moveTol) moved = true
+                        if (moved) reorderForDrag()
                     }
                     dragging = null
-                    commitOrder()
+                    if (moved) commitOrder() else order = state.funds.keys.toList()
                 }
             },
     ) {
