@@ -127,7 +127,6 @@ import com.myapp.app.ui.components.SoftGlass
 private const val FUNDS_STAGGER_MAX = 6
 
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
-private const val FUND_LIST_ENTER_MS = 650
 private const val PANEL_OPEN_MS = 560
 private const val PANEL_CLOSE_MS = 300
 private val PanelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -506,22 +505,10 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // The panel itself opens / closes instantly (1f = open, 0f = closed). The fund list inside it plays the SAME
-            // staggered entrance as the Logs history: each card fades in, rises and settles one after another.
+            // The panel opens / closes instantly (1f = open, 0f = closed), with NO entrance animation:
+            // the clock is pinned at 1f, so the cards and buttons are fully shown the moment the panel opens.
             val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
-            // one shared 0..1 clock for the cards + buttons (read only in the graphics layer: no recomposition per frame)
-            val enterClock = remember { Animatable(0f) }
-            LaunchedEffect(panelOpen) {
-                if (panelOpen) {
-                    enterClock.snapTo(0f)
-                    // let the panel be composed + measured first (two quiet frames), then start the cards
-                    androidx.compose.runtime.withFrameNanos { }
-                    androidx.compose.runtime.withFrameNanos { }
-                    enterClock.animateTo(1f, tween(FUND_LIST_ENTER_MS, easing = LinearEasing))
-                } else {
-                    enterClock.snapTo(0f)   // closed: ready to replay on the next opening
-                }
-            }
+            val enterClock = remember { Animatable(1f) }
             val clockState = enterClock.asState()
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
@@ -798,6 +785,9 @@ private fun CategoryCard(state: AppState) {
     // is only read inside the chart's own lambda, so this whole card is NOT recomposed at the moment the bars start
     // (that recomposition used to eat the first frames of the grow-up and looked like a stuck chart).
     var lockSettled by remember { mutableStateOf(!anyLockUp() && ChartLaunch.done) }
+    // The first display after the app opens / unlocks shows the finished chart with NO grow-up animation (lighter start).
+    // The grow-up still plays later: Week <-> Month, swiping slides, coming back to Home from another tab.
+    var introDone by remember { mutableStateOf(lockSettled) }
     LaunchedEffect(Unit) {
         var sawLock = anyLockUp()
         snapshotFlow { Triple(anyLockUp(), AppStore.observe().onboardingComplete, com.myapp.app.ui.components.UiSettleState.settled) }
@@ -805,10 +795,12 @@ private fun CategoryCard(state: AppState) {
                 val busy = com.myapp.app.ui.components.UiSettleState
                 if (!onboarded) {
                     lockSettled = false
+                    introDone = false
                     busy.introBusy = false
                 } else if (lockUp) {
                     sawLock = true
                     lockSettled = false
+                    introDone = false
                     busy.introBusy = false
                 } else {
                     if (!lockSettled) {
@@ -822,7 +814,7 @@ private fun CategoryCard(state: AppState) {
                         }
                         ChartLaunch.done = true
                         lockSettled = true
-                        delay(CHART_GROW_TOTAL_MS)
+                        introDone = true
                         busy.introBusy = false
                     } else {
                         ChartLaunch.done = true
@@ -894,6 +886,7 @@ private fun CategoryCard(state: AppState) {
             isDark = !c.isLight,
             // the bars grow up again every time the Home tab is opened (and not while a lock screen is up)
             play = { AppUi.tab == Tab.Home && lockSettled },
+            skip = { !introDone },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(112.dp),
