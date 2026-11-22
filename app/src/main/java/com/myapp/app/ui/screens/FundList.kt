@@ -163,9 +163,10 @@ fun FundList(state: AppState, open: Boolean = true, clock: State<Float> = rememb
         AppStore.refresh()
     }
 
-    // Jump to the page that holds the ACTIVE fund (instantly) when the list opens / the fund changes.
+    // Jump to the page that holds the ACTIVE fund (instantly) only when the list opens. NOT when the active fund changes:
+    // tapping a card must leave the list exactly where it is, so the card you tapped stays under your finger.
     val ready = names.size <= FUNDS_VISIBLE_COUNT || paged.viewportMax(names.size) != null
-    LaunchedEffect(state.activeFund, ready, open) {
+    LaunchedEffect(ready, open) {
         if (ready) {
             val idx = names.indexOf(state.activeFund)
             paged.scroll.scrollTo(if (idx > 0) paged.pageOffsetOfItem(idx) else 0)
