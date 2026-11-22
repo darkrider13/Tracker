@@ -126,9 +126,6 @@ import com.myapp.app.ui.components.SoftGlass
 
 private const val FUNDS_STAGGER_MAX = 6
 
-/** Fade + settle of the whole funds panel, in ms. */
-private const val FUND_PANEL_REVEAL_MS = 200
-
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
 private const val PANEL_OPEN_MS = 560
 private const val PANEL_CLOSE_MS = 300
@@ -508,19 +505,8 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // The panel height opens / closes instantly (1f = open, 0f = closed). The whole panel is ONE layer that fades in
-            // while settling down 8 dp (200 ms, soft ease-out). Closing is instant. Only alpha + translation change.
+            // The panel opens / closes instantly (1f = open, 0f = closed), with NO animation at all.
             val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
-            val reveal = remember { Animatable(0f) }
-            LaunchedEffect(panelOpen) {
-                if (panelOpen) {
-                    reveal.snapTo(0f)
-                    androidx.compose.runtime.withFrameNanos { }   // let the panel be composed + measured first
-                    reveal.animateTo(1f, tween(FUND_PANEL_REVEAL_MS, easing = PanelEase))
-                } else {
-                    reveal.snapTo(0f)
-                }
-            }
             // cards + buttons have no separate entrance: the clock is pinned at 1f
             val enterClock = remember { Animatable(1f) }
             val clockState = enterClock.asState()
@@ -535,8 +521,7 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                         }
                         .clipToBounds()
                         .graphicsLayer {
-                            alpha = if (progress.value > 0f) reveal.value else 0f
-                            translationY = (1f - reveal.value) * -8.dp.toPx()
+                            alpha = if (progress.value > 0f) 1f else 0f
                             // one soft layer for the whole panel: no extra off-screen buffer while it fades
                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
                         },
