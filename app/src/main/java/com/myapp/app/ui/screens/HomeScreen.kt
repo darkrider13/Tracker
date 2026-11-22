@@ -126,6 +126,9 @@ import com.myapp.app.ui.components.SoftGlass
 
 private const val FUNDS_STAGGER_MAX = 6
 
+/** Whole entrance of the funds list (cards + buttons), in ms. */
+private const val FUND_LIST_ENTER_MS = 320
+
 /** The funds panel grows for this long; the cards and the three buttons all finish arriving by then (no late pop-in). */
 private const val PANEL_OPEN_MS = 560
 private const val PANEL_CLOSE_MS = 300
@@ -505,10 +508,21 @@ private fun BalanceCard(state: AppState, panelOpen: Boolean) {
                     mounted = true
                 }
             }
-            // The panel opens / closes instantly (1f = open, 0f = closed), with NO entrance animation:
-            // the clock is pinned at 1f, so the cards and buttons are fully shown the moment the panel opens.
+            // The panel itself opens / closes instantly (1f = open, 0f = closed). The cards inside it play a SHORT staggered
+            // entrance (~320 ms total): each card fades in and rises a little, one after another (35 ms apart).
             val progress = androidx.compose.runtime.rememberUpdatedState(if (panelOpen) 1f else 0f)
-            val enterClock = remember { Animatable(1f) }
+            // one shared 0..1 clock for the cards + buttons (read only in the graphics layer: no recomposition per frame)
+            val enterClock = remember { Animatable(0f) }
+            LaunchedEffect(panelOpen) {
+                if (panelOpen) {
+                    enterClock.snapTo(0f)
+                    // let the panel be composed + measured first (one quiet frame), then start the cards
+                    androidx.compose.runtime.withFrameNanos { }
+                    enterClock.animateTo(1f, tween(FUND_LIST_ENTER_MS, easing = LinearEasing))
+                } else {
+                    enterClock.snapTo(0f)   // closed: ready to replay on the next opening
+                }
+            }
             val clockState = enterClock.asState()
             if (mounted || panelOpen) {
                 val lineColor = c.borderGray200a60
