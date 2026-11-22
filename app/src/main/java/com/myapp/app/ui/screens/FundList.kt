@@ -278,7 +278,7 @@ fun FundList(state: AppState, open: Boolean = true, clock: State<Float> = rememb
                                 // gentle: a soft fade + a tiny rise (no scaling), one card after another
                                 val p = EnterEase.transform(((clock.value - cardStart) / (cardEnd - cardStart)).coerceIn(0f, 1f))
                                 alpha = p
-                                translationY = (1f - p) * 6.dp.toPx()
+                                translationY = (1f - p) * 8.dp.toPx()
                                 // one cheap layer: no off-screen buffer per card while it fades
                                 compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
                                 if (isDragged) {
@@ -303,8 +303,8 @@ fun FundList(state: AppState, open: Boolean = true, clock: State<Float> = rememb
 private val EnterEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 /** Where on the shared panel clock (0..1) card [i] starts its entrance; the buttons under the cards use the same scale. */
-internal fun fundCardStart(i: Int): Float = i.coerceIn(0, 4) * 0.11f
-internal const val FUND_CARD_SPAN = 0.56f
+internal fun fundCardStart(i: Int): Float = 0.02f + i.coerceIn(0, 4) * 0.08f
+internal const val FUND_CARD_SPAN = 0.5f
 private val PulseEase = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
 
 @Composable
