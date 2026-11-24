@@ -30,7 +30,8 @@ import java.util.Calendar
  * Local reminders - the native twin of scheduleNativeReminders() / scheduleNativeDebtReminders():
  *  - four daily expense reminders (Morning / Afternoon / Evening / Night) at the times picked in the panel
  *  - one reminder per pending debt / receivable at its due date + chosen time ("pay / collect from ...")
- * Alarms are exact when the device allows it, so they arrive on time even in Doze.
+ * Alarms are exact (setExactAndAllowWhileIdle) when the user has allowed "Alarms & reminders" for the app,
+ * so they arrive on time even in Doze. Without that permission they fall back to inexact alarms.
  */
 object Reminders {
     const val CHANNEL_ID = "tracker_reminders"
@@ -97,10 +98,25 @@ object Reminders {
     private fun pending(context: Context, id: Int, intent: Intent): PendingIntent =
         PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-    private fun setAlarm(context: Context, id: Int, triggerAt: Long, intent: Intent) {
+    /** True when exact alarms may be used (always before Android 12; on 12+ only if the user allowed it). */
+    fun canScheduleExact(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 31) return true
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        return am.canScheduleExactAlarms()
+    }
+
+    fun setAlarm(context: Context, id: Int, triggerAt: Long, intent: Intent) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = pending(context, id, intent)
-        // Inexact + works in Doze: no special permission, allowed by Google Play (a few minutes of drift is fine for reminders)
+        if (canScheduleExact(context)) {
+            try {
+                // exact, and still fires in Doze
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+                return
+            } catch (_: SecurityException) {
+                // permission was revoked meanwhile - fall through to the inexact alarm
+            }
+        }
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
     }
 
@@ -234,9 +250,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         .setAction("com.myapp.app.REMINDER.$id")
                         .putExtra("id", id).putExtra("kind", "daily").putExtra("body", body)
                         .putExtra("hour", h).putExtra("minute", m)
-                    val pi = PendingIntent.getBroadcast(context, id, again, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi)
+                    Reminders.setAlarm(context, id, next, again)
                 }
             }
             "debt" -> Reminders.markDebtFired(context, id)
@@ -244,11 +258,13 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 }
 
-/** After a reboot (or an app update) the alarms are gone - put them back. */
+/** After a reboot, an app update or a change of the exact-alarm permission the alarms must be set again. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val a = intent.action
-        if (a != Intent.ACTION_BOOT_COMPLETED && a != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        if (a != Intent.ACTION_BOOT_COMPLETED && a != Intent.ACTION_MY_PACKAGE_REPLACED &&
+            a != "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
+        ) return
         val app = context.applicationContext
         AppSession.init(app)
         I18n.init(app)
