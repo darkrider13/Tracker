@@ -101,6 +101,29 @@ object ReminderPanel {
         } catch (_: Exception) {}
     }
 
+    /** "Alarms & reminders" screen (Android 12+): lets the app fire reminders at the exact minute. */
+    fun requestExactAlarm() {
+        val ctx = appContext ?: return
+        if (Build.VERSION.SDK_INT < 31) return
+        try {
+            ctx.startActivity(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${ctx.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (_: Exception) {
+            openAppDetails(ctx)
+        }
+    }
+
+    private fun openAppDetails(ctx: Context) {
+        try {
+            ctx.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (_: Exception) {}
+    }
+
     /** openNotificationsPanel() */
     fun open() {
         val ctx = appContext ?: return
@@ -146,7 +169,7 @@ fun ReminderPopup() {
         // coming back from the system Settings screens: re-check the permissions
         val owner = LocalLifecycleOwner.current
         DisposableEffect(owner) {
-            val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) ReminderPanel.permissionTick++ }
+            val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) { ReminderPanel.permissionTick++; Reminders.scheduleAll(context.applicationContext) } }
             owner.lifecycle.addObserver(obs)
             onDispose { owner.lifecycle.removeObserver(obs) }
         }
@@ -166,28 +189,14 @@ fun ReminderPopup() {
                 }
 
                 if (active && !Reminders.hasNotificationPermission(context)) {
-                    val shape = RoundedCornerShape(12.dp)
-                    Row(
-                        Modifier.fillMaxWidth().clip(shape).background(Brand.red, shape).border(1.dp, Color(0xFFFEE2E2), shape).padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AppText(
-                            text = tr("modal_allow_notif_banner", "Allow notifications to receive reminders."),
-                            size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f),
-                        )
-                        Box(
-                            Modifier
-                                .clip(CircleShape)
-                                .background(Brand.red, CircleShape)
-                                .border(1.dp, Color(0xFFE5E7EB), CircleShape)
-                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                    ReminderPanel.requestPermission()
-                                }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            AppText(text = tr("common_allow", "Allow"), size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
+                    ReminderBanner(
+                        tr("modal_allow_notif_banner", "Allow notifications to receive reminders."),
+                    ) { ReminderPanel.requestPermission() }
+                }
+                if (active && !Reminders.canScheduleExact(context)) {
+                    ReminderBanner(
+                        tr("reminder_exact_banner", "Allow \"Alarms & reminders\" so reminders arrive at the exact time."),
+                    ) { ReminderPanel.requestExactAlarm() }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -233,6 +242,30 @@ fun ReminderPopup() {
                     ModalButton(tr("common_save", "Save"), ModalButtonKind.Green, Modifier.weight(1f)) { ReminderPanel.save() }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReminderBanner(text: String, onAllow: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(Brand.red, shape).border(1.dp, Color(0xFFFEE2E2), shape).padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AppText(
+            text = text,
+            size = 11f, lineHeight = 16.5f, weight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f),
+        )
+        Box(
+            Modifier
+                .clip(CircleShape)
+                .background(Brand.red, CircleShape)
+                .border(1.dp, Color(0xFFE5E7EB), CircleShape)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onAllow() }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            AppText(text = tr("common_allow", "Allow"), size = 10f, lineHeight = 15f, weight = FontWeight.Bold, color = Color.White)
         }
     }
 }
