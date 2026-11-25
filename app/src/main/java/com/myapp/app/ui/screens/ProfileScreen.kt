@@ -226,7 +226,6 @@ fun ProfileScreen() {
                     modifier = Modifier.pullUp(8.dp),
                 )
                 Row(Modifier.pullUp(8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SocialIcon("fa-facebook-f", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://m.facebook.com/insanul.islam.abirr/") }
                     SocialIcon("fa-whatsapp", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://wa.me/8801516531459") }
                     SocialIcon("fa-instagram", FaStyle.Brands, 23.dp) { openExternalLink(context, "https://www.instagram.com/md.insanulislam") }
                     SocialIcon("fa-paper-plane", FaStyle.Solid, 21.dp) { openExternalLink(context, "https://t.me/insanul13") }
