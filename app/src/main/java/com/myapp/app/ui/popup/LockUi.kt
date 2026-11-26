@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -611,10 +612,10 @@ private fun LockHeader(icon: String, circle: Int, iconSize: Int, title: String, 
 const val LOCK_EXIT_MS = 380
 
 /** Home starts to fade in this long after the lock starts to dissolve (the two overlap). */
-const val LOCK_HOME_REVEAL_DELAY_MS = 0L
+const val LOCK_HOME_REVEAL_DELAY_MS = 120L
 
 /** Length of Home's reveal (fade + settle from 97 %). */
-const val HOME_REVEAL_MS = 0
+const val HOME_REVEAL_MS = 520
 
 /** Length of the lock screen's entrance. */
 const val LOCK_ENTER_MS = 460
@@ -636,7 +637,10 @@ private fun LockExit(visible: Boolean, content: @Composable () -> Unit) {
                 }
             }
         } else if (holding) {
-            // no unlock animation: the lock screen goes away at once
+            kotlinx.coroutines.coroutineScope {
+                launch { alpha.animateTo(0f, tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) }
+                launch { scale.animateTo(1.06f, tween(LOCK_EXIT_MS, easing = FastOutSlowInEasing)) }
+            }
             holding = false
             alpha.snapTo(0f)
             scale.snapTo(LOCK_ENTER_SCALE)

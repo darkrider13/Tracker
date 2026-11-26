@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,12 +109,9 @@ object FilterPicker {
         }
     }
 
-    /**
-     * clearFilterModal(): back to the default option, applied at once. The popup STAYS OPEN: the selection just
-     * animates over to the default option (and the Clear Filter button goes away, as there is nothing left to clear).
-     */
+    /** clearFilterModal(): back to the default option, applied at once. */
     fun clear() {
-        val def: String = when (LogsState.pendingMode) {
+        when (LogsState.pendingMode) {
             "main" -> {
                 val f = AppStore.state.filters
                 when (LogsState.activeFilterType) {
@@ -128,26 +124,23 @@ object FilterPicker {
                     "price" -> f.price = "all"
                 }
                 AppStore.commit()
-                mapOf("sort" to "newest", "time" to "month", "price" to "all")[LogsState.activeFilterType] ?: return
+                close()
             }
             "searchField" -> {
-                val d = defaultSearchField()
-                if (LogsState.pickerCategory == "transactions") LogsState.searchField = d
-                else DebtUi.of(LogsState.pickerCategory).searchField = d
-                d
+                if (LogsState.pickerCategory == "transactions") LogsState.searchField = "category"
+                else DebtUi.of(LogsState.pickerCategory).searchField = "person"
+                close()
             }
             "priority" -> {
                 DebtUi.of(LogsState.pickerCategory).sort.priority = "default"
-                "default"
+                close()
             }
             "debtAmount" -> {
                 DebtUi.of(LogsState.pickerCategory).sort.amount = "all"
-                "all"
+                close()
             }
-            else -> return
+            else -> close()
         }
-        LogsState.pendingValue = def
-        LogsState.pendingLabel = LogsState.pickerOptions.firstOrNull { it.first == def }?.second ?: LogsState.pendingLabel
     }
 }
 
@@ -225,23 +218,17 @@ private fun PickerOption(
 ) {
     val c = AppTheme.colors
     val shape = RoundedCornerShape(12.dp)
-    val anim = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(260)
-    val bgColor by androidx.compose.animation.animateColorAsState(if (selected) Brand.red else c.bgWhite60, anim, label = "optBg")
-    val fgColor by androidx.compose.animation.animateColorAsState(
-        if (selected) androidx.compose.ui.graphics.Color.White else c.textDefault, anim, label = "optFg",
-    )
-    val borderColor by androidx.compose.animation.animateColorAsState(if (selected) Brand.red else c.borderGray100, anim, label = "optBorder")
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(bgColor, shape)
-            .border(1.dp, borderColor, shape)
+            .background(if (selected) Brand.red else c.bgWhite60, shape)
+            .then(if (!selected) Modifier.border(1.dp, c.borderGray100, shape) else Modifier)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        val fg = fgColor
+        val fg = if (selected) androidx.compose.ui.graphics.Color.White else c.textDefault
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
                 com.myapp.app.ui.components.FaIcon(icon.first, 12.dp, fg, Modifier.padding(end = 6.dp), style = icon.second)
