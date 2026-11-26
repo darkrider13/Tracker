@@ -235,9 +235,11 @@ object TimeCalendar {
         close()
     }
 
+    /** Clear Filter: the filter is reset and the calendar STAYS OPEN, moving back to the present month. */
     fun clear() {
         clearPick(target)
-        close()
+        val now = Calendar.getInstance()
+        year = now.get(Calendar.YEAR); month = now.get(Calendar.MONTH) + 1
     }
 
     /** Calendar label -> wheel picker (switchToWheelDatePicker): fade out, 247 ms pause, fade in. */
@@ -396,15 +398,18 @@ private fun DayCell(
         isFriday -> { bg = c.bgWhite60; fg = Brand.red }
         else -> { bg = c.bgWhite60; fg = c.textGray700 }
     }
+    val anim = androidx.compose.animation.core.tween<Color>(260)
+    val bgAnim by androidx.compose.animation.animateColorAsState(bg, anim, label = "dayBg")
+    val fgAnim by androidx.compose.animation.animateColorAsState(fg, anim, label = "dayFg")
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .clip(shape)
-            .background(bg, shape)
+            .background(bgAnim, shape)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        AppText(text = localizeDigits(day.toString()), size = 12f, lineHeight = 16f, weight = FontWeight.Bold, color = fg)
+        AppText(text = localizeDigits(day.toString()), size = 12f, lineHeight = 16f, weight = FontWeight.Bold, color = fgAnim)
         if (hasSpend && !isSelected) {
             PulseDot(6.dp, Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
         }
