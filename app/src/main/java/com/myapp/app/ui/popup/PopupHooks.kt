@@ -36,21 +36,8 @@ fun installPopupHooks() {
 /** Every popup layer, lowest first (dialogs are always on top). Call once, inside the root Box. */
 @Composable
 fun AllPopups() {
-    // An alert / confirm blurs the popup that is open behind it, like the screen is blurred behind a popup.
-    val dialogOn = Popups.alert != null || Popups.confirm != null
-    val underBlur by animateFloatAsState(
-        targetValue = if (dialogOn) 20f else 0f,
-        animationSpec = if (dialogOn) tween(200, easing = LinearEasing) else snap(),
-        label = "underDialogBlur",
-    )
-    Box(
-        Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val r = underBlur * density
-                renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
-            },
-    ) {
+    // A popup opened on top of another one blurs the popup beneath it (done by PopupLayer itself, dialogs included).
+    Box(Modifier.fillMaxSize()) {
         AddExpensePopup()
         AddMoneyPopup()
         TransferFundPopup()

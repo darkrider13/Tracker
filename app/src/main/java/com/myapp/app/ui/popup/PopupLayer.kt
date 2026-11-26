@@ -115,9 +115,9 @@ object Popups {
 }
 
 /**
- * Open order of the popups that are up right now (a popup leaves the list the moment it starts to close). Only the
- * last one is drawn: a popup opened on top of another hides the one beneath at once, and when the top one is
- * closed the one beneath is back on screen instantly. The frosted blur of the page stays the whole time.
+ * Open order of the popups that are up right now (a popup leaves the list the moment it starts to close). A popup that
+ * has another one on top of it gets the frosted blur itself, like the page does behind a popup; the blur is gone at
+ * once when the top one is closed.
  */
 internal object PopupStack {
     val order = androidx.compose.runtime.mutableStateListOf<Any>()
@@ -169,8 +169,12 @@ fun PopupLayer(
         if (visible) PopupStack.order.add(token)
         onDispose { PopupStack.order.remove(token) }
     }
-    // covered = another popup was opened after this one and is still up: this one is hidden (not faded) meanwhile
     val covered = visible && token in PopupStack.order && PopupStack.order.lastOrNull() !== token
+    val coverBlur by animateFloatAsState(
+        targetValue = if (covered) 20f else 0f,
+        animationSpec = if (covered) tween(60, easing = LinearEasing) else snap(),
+        label = "popupCoverBlur",
+    )
     androidx.compose.runtime.LaunchedEffect(visible) {
         if (visible) {
             repeat(settleFrames) { androidx.compose.runtime.withFrameNanos { } }
@@ -188,7 +192,11 @@ fun PopupLayer(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = if (covered) 0f else progress.value }
+            .graphicsLayer {
+                alpha = progress.value
+                val r = coverBlur * density
+                renderEffect = if (android.os.Build.VERSION.SDK_INT >= 31 && r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
+            }
             .background(Color.Black.copy(alpha = scrim))
             // swallow every tap so nothing behind the popup reacts
             .clickable(
