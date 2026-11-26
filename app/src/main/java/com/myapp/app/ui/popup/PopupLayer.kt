@@ -40,8 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
@@ -116,23 +114,6 @@ object Popups {
             editTransfer || addFund || filterPicker || timeCalendar || unifiedDatePicker || timePicker || dueDateCalendar || addDebt || debtPayment || debtHistory || editFund || deleteFundConfirm || allCategories || incomingOverview || allCatMonthPicker || avatarPicker || lockType || noteModal || reminders || alert != null || confirm != null
 }
 
-/**
- * Order in which the popups were opened (oldest first). Only the newest one is shown: every popup below it is
- * hidden (not drawn, not touchable, but still composed so typed text / selections survive) and comes back
- * instantly when the one above it starts to close.
- */
-internal object PopupStack {
-    val ids = androidx.compose.runtime.mutableStateListOf<Any>()
-    fun push(id: Any) { if (!ids.contains(id)) ids.add(id) }
-    fun remove(id: Any) { ids.remove(id) }
-    fun isCovered(id: Any): Boolean {
-        val i = ids.indexOf(id)
-        return i >= 0 && i < ids.size - 1
-    }
-    /** Is there another open popup below [id]? */
-    fun hasBelow(id: Any): Boolean = ids.any { it != id }
-}
-
 /** Animation progress of the popup that is currently drawing (0 = closed, 1 = fully open). */
 internal val LocalPopupProgress = compositionLocalOf<State<Float>> { mutableStateOf(1f) }
 
@@ -173,11 +154,6 @@ fun PopupLayer(
 ) {
     val progressAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     val progress = progressAnim.asState()
-    val layerId = remember { Any() }
-    // join / leave the stack at once (before the first frame of the motion), so the popup below hides instantly
-    // and comes back instantly the moment this one starts to close
-    if (visible) PopupStack.push(layerId) else PopupStack.remove(layerId)
-    DisposableEffect(Unit) { onDispose { PopupStack.remove(layerId) } }
     androidx.compose.runtime.LaunchedEffect(visible) {
         if (visible) {
             repeat(settleFrames) { androidx.compose.runtime.withFrameNanos { } }
@@ -192,26 +168,11 @@ fun PopupLayer(
         onDispose { Popups.layersShown-- }
     }
 
-    // Dim: opening on top of another popup -> full dim at once (the popup below just vanished, the screen behind
-    // must not flash lighter); closing with another popup below -> no dim of its own (the one below keeps its dim).
-    val stacked = PopupStack.hasBelow(layerId)
-    val dimAlpha = when {
-        visible && stacked -> 1f
-        !visible && stacked -> 0f
-        else -> progress.value
-    }
-    val covered = PopupStack.isCovered(layerId)
-
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            // a popup that has another one above it is measured but not placed: nothing drawn, nothing touchable
-            .layout { measurable, constraints ->
-                val pl = measurable.measure(constraints)
-                layout(pl.width, pl.height) { if (!covered) pl.place(0, 0) }
-            }
-            .drawBehind { drawRect(Color.Black.copy(alpha = scrim * dimAlpha)) }
-            .graphicsLayer { alpha = if (visible && stacked) 1f else progress.value }
+            .graphicsLayer { alpha = progress.value }
+            .background(Color.Black.copy(alpha = scrim))
             // swallow every tap so nothing behind the popup reacts
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
