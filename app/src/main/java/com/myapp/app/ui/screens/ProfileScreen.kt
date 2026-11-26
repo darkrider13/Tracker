@@ -242,7 +242,7 @@ fun ProfileScreen() {
 
 // ------------------------------------------------------------------ pieces
 
-/** "Check for update" icon in the page header (no dot: tapping it tells you whether a newer version exists). */
+/** "Check for update" icon in the page header (green dot while a newer version is waiting). */
 @Composable
 private fun UpdateButton() {
     val c = AppTheme.colors
@@ -276,15 +276,7 @@ private fun UpdateButton() {
                     UpdateChecker.checking = false
                     val current = UpdateChecker.installedName(context)
                     when (result) {
-                        is UpdateChecker.Result.Available -> AppDialogs.confirm(
-                            message = tr("update_found_msg", "A new version is available.") +
-                                "\n" + tr("update_current_label", "Current version") + ": " + current +
-                                (result.versionName?.let { "\n" + tr("update_new_label", "New version") + ": " + it } ?: ""),
-                            title = tr("update_found_title", "Update available"),
-                            okLabel = tr("update_download", "Download"),
-                            cancelLabel = tr("update_later", "Later"),
-                            icon = "fa-circle-check",
-                        ) { ok -> if (ok == true) UpdateChecker.startUpdate(context, result.url) }
+                        is UpdateChecker.Result.Available -> UpdateChecker.showAvailable(context, result)
                         is UpdateChecker.Result.UpToDate -> AppDialogs.alert(
                             message = tr("update_latest_msg", "You are using version %s.").replace("%s", current),
                             title = tr("update_latest_title", "You have the latest version"),
@@ -303,6 +295,13 @@ private fun UpdateButton() {
             "fa-arrows-rotate", 16.dp, c.textGray900,
             modifier = Modifier.rotate(angle.value),
         )
+        // green dot: a newer version was found but not downloaded yet (gone once the latest version is running)
+        if (UpdateChecker.updateAvailable) {
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 8.dp)
+                    .size(8.dp).clip(CircleShape).background(Brand.green, CircleShape),
+            )
+        }
     }
 }
 
