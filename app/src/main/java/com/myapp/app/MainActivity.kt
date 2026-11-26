@@ -23,7 +23,11 @@ class MainActivity : FragmentActivity() {
         splash.setKeepOnScreenCondition { !AppSession.uiReady }
         // Remove the launch screen at once (its background equals the app background): the system's own exit
         // animation would run at the same time as our entrance animation and make it look unsteady.
-        splash.setOnExitAnimationListener { it.remove() }
+        splash.setOnExitAnimationListener {
+            it.remove()
+            // the launch theme is swapped for the app theme around now: put our bar colours back at once
+            SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+        }
         super.onCreate(savedInstanceState)
 
         AppSession.init(applicationContext)
