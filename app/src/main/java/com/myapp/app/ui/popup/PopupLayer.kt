@@ -114,6 +114,15 @@ object Popups {
             editTransfer || addFund || filterPicker || timeCalendar || unifiedDatePicker || timePicker || dueDateCalendar || addDebt || debtPayment || debtHistory || editFund || deleteFundConfirm || allCategories || incomingOverview || allCatMonthPicker || avatarPicker || lockType || noteModal || reminders || alert != null || confirm != null
 }
 
+/**
+ * Open order of the popups that are up right now (a popup leaves the list the moment it starts to close). Only the
+ * last one is drawn: a popup opened on top of another hides the one beneath at once, and when the top one is
+ * closed the one beneath is back on screen instantly. The frosted blur of the page stays the whole time.
+ */
+internal object PopupStack {
+    val order = androidx.compose.runtime.mutableStateListOf<Any>()
+}
+
 /** Animation progress of the popup that is currently drawing (0 = closed, 1 = fully open). */
 internal val LocalPopupProgress = compositionLocalOf<State<Float>> { mutableStateOf(1f) }
 
@@ -154,6 +163,14 @@ fun PopupLayer(
 ) {
     val progressAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     val progress = progressAnim.asState()
+    val token = remember { Any() }
+    DisposableEffect(visible) {
+        PopupStack.order.remove(token)
+        if (visible) PopupStack.order.add(token)
+        onDispose { PopupStack.order.remove(token) }
+    }
+    // covered = another popup was opened after this one and is still up: this one is hidden (not faded) meanwhile
+    val covered = visible && token in PopupStack.order && PopupStack.order.lastOrNull() !== token
     androidx.compose.runtime.LaunchedEffect(visible) {
         if (visible) {
             repeat(settleFrames) { androidx.compose.runtime.withFrameNanos { } }
@@ -171,7 +188,7 @@ fun PopupLayer(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = progress.value }
+            .graphicsLayer { alpha = if (covered) 0f else progress.value }
             .background(Color.Black.copy(alpha = scrim))
             // swallow every tap so nothing behind the popup reacts
             .clickable(
