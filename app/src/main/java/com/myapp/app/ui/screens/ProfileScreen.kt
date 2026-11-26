@@ -281,10 +281,12 @@ private fun UpdateButton() {
                             message = tr("update_latest_msg", "You are using version %s.").replace("%s", current),
                             title = tr("update_latest_title", "You have the latest version"),
                             icon = "fa-circle-check",
+                            softBackdrop = true,
                         )
                         is UpdateChecker.Result.Failed -> AppDialogs.alert(
                             message = tr("update_check_retry_msg", "Please try again after some time."),
                             title = tr("update_failed_title", "Could not check for updates"),
+                            softBackdrop = true,
                         )
                     }
                 }
