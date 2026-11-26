@@ -54,6 +54,17 @@ class MainActivity : FragmentActivity() {
         SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // e.g. after the system fingerprint prompt closes: make sure both bars are transparent again (day) / dark (night).
+        SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+    }
+
     override fun onStop() {
         super.onStop()
         // In the background the status bar is always dark so it never leaves a light bar behind.
