@@ -77,7 +77,7 @@ fun TrackerRoot(activity: Activity) {
         val reveal by animateFloatAsState(
             targetValue = if (startupGuard) 0f else 1f,
             // ease-OUT (starts quickly, lands softly): FastOutSlowIn started slowly, which felt laggy
-            animationSpec = androidx.compose.animation.core.snap(),   // no unlock animation
+            animationSpec = tween(com.myapp.app.ui.popup.HOME_REVEAL_MS, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
             label = "unlockReveal",
         )
         // The native launch screen is plain white (day) / #05070A (night). While the startup lock is up the app
@@ -149,7 +149,7 @@ fun TrackerRoot(activity: Activity) {
             val barsAlpha by animateFloatAsState(
                 targetValue = if (barsOn) 1f else 0f,
                 animationSpec = if (barsOn) tween(com.myapp.app.ui.popup.LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)
-                else androidx.compose.animation.core.snap(),
+                else tween(com.myapp.app.ui.popup.LOCK_EXIT_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
                 label = "lockBarsBackdrop",
             )
             if (barsAlpha > 0.001f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = barsAlpha }) { AppBackdrop() }
