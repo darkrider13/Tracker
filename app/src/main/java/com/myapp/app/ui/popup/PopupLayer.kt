@@ -201,6 +201,8 @@ fun GlassCard(
     padding: Dp = 20.dp,
     maxWidth: Dp = 384.dp,
     scrollable: Boolean = true,
+    /** Fully opaque card (day mode): nothing of the page shows through it. */
+    solid: Boolean = false,
     overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -229,7 +231,7 @@ fun GlassCard(
             }
             .heightIn(max = maxHeight)
             .clip(shape)
-            .background(c.cardBg, shape)
+            .background(if (solid && c.isLight) Color(0xFFF8FAFC) else c.cardBg, shape)
             .border(1.dp, c.cardBorder, shape),
     ) {
         Column(

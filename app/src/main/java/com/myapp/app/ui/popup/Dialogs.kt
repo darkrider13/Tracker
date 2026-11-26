@@ -169,7 +169,7 @@ fun DialogsHost() {
     PopupLayer(visible = Popups.confirm != null, scrim = if (AppDialogs.lastConfirm?.softBackdrop == true) 0.10f else 0.7f) {
         val req = AppDialogs.lastConfirm
         if (req != null) {
-            GlassCard(radius = 28.dp, padding = 24.dp) {
+            GlassCard(radius = 28.dp, padding = 24.dp, solid = req.softBackdrop) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -216,7 +216,7 @@ fun DialogsHost() {
     PopupLayer(visible = Popups.alert != null, scrim = if (AppDialogs.lastAlert?.softBackdrop == true) 0.10f else 0.7f) {
         val req = AppDialogs.lastAlert
         if (req != null) {
-            GlassCard(radius = 28.dp, padding = 24.dp) {
+            GlassCard(radius = 28.dp, padding = 24.dp, solid = req.softBackdrop) {
                 androidx.compose.foundation.layout.Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
