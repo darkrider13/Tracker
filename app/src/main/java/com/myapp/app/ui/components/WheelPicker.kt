@@ -271,7 +271,7 @@ fun WheelPicker(
             cur + d
         } else bi
         activeForce = target
-        scroll.animateTo(target * rowPx, tween(520, EaseOutQuint))
+        scroll.animateTo(target * rowPx, tween(450, EaseOutQuint))
         wrapCheck()
         latestOnSettle(t.value)
     }
