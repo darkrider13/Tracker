@@ -77,7 +77,7 @@ fun TrackerRoot(activity: Activity) {
         val reveal by animateFloatAsState(
             targetValue = if (startupGuard) 0f else 1f,
             // ease-OUT (starts quickly, lands softly): FastOutSlowIn started slowly, which felt laggy
-            animationSpec = tween(com.myapp.app.ui.popup.HOME_REVEAL_MS, easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
+            animationSpec = androidx.compose.animation.core.snap(),   // no unlock animation
             label = "unlockReveal",
         )
         // The native launch screen is plain white (day) / #05070A (night). While the startup lock is up the app
@@ -149,7 +149,7 @@ fun TrackerRoot(activity: Activity) {
             val barsAlpha by animateFloatAsState(
                 targetValue = if (barsOn) 1f else 0f,
                 animationSpec = if (barsOn) tween(com.myapp.app.ui.popup.LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)
-                else tween(com.myapp.app.ui.popup.LOCK_EXIT_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                else androidx.compose.animation.core.snap(),
                 label = "lockBarsBackdrop",
             )
             if (barsAlpha > 0.001f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = barsAlpha }) { AppBackdrop() }
@@ -166,9 +166,13 @@ fun TrackerRoot(activity: Activity) {
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
             // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
             // blur clears within a moment of the popup closing (no lingering blur).
-            // Day mode too: every popup (update popups and the busy card included) blurs what is behind it.
-            val busyUp = com.myapp.app.ui.popup.BackupUi.SHOW_BUSY_CARD && com.myapp.app.ui.popup.BackupUi.busy != null
-            val blurOn = (Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading || busyUp
+            // Night (dark) mode: EVERY popup blurs what is behind it - the update popups (new version / latest version /
+            // check failed / download) and the busy card included. Day mode keeps its old rule: update popups
+            // (new version / latest version / download) get NO blur, so the bars keep matching the page.
+            val updateSoft = com.myapp.app.util.UpdateChecker.downloading || Popups.confirm?.softBackdrop == true || Popups.alert?.softBackdrop == true
+            val noBlur = isLight && updateSoft
+            val busyUp = !isLight && com.myapp.app.ui.popup.BackupUi.SHOW_BUSY_CARD && com.myapp.app.ui.popup.BackupUi.busy != null
+            val blurOn = ((Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading || busyUp) && !noBlur
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
                 // Blur comes up at once with the popup / sheet (60 ms) and is removed INSTANTLY the
