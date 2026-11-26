@@ -89,6 +89,13 @@ fun TrackerRoot(activity: Activity) {
         LaunchedEffect(Unit) {
             androidx.compose.runtime.withFrameNanos { }
             AppSession.uiReady = true
+            // The launch screen goes away (and the system re-applies the launch theme's bar colours) right after
+            // this: set ours again straight away and once more after it has settled, so the bars match from the very start.
+            SystemBars.apply(activity, AppSession.isLight, AppSession.pureBlackScreen)
+            delay(150)
+            SystemBars.apply(activity, AppSession.isLight, AppSession.pureBlackScreen)
+            delay(700)
+            SystemBars.apply(activity, AppSession.isLight, AppSession.pureBlackScreen)
         }
 
         // initReminders(): every launch asks for the notification permission (the system only shows the
@@ -161,7 +168,8 @@ fun TrackerRoot(activity: Activity) {
             // blur clears within a moment of the popup closing (no lingering blur).
             val blurOn = (Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading
             val blurDp by animateFloatAsState(
-                targetValue = if (blurOn) 20f else 0f,
+                // update popup / download: only a hint of blur, so the bars above and below still match the page
+                targetValue = if (blurOn) (if (com.myapp.app.util.UpdateChecker.downloading || Popups.confirm?.softBackdrop == true) 3f else 20f) else 0f,
                 // Blur comes up at once with the popup / sheet (60 ms) and is removed INSTANTLY the
                 // moment the popup starts to close (no lingering blur behind the fading popup).
                 animationSpec = if (blurOn) tween(durationMillis = if (Popups.sheetBlurSoft) 260 else 60, easing = LinearEasing) else snap(),
