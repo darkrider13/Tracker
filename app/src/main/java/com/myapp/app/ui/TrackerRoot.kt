@@ -166,13 +166,10 @@ fun TrackerRoot(activity: Activity) {
             // Frosted blur behind any open popup (the old backdrop-filter: blur(20px)).
             // The radius is eased in/out in the draw phase (no recomposition) and stays on until the
             // blur clears within a moment of the popup closing (no lingering blur).
-            // Night (dark) mode: EVERY popup blurs what is behind it - the update popups (new version / latest version /
-            // check failed / download) and the busy card included. Day mode keeps its old rule: update popups
-            // (new version / latest version / download) get NO blur, so the bars keep matching the page.
-            val updateSoft = com.myapp.app.util.UpdateChecker.downloading || Popups.confirm?.softBackdrop == true || Popups.alert?.softBackdrop == true
-            val noBlur = isLight && updateSoft
-            val busyUp = !isLight && com.myapp.app.ui.popup.BackupUi.SHOW_BUSY_CARD && com.myapp.app.ui.popup.BackupUi.busy != null
-            val blurOn = ((Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading || busyUp) && !noBlur
+            // Day AND night mode: EVERY popup blurs what is behind it - the update popups (new version / latest version /
+            // check failed / download) and the busy card included.
+            val busyUp = com.myapp.app.ui.popup.BackupUi.SHOW_BUSY_CARD && com.myapp.app.ui.popup.BackupUi.busy != null
+            val blurOn = ((Popups.anyVisible && !Popups.sheetSliding) || com.myapp.app.util.UpdateChecker.downloading || busyUp)
             val blurDp by animateFloatAsState(
                 targetValue = if (blurOn) 20f else 0f,
                 // Blur comes up at once with the popup / sheet (60 ms) and is removed INSTANTLY the
