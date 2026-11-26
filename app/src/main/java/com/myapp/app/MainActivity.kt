@@ -29,6 +29,8 @@ class MainActivity : FragmentActivity() {
         AppSession.init(applicationContext)
         I18n.init(applicationContext)       // Bangla translation table
         AppStore.init(applicationContext)   // loads saved data (or creates the defaults on first launch)
+        // Opened fresh: look for a new version once, within the first 5 seconds (popup comes later, see TrackerRoot).
+        if (savedInstanceState == null) com.myapp.app.util.UpdateChecker.startupCheck(applicationContext)
         syncCustomCategories()              // category chip order (custom ones first)
         installPopupHooks()                 // + button, Transfer, Add Fund open their popups
         com.myapp.app.ui.popup.BackupUi.attach(this)   // file picker for Import
