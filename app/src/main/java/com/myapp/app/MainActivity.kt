@@ -62,12 +62,20 @@ class MainActivity : FragmentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+        // also while the system fingerprint prompt has the focus: the bars must keep the app's colours
+        if (hasFocus || com.myapp.app.ui.popup.BiometricHelper.prompting) {
+            SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+        }
     }
 
     override fun onStop() {
         super.onStop()
         // In the background the status bar is always dark so it never leaves a light bar behind.
-        SystemBars.forceDark(this)
+        // The fingerprint prompt can stop the activity on some phones: the bars must not turn black then.
+        if (com.myapp.app.ui.popup.BiometricHelper.prompting) {
+            SystemBars.apply(this, AppSession.isLight, AppSession.pureBlackScreen)
+        } else {
+            SystemBars.forceDark(this)
+        }
     }
 }
