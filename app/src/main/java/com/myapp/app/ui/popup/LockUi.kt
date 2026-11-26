@@ -86,6 +86,9 @@ suspend fun sha256Hex(text: String): String = withContext(Dispatchers.Default) {
 object BiometricHelper {
     var activity: FragmentActivity? = null
 
+    /** True while the system fingerprint / face prompt is on screen (MainActivity keeps the bars as they are meanwhile). */
+    @Volatile var prompting: Boolean = false
+
     fun isSupported(): Boolean {
         val a = activity ?: return false
         return BiometricManager.from(a).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
@@ -97,14 +100,15 @@ object BiometricHelper {
         val a = activity
         if (a == null) { onResult(false); return }
         var done = false
+        prompting = true
         val prompt = BiometricPrompt(
             a, ContextCompat.getMainExecutor(a),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    if (!done) { done = true; onResult(true) }
+                    if (!done) { done = true; prompting = false; onResult(true) }
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (!done) { done = true; onResult(false) }
+                    if (!done) { done = true; prompting = false; onResult(false) }
                 }
             },
         )
@@ -118,6 +122,7 @@ object BiometricHelper {
         try {
             prompt.authenticate(info)
         } catch (_: Throwable) {
+            prompting = false
             if (!done) { done = true; onResult(false) }
         }
     }
