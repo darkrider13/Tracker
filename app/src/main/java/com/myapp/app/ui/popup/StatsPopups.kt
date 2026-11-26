@@ -363,11 +363,20 @@ fun AllCatMonthPickerPopup() {
                         }
                     }
                 }
-                androidx.compose.animation.AnimatedVisibility(visible = AppUi.statsMonthOverride != null) {
+                // The button's slot is kept for as long as the popup is open, so the card never changes size (and never
+                // moves) while the wheels glide: after a reset the button only fades out in place.
+                val hadFilter = remember(p.openCount) { AppUi.statsMonthOverride != null }
+                if (hadFilter) {
+                    val resetAlpha by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (AppUi.statsMonthOverride != null) 1f else 0f,
+                        animationSpec = androidx.compose.animation.core.tween(160, easing = androidx.compose.animation.core.LinearEasing),
+                        label = "resetBtnAlpha",
+                    )
                     ModalButton(
-                        tr("filter_reset_btn", "Reset Filter"), ModalButtonKind.Secondary, Modifier.fillMaxWidth(),
+                        tr("filter_reset_btn", "Reset Filter"), ModalButtonKind.Secondary,
+                        Modifier.fillMaxWidth().graphicsLayer { alpha = resetAlpha },
                         textColor = Brand.red,
-                    ) { AllCatMonthPicker.reset() }
+                    ) { if (AppUi.statsMonthOverride != null) AllCatMonthPicker.reset() }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ModalButton(tr("common_cancel", "Cancel"), ModalButtonKind.Secondary, Modifier.weight(1f)) { AllCatMonthPicker.close() }
