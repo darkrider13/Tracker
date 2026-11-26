@@ -191,6 +191,7 @@ object UpdateChecker {
                     message = tr("update_failed_msg", "Check your internet connection and try again.") +
                         "\n(" + (e.message ?: e.javaClass.simpleName) + ")",
                     title = tr("update_download_failed_title", "Could not download the update"),
+                    softBackdrop = true,
                 )
             } finally {
                 downloading = false
