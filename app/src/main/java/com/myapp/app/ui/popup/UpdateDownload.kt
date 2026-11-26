@@ -65,7 +65,7 @@ fun UpdateDownloadOverlay() {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
+            .background(Color.Black.copy(alpha = 0.10f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
         contentAlignment = Alignment.Center,
     ) {

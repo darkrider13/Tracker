@@ -48,6 +48,8 @@ class ConfirmRequest(
     val cancelGreen: Boolean,
     val showClose: Boolean,
     val onResult: (Boolean?) -> Unit,
+    /** Very light dimming + blur behind the popup (the update popup: the bars must keep matching the page). */
+    val softBackdrop: Boolean = false,
 )
 
 private val POSITIVE_MODAL_ICONS = listOf("fa-check-circle", "fa-circle-check")
@@ -86,6 +88,7 @@ object AppDialogs {
         icon: String? = null,
         cancelGreen: Boolean = false,
         showClose: Boolean = false,
+        softBackdrop: Boolean = false,
         onResult: (Boolean?) -> Unit,
     ) {
         val req = ConfirmRequest(
@@ -97,6 +100,7 @@ object AppDialogs {
             cancelGreen = cancelGreen,
             showClose = showClose,
             onResult = onResult,
+            softBackdrop = softBackdrop,
         )
         lastConfirm = req
         Popups.confirm = req
@@ -158,7 +162,7 @@ private fun DialogTexts(title: String, message: String) {
 /** Draws the Alert and Confirm popups (always on top of every other popup). */
 @Composable
 fun DialogsHost() {
-    PopupLayer(visible = Popups.confirm != null, scrim = 0.7f) {
+    PopupLayer(visible = Popups.confirm != null, scrim = if (AppDialogs.lastConfirm?.softBackdrop == true) 0.10f else 0.7f) {
         val req = AppDialogs.lastConfirm
         if (req != null) {
             GlassCard(radius = 28.dp, padding = 24.dp) {
