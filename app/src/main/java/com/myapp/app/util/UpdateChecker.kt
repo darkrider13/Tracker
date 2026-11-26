@@ -18,6 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -38,6 +39,12 @@ object UpdateChecker {
     /** true after a check found a newer version (shows the green dot on the update icon). */
     var updateAvailable by mutableStateOf(false)
     var checking by mutableStateOf(false)
+
+    /** Start-up check result waiting to be shown as a popup (set when a newer version was found in the first 5 s). */
+    var startupFound by mutableStateOf<Result.Available?>(null)
+
+    /** The automatic check only runs inside this window after the app is opened; later it never checks by itself. */
+    private const val STARTUP_WINDOW_MS = 5_000L
 
     sealed class Result {
         object UpToDate : Result()
@@ -70,12 +77,41 @@ object UpdateChecker {
         return if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
     }
 
-    suspend fun check(context: Context): Result = withContext(Dispatchers.IO) {
+    /**
+     * Automatic check right after the app is opened. It must finish within the first [STARTUP_WINDOW_MS]; if the
+     * phone is offline / too slow the check is dropped silently (no popup, no dot) and nothing is checked again
+     * until the next time the app is opened. The popup itself is shown by TrackerRoot once the lock / welcome
+     * screen is gone.
+     */
+    fun startupCheck(context: Context) {
+        val app = context.applicationContext
+        startupFound = null
+        scope.launch {
+            val r = withTimeoutOrNull(STARTUP_WINDOW_MS) { check(app, 4_000) }
+            if (r is Result.Available) startupFound = r
+        }
+    }
+
+    /** The "new version" popup: Download starts the in-app download, Cancel leaves the green dot on the update icon. */
+    fun showAvailable(context: Context, result: Result.Available) {
+        val current = installedName(context)
+        AppDialogs.confirm(
+            message = tr("update_found_msg", "A new version is available.") +
+                "\n" + tr("update_current_label", "Current version") + ": " + current +
+                (result.versionName?.let { "\n" + tr("update_new_label", "New version") + ": " + it } ?: ""),
+            title = tr("update_found_title", "Update available"),
+            okLabel = tr("update_download", "Download"),
+            cancelLabel = tr("common_cancel", "Cancel"),
+            icon = "fa-circle-check",
+        ) { ok -> if (ok == true) startUpdate(context, result.url) }
+    }
+
+    suspend fun check(context: Context, timeoutMs: Int = 10_000): Result = withContext(Dispatchers.IO) {
         var conn: HttpURLConnection? = null
         try {
             conn = (URL(VERSION_URL).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10_000
-                readTimeout = 10_000
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
                 useCaches = false
                 instanceFollowRedirects = true
                 setRequestProperty("Cache-Control", "no-cache")
@@ -88,6 +124,7 @@ object UpdateChecker {
             if (remoteCode < 0) return@withContext Result.Failed("bad version.json")
             val remoteName = json.optString("versionName").ifEmpty { null }
 
+            ensureActive()   // a start-up check that ran out of its 5 s window must not change anything
             if (remoteCode <= installedCode(context)) {
                 updateAvailable = false
                 return@withContext Result.UpToDate
