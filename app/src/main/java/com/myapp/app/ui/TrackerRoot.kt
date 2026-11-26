@@ -106,6 +106,19 @@ fun TrackerRoot(activity: Activity) {
             com.myapp.app.ui.components.awaitIntroIdle()   // never while the Home chart is growing
             com.myapp.app.reminder.Reminders.scheduleAll(appContext)
         }
+        // New version found by the start-up check: show the popup once the lock / welcome screen is gone and
+        // nothing else is open (and not while the Home chart is growing). Cancel keeps the green dot on the update icon.
+        val pendingUpdate = com.myapp.app.util.UpdateChecker.startupFound
+        val anyPopup = Popups.anyVisible
+        LaunchedEffect(pendingUpdate, lockUp, onboarding, settled, anyPopup) {
+            val found = pendingUpdate ?: return@LaunchedEffect
+            if (lockUp || onboarding || !settled || anyPopup) return@LaunchedEffect
+            delay(900)
+            com.myapp.app.ui.components.awaitIntroIdle()
+            if (Popups.anyVisible || com.myapp.app.util.UpdateChecker.downloading) return@LaunchedEffect
+            com.myapp.app.util.UpdateChecker.startupFound = null
+            com.myapp.app.util.UpdateChecker.showAvailable(appContext, found)
+        }
         // A new / edited / settled / deleted debt changes its reminder: re-register shortly after the change.
         val revision = com.myapp.app.data.AppStore.revision
         LaunchedEffect(revision) {
