@@ -103,6 +103,7 @@ object UpdateChecker {
             okLabel = tr("update_download", "Download"),
             cancelLabel = tr("common_cancel", "Cancel"),
             icon = "fa-circle-check",
+            softBackdrop = true,
         ) { ok -> if (ok == true) startUpdate(context, result.url) }
     }
 
