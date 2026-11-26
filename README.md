@@ -2,7 +2,7 @@
 
 <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" width="110" alt="Tracker app icon" />
 
-# 💰 Tracker
+# Tracker
 
 **A private, native Android money tracker.**
 Track expenses across funds, manage debts, see where your money goes, and keep it all on your device, in English or বাংলা.
