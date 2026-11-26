@@ -298,7 +298,7 @@ private fun UpdateButton() {
         // green dot: a newer version was found but not downloaded yet (gone once the latest version is running)
         if (UpdateChecker.updateAvailable) {
             Box(
-                Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 8.dp)
+                Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 0.dp)
                     .size(8.dp).clip(CircleShape).background(Brand.green, CircleShape),
             )
         }
