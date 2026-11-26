@@ -51,6 +51,7 @@ import com.myapp.app.ui.components.FaIcon
 import com.myapp.app.ui.components.FaStyle
 import com.myapp.app.ui.components.PagedViewport
 import com.myapp.app.ui.components.WheelItem
+import com.myapp.app.ui.components.WheelTarget
 import com.myapp.app.ui.components.WheelPicker
 import com.myapp.app.ui.components.pagedItem
 import com.myapp.app.ui.components.rememberPagedState
@@ -264,8 +265,13 @@ object AllCatMonthPicker {
     var month by mutableIntStateOf(1)
     var year by mutableIntStateOf(2026)
     var openCount by mutableIntStateOf(0)
+    var monthTarget by mutableStateOf<WheelTarget?>(null)
+    var yearTarget by mutableStateOf<WheelTarget?>(null)
+    private var resetNonce = 0
 
     fun open() {
+        monthTarget = null
+        yearTarget = null
         val cur = statsSpendMonthScope(AppStore.state)
         month = cur.monthIdx + 1
         year = cur.year
@@ -277,8 +283,14 @@ object AllCatMonthPicker {
 
     /** resetAllCatMonthPicker(): drop the picked month, back to the default scope. */
     fun reset() {
-        close()
+        // the popup stays open: the filter is dropped and both wheels glide to the present month / year
         AppUi.statsMonthOverride = null
+        val cur = statsSpendMonthScope(AppStore.state)
+        month = cur.monthIdx + 1
+        year = cur.year
+        resetNonce++
+        monthTarget = WheelTarget(month.toString(), resetNonce)
+        yearTarget = WheelTarget(year.toString(), resetNonce)
     }
 
     fun confirm() {
@@ -341,17 +353,17 @@ fun AllCatMonthPickerPopup() {
                         Row(horizontalArrangement = Arrangement.Center) {
                             WheelPicker(
                                 items = monthItems, initialValue = p.month.toString(), loop = true, width = 78.dp,
-                                resetKey = p.openCount,
+                                resetKey = p.openCount, animateTo = p.monthTarget,
                             ) { v -> p.month = v.toInt() }
                             Box(Modifier.width(4.dp))
                             WheelPicker(
                                 items = yearItems, initialValue = p.year.toString(), loop = false, width = 72.dp,
-                                resetKey = p.openCount,
+                                resetKey = p.openCount, animateTo = p.yearTarget,
                             ) { v -> p.year = v.toInt() }
                         }
                     }
                 }
-                if (AppUi.statsMonthOverride != null) {
+                androidx.compose.animation.AnimatedVisibility(visible = AppUi.statsMonthOverride != null) {
                     ModalButton(
                         tr("filter_reset_btn", "Reset Filter"), ModalButtonKind.Secondary, Modifier.fillMaxWidth(),
                         textColor = Brand.red,
