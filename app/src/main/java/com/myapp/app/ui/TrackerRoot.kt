@@ -122,6 +122,17 @@ fun TrackerRoot(activity: Activity) {
             // the page background fills the WHOLE window, also under the status / navigation bar
             // (fades in with the unlock reveal; at launch behind the lock it is not drawn at all)
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = reveal }) { AppBackdrop() }
+            // Day mode, Welcome / PIN / pattern / fingerprint lock screens: the same page backdrop is also drawn
+            // under the (transparent) status + navigation bar, so both bars take the screen's own colour.
+            // It fades in and out together with the lock / welcome screen (same length and easing).
+            val barsOn = isLight && (lockUp || onboarding) && settled
+            val barsAlpha by animateFloatAsState(
+                targetValue = if (barsOn) 1f else 0f,
+                animationSpec = if (barsOn) tween(com.myapp.app.ui.popup.LOCK_ENTER_MS, easing = com.myapp.app.ui.components.EntranceEase)
+                else tween(com.myapp.app.ui.popup.LOCK_EXIT_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                label = "lockBarsBackdrop",
+            )
+            if (barsAlpha > 0.001f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = barsAlpha }) { AppBackdrop() }
             // invisible one-time warm-up of the category chip row (smooth first swipe after install)
             com.myapp.app.ui.popup.CategoryWarmUp()
 
