@@ -59,6 +59,9 @@ import kotlin.math.roundToInt
 /** One row of a wheel. [hasTx] = a date that has entries (drawn in red, like data-has-tx). */
 class WheelItem(val value: String, val label: String, val hasTx: Boolean = false)
 
+/** Ask a wheel to glide (animated) to [value]; a new [nonce] makes the same value glide again. */
+class WheelTarget(val value: String, val nonce: Int)
+
 private const val ROW_H = 44f                 // TIME_WHEEL_ROW_H
 private const val MAX_VELOCITY = 0.75f        // UDP_MAX_VELOCITY, px per ms
 private const val FRICTION = 0.0005f          // UDP_FRICTION, px per ms^2
@@ -109,6 +112,7 @@ fun WheelPicker(
     width: Dp,
     resetKey: Any,
     modifier: Modifier = Modifier,
+    animateTo: WheelTarget? = null,
     onSettle: (String) -> Unit,
 ) {
     val c = AppTheme.colors
@@ -252,6 +256,24 @@ fun WheelPicker(
                 )
             }
         }
+    }
+
+    // programmatic glide (e.g. "Reset Filter" -> back to the present month) by the shortest way round
+    LaunchedEffect(animateTo?.nonce) {
+        val t = animateTo ?: return@LaunchedEffect
+        val bi = items.indexOfFirst { it.value == t.value }
+        if (bi < 0) return@LaunchedEffect
+        job?.cancel()
+        val cur = indexOfScroll()
+        val target = if (loop) {
+            var d = ((bi - cur % n) % n + n) % n
+            if (d > n / 2) d -= n
+            cur + d
+        } else bi
+        activeForce = target
+        scroll.animateTo(target * rowPx, tween(520, EaseOutQuint))
+        wrapCheck()
+        latestOnSettle(t.value)
     }
 
     // a drag/animation finished: the forced highlight is no longer needed
