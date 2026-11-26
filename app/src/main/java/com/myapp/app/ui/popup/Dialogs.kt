@@ -37,6 +37,8 @@ class AlertRequest(
     val okLabel: String,
     val icon: String,
     val onClose: () -> Unit,
+    /** No blur and only a hint of dimming behind the popup (update popups). */
+    val softBackdrop: Boolean = false,
 )
 
 class ConfirmRequest(
@@ -67,6 +69,7 @@ object AppDialogs {
         title: String? = null,
         okLabel: String? = null,
         icon: String? = null,
+        softBackdrop: Boolean = false,
         onClose: () -> Unit = {},
     ) {
         val req = AlertRequest(
@@ -75,6 +78,7 @@ object AppDialogs {
             okLabel = okLabel ?: tr("common_ok", "OK"),
             icon = icon ?: "fa-circle-info",
             onClose = onClose,
+            softBackdrop = softBackdrop,
         )
         lastAlert = req
         Popups.alert = req
@@ -209,7 +213,7 @@ fun DialogsHost() {
         }
     }
 
-    PopupLayer(visible = Popups.alert != null, scrim = 0.7f) {
+    PopupLayer(visible = Popups.alert != null, scrim = if (AppDialogs.lastAlert?.softBackdrop == true) 0.10f else 0.7f) {
         val req = AppDialogs.lastAlert
         if (req != null) {
             GlassCard(radius = 28.dp, padding = 24.dp) {
